@@ -1,20 +1,124 @@
+# openspec/config.yaml
+# Configuración del proyecto: Estación Meteorológica Autónoma (ESP32 + Rust)
+
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  ## Descripción del proyecto
+  Estación meteorológica autónoma basada en un microcontrolador ESP32
+  programado en Rust. Integra un sensor DHT22 (temperatura y humedad) y
+  entradas dedicadas para pluviómetro (precipitación) y anemómetro
+  (velocidad del viento). Los datos se transmiten por LoRa hacia una
+  aplicación web que los almacena en una base de datos histórica y permite
+  visualizar la evolución de las variables mediante gráficos. Incluye además
+  una app Android para calibración, verificación y validación en campo, y
+  contempla la descarga de archivos para impresión 3D de la carcasa y otros
+  componentes estructurales. El proyecto cierra con un informe que documenta
+  la metodología de desarrollo y los resultados de las pruebas funcionales.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  ## Arquitectura y stack tecnológico
+
+  ### Firmware del nodo sensor (ESP32, Rust)
+  - Framework: ecosistema esp-rs (esp-hal / esp-idf-hal)
+  - DHT22: driver vía crate de sensor DHT existente en el ecosistema
+  - Pluviómetro y anemómetro: conteo de pulsos por interrupción GPIO
+  - Comunicación: LoRa punto a punto (P2P, sin LoRaWAN) con módulo SX127x.
+    Payload binario de tamaño fijo (no JSON) para minimizar tiempo de aire
+    y consumo de batería. Campos sugeridos: device_id, seq, temp_c*100 (i16),
+    hum*100 (u16), lluvia_mm*10 (u16), viento_kmh*10 (u16), bateria_mv (u16),
+    crc8
+
+  ### Gateway LoRa
+  - Segundo nodo ESP32 (mismo stack Rust) con módulo LoRa + WiFi
+  - Recibe paquetes LoRa y los reenvía por HTTPS (POST JSON) al backend
+  - Justificación: reutiliza el lenguaje y el conocimiento del nodo sensor,
+    bajo costo de hardware adicional
+
+  ### Backend / API
+  - Python + FastAPI
+  - Justificación: genera spec OpenAPI automáticamente a partir del código,
+    alineado con la metodología spec-driven; soporte async para recibir el
+    flujo del gateway; pandas reutilizable para el análisis del informe final
+  - Base de datos histórica: InfluxDB (serie temporal) — timestamp + valor +
+    tags de dispositivo, retención configurable, agregaciones para gráficos
+    - Alternativa válida: PostgreSQL + TimescaleDB si se prefiere SQL
+      relacional
+
+  ### Frontend web
+  - React + Recharts (o Chart.js), consumiendo la API REST del backend
+  - Gráficos de evolución temporal: temperatura, humedad, precipitación
+    acumulada, velocidad de viento
+
+  ### Aplicación Android
+  - Kotlin + Jetpack Compose
+  - Calibración en campo: comunicación directa vía Bluetooth Low Energy
+    (BLE) con el nodo ESP32, sin depender de cobertura LoRa/WiFi en el sitio
+    de instalación
+  - Verificación/validación: consulta a la API REST del backend para
+    comparar lecturas en vivo contra el histórico almacenado
+
+  ### Modelos 3D
+  - Formato de entrega: STL para impresión (y fuente editable STEP/F3D si
+    aplica)
+  - Material sugerido: PETG o ASA por resistencia UV/intemperie, a validar
+    en el informe de pruebas funcionales
+
+  ## Convenciones de trabajo
+  - Commits: Conventional Commits (https://www.conventionalcommits.org)
+    - Formato: <tipo>(<scope>): <descripción>
+    - Tipos: feat, fix, docs, refactor, test, chore, build, perf
+    - Scope = componente: firmware, gateway, backend, frontend, android, 3d,
+      docs
+    - Breaking changes: agregar `!` después del tipo/scope o un footer
+      `BREAKING CHANGE: <detalle>` (ej. cambia el formato del payload LoRa)
+    - Ejemplos:
+      `feat(firmware): agregar lectura de pulsos del anemómetro`
+      `fix(backend): corregir agregación horaria en InfluxDB`
+      `feat(android)!: cambiar protocolo BLE de calibración`
+
+  Estas decisiones de stack son una recomendación inicial razonable dado el
+  alcance del proyecto. Si en la práctica se elige otra tecnología, actualizar
+  este bloque para que los agentes generen specs y diseños coherentes con la
+  implementación real.
+
+rules:
+  proposal:
+    - Indicar qué componente(s) afecta el cambio: firmware, gateway, backend, frontend, app Android, modelos 3D y/o documentación (puede ser más de uno)
+    - Si el cambio afecta al firmware, mencionar el impacto esperado en
+      consumo energético y autonomía de la estación
+    - Si el cambio afecta la comunicación, indicar si modifica el formato
+      binario o la frecuencia de los mensajes LoRa
+    - Mencionar plan de rollback cuando el cambio toque firmware ya
+      desplegado en campo
+
+  specs:
+    - Usar formato Given/When/Then para los escenarios
+    - Para requisitos de sensores, especificar unidad de medida, rango y
+      resolución esperados (ej. temperatura en °C, resolución 0.1°C)
+    - Para requisitos de comunicación LoRa, especificar estructura exacta
+      del payload binario, frecuencia de envío y comportamiento ante
+      pérdida de señal
+    - Para requisitos de la app Android, distinguir flujos de calibración
+      (BLE directo con el ESP32) de flujos de verificación/validación
+      (consulta a la API REST)
+    - Para requisitos del backend, especificar el contrato de la API
+      (paths, payloads) que FastAPI debe exponer
+
+  design:
+    - Incluir diagrama de flujo de datos extremo a extremo: sensor → ESP32 → LoRa → gateway → backend (FastAPI) → InfluxDB → frontend (React)
+    - Documentar manejo de errores y reconexión (pérdida de señal LoRa,
+      sensor desconectado o con lectura inválida, gateway sin conectividad)
+    - Para cambios en backend, indicar el esquema de InfluxDB (measurement,
+      tags, fields) afectado
+    - Para cambios en el firmware, indicar impacto en memoria/CPU dado las
+      limitaciones del ESP32
+    - Para cambios en la app Android, indicar los servicios/characteristics
+      BLE expuestos por el ESP32 involucrados
+
+  tasks:
+    - Agrupar tareas por componente: firmware, gateway, backend, frontend, app Android, modelos 3D, documentación
+    - Las tareas de firmware deben indicar si requieren pruebas sobre
+      hardware físico (no solo simulación)
+    - Las tareas de la app Android deben indicar si requieren prueba en
+      campo junto a la estación real
+    - Cada commit asociado a una tarea debe seguir Conventional Commits, con scope igual al componente de la tarea (ej. `feat(gateway): ...`)
