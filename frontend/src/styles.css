@@ -1,5 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap");
-
+/*dsadsad*/
 :root {
   color: #e4e2e4;
   background: #131315;
@@ -454,6 +454,51 @@ h2 {
   background: #1b1b1d;
 }
 
+.chart-card-stats {
+  display: flex;
+  gap: 28px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #2a2b2e;
+}
+
+.chart-card-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chart-card-stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #6b6c72;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.chart-card-stat-value {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 18px;
+  font-weight: 600;
+  color: #e4e2e4;
+}
+
+.chart-card-stat-value small {
+  font-size: 12px;
+  font-weight: 600;
+  color: #bec6e0;
+}
+
+.chart-card-stat-when {
+  font-size: 11px;
+  font-family: "JetBrains Mono", monospace;
+  color: #6b6c72;
+  white-space: nowrap;
+}
+
 .chart-card-head {
   display: flex;
   align-items: flex-start;
@@ -476,6 +521,48 @@ h2 {
   color: #c6c6cd;
   font-size: 12px;
 }
+
+.chart-card-head-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.period-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.period-btn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #45464d;
+  border-radius: 6px;
+  background: transparent;
+  color: #c6c6cd;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.period-btn:hover:not(.active) {
+  border-color: #586171;
+  color: #e4e2e4;
+}
+
+.period-btn.active {
+  border-color: currentColor;
+  color: #bec6e0;
+  background: rgba(190, 198, 224, 0.1);
+}
+
+.chart-card.warm  .period-btn.active { color: #d9a56c; }
+.chart-card.cool  .period-btn.active { color: #7cb7d8; }
+.chart-card.wind  .period-btn.active { color: #a2d2a8; }
+.chart-card.rain  .period-btn.active { color: #8da4de; }
 
 .chart-card-peak {
   display: flex;
@@ -506,6 +593,25 @@ h2 {
   font-size: 11px;
   font-family: "JetBrains Mono", monospace;
   white-space: nowrap;
+}
+
+.chart-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 3px 0 0;
+}
+
+.chart-tooltip-key {
+  color: #c6c6cd;
+  font-size: 12px;
+}
+
+.chart-tooltip-val {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: #e4e2e4;
 }
 
 .chart-card.warm .metric-signal { background: #d9a56c; }
@@ -993,9 +1099,9 @@ h2 {
    RESPONSIVE
    ══════════════════════════════════════════════════════ */
 
-/* ─── Tablet (≤ 900px) ────────────────────────────────── */
+/* ─── Tablet (≤ 1200px) ────────────────────────────────── */
 
-@media (max-width: 900px) {
+@media (max-width: 1200px) {
   .metrics-grid {
     grid-template-columns: repeat(2, 1fr);
   }

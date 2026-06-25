@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { JSX, useMemo, useState } from "react";
 import {
   ResponsiveContainer,
+  ComposedChart,
   LineChart,
   Line,
   AreaChart,
@@ -12,10 +13,12 @@ import {
   CartesianGrid,
   Tooltip,
 } from "recharts";
-import { ChartTooltip } from "./Charttooltip";
+import { ChartTooltip, DailyBandTooltip } from "./Charttooltip";
 import type { WeatherPoint } from "../data/Weatherseries";
+import type { DailySummary, MetricKey } from "../data/Weatherseries";
 
 export type ChartKind = "line" | "area" | "bar";
+type Period = "1D" | "7D" | "30D" | "1Y";
 
 type ChartCardProps = {
   title: string;
@@ -24,6 +27,10 @@ type ChartCardProps = {
   kind: ChartKind;
   data: WeatherPoint[];
   dataKey: keyof WeatherPoint;
+  metricKey: MetricKey;
+  daily7: DailySummary[];
+  daily30: DailySummary[];
+  daily365: DailySummary[];
   unit: string;
   color: string;
   domainMin: number;
@@ -32,23 +39,31 @@ type ChartCardProps = {
   tickStep: number;
 };
 
-const X_TICKS = [0, 4, 8, 12, 16, 20, 24];
+const X_TICKS_1D = [0, 4, 8, 12, 16, 20, 24];
+const X_TICKS_7D = [0, 1, 2, 3, 4, 5, 6];
+const X_TICKS_30D = [0, 3, 6, 9, 12, 15, 18, 21, 24, 27];
+const PERIODS: Period[] = ["1D", "7D", "30D", "1Y"];
 
-function computeIdealDomain(
-  data: WeatherPoint[],
-  dataKey: keyof WeatherPoint,
-  domainMin: number,
-  domainMax: number,
-  tickStep: number,
+function idealFrom1D(
+  data: WeatherPoint[], dataKey: keyof WeatherPoint,
+  domainMin: number, domainMax: number, tickStep: number,
 ): [number, number] {
   const values = data.map((d) => d[dataKey] as number);
   const rawMin = Math.min(...values);
   const rawMax = Math.max(...values);
-  // Floor min to nearest tickStep, clamped to the absolute domainMin
-  const idealMin = Math.max(domainMin, Math.floor(rawMin / tickStep) * tickStep);
-  // Ceil max to the next tickStep above rawMax (epsilon ensures we go up if rawMax lands on a tick)
-  const idealMax = Math.min(domainMax, Math.ceil((rawMax + 1e-9) / tickStep) * tickStep);
-  return [idealMin, idealMax];
+  const min = Math.max(domainMin, Math.floor(rawMin / tickStep) * tickStep);
+  const max = Math.min(domainMax, Math.ceil((rawMax + 1e-9) / tickStep) * tickStep);
+  return [min, max];
+}
+
+function idealFromDaily(
+  summaries: DailySummary[], domainMin: number, domainMax: number, tickStep: number,
+): [number, number] {
+  const rawMin = Math.min(...summaries.map((d) => d.min));
+  const rawMax = Math.max(...summaries.map((d) => d.max));
+  const min = Math.max(domainMin, Math.floor(rawMin / tickStep) * tickStep);
+  const max = Math.min(domainMax, Math.ceil((rawMax + 1e-9) / tickStep) * tickStep);
+  return [min, max];
 }
 
 export function ChartCard({
@@ -58,6 +73,9 @@ export function ChartCard({
   kind,
   data,
   dataKey,
+  daily7,
+  daily30,
+  daily365,
   unit,
   color,
   domainMin,
@@ -65,35 +83,166 @@ export function ChartCard({
   axisStep,
   tickStep,
 }: ChartCardProps) {
-  const idealDomain = useMemo(
-    () => computeIdealDomain(data, dataKey, domainMin, domainMax, tickStep),
-    [data, dataKey, domainMin, domainMax, tickStep],
-  );
-  const [range, setRange] = useState<[number, number]>(idealDomain);
+  const [period, setPeriod] = useState<Period>("1D");
 
-  const peak = useMemo(() => {
-    let maxVal = -Infinity;
-    let maxHour = 0;
-    for (const point of data) {
-      const v = point[dataKey] as number;
-      if (v > maxVal) { maxVal = v; maxHour = point.hour; }
+  const idealDomain1D  = useMemo(() => idealFrom1D(data, dataKey, domainMin, domainMax, tickStep), [data, dataKey, domainMin, domainMax, tickStep]);
+  const idealDomain7D  = useMemo(() => idealFromDaily(daily7,   domainMin, domainMax, tickStep), [daily7,   domainMin, domainMax, tickStep]);
+  const idealDomain30D = useMemo(() => idealFromDaily(daily30,  domainMin, domainMax, tickStep), [daily30,  domainMin, domainMax, tickStep]);
+  const idealDomain1Y  = useMemo(() => idealFromDaily(daily365, domainMin, domainMax, tickStep), [daily365, domainMin, domainMax, tickStep]);
+
+  const [range, setRange] = useState<[number, number]>(idealDomain1D);
+
+  const activeIdealDomain =
+    period === "1D"  ? idealDomain1D  :
+    period === "7D"  ? idealDomain7D  :
+    period === "30D" ? idealDomain30D : idealDomain1Y;
+
+  function changePeriod(p: Period) {
+    const d = p === "1D" ? idealDomain1D : p === "7D" ? idealDomain7D : p === "30D" ? idealDomain30D : idealDomain1Y;
+    setPeriod(p);
+    setRange(d);
+  }
+
+  const extremes = useMemo(() => {
+    if (period === "1D") {
+      let maxVal = -Infinity, maxHour = 0;
+      let minVal = Infinity, minHour = 0;
+      for (const pt of data) {
+        const v = pt[dataKey] as number;
+        if (v > maxVal) { maxVal = v; maxHour = pt.hour; }
+        if (v < minVal) { minVal = v; minHour = pt.hour; }
+      }
+      const fh = (h: number) => `${(h % 24).toString().padStart(2, "0")}:00 ART`;
+      return { max: maxVal, maxWhen: fh(maxHour), min: minVal, minWhen: fh(minHour) };
     }
-    // hour es 0–23 en UTC-3 (America/Argentina/Buenos_Aires)
-    const h = maxHour % 24;
-    const label = `${h.toString().padStart(2, "0")}:00 ART`;
-    return { value: maxVal, label };
-  }, [data, dataKey]);
+    const src = period === "7D" ? daily7 : period === "30D" ? daily30 : daily365;
+    let maxVal = -Infinity, maxIdx = 0;
+    let minVal = Infinity, minIdx = 0;
+    for (let i = 0; i < src.length; i++) {
+      if (src[i].max > maxVal) { maxVal = src[i].max; maxIdx = i; }
+      if (src[i].min < minVal) { minVal = src[i].min; minIdx = i; }
+    }
+    const labelOf = (s: DailySummary) => period === "7D" ? s.dayLabel : s.dateLabel;
+    return { max: maxVal, maxWhen: labelOf(src[maxIdx]), min: minVal, minWhen: labelOf(src[minIdx]) };
+  }, [period, data, dataKey, daily7, daily30, daily365]);
 
   const yTicks = useMemo(() => {
     const ticks: number[] = [];
-    for (let v = range[0]; v <= range[1]; v += tickStep) {
-      ticks.push(Math.round(v * 10) / 10);
-    }
+    for (let v = range[0]; v <= range[1]; v += tickStep) ticks.push(Math.round(v * 10) / 10);
     if (ticks[ticks.length - 1] !== range[1]) ticks.push(range[1]);
     return ticks;
   }, [range, tickStep]);
 
+  const yearTicks = useMemo(
+    () => daily365.filter((d) => d.isMonthStart || d.index === 0).map((d) => d.index),
+    [daily365],
+  );
+
   const gradientId = `gradient-${dataKey}`;
+  const bandId = `band-${dataKey}`;
+
+  const yAxis = (
+    <YAxis domain={[range[0], range[1]]} ticks={yTicks} stroke="#45464d" tick={{ fill: "#c6c6cd", fontSize: 11 }} width={36} />
+  );
+  const grid = <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2a2b2e" />;
+
+  function xAxis7D() {
+    return (
+      <XAxis dataKey="index" type="number" domain={[0, 6]} ticks={X_TICKS_7D}
+        tickFormatter={(i: number) => daily7[i]?.dayLabel ?? ""}
+        stroke="#45464d" tick={{ fill: "#c6c6cd", fontSize: 11 }} />
+    );
+  }
+  function xAxis30D() {
+    return (
+      <XAxis dataKey="index" type="number" domain={[0, 29]} ticks={X_TICKS_30D}
+        tickFormatter={(i: number) => daily30[i]?.dateLabel ?? ""}
+        stroke="#45464d" tick={{ fill: "#c6c6cd", fontSize: 11 }} />
+    );
+  }
+  function xAxis1Y() {
+    return (
+      <XAxis dataKey="index" type="number" domain={[0, 364]} ticks={yearTicks}
+        tickFormatter={(i: number) => daily365[i]?.monthLabel ?? ""}
+        stroke="#45464d" tick={{ fill: "#c6c6cd", fontSize: 11 }} />
+    );
+  }
+
+  function bandChart(dailyData: DailySummary[], xAxisEl: JSX.Element, showDots: boolean) {
+    return (
+      <ComposedChart data={dailyData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+        <defs>
+          <linearGradient id={bandId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+            <stop offset="100%" stopColor={color} stopOpacity={0.07} />
+          </linearGradient>
+        </defs>
+        {grid}
+        {xAxisEl}
+        {yAxis}
+        <Tooltip
+          content={<DailyBandTooltip unit={unit} is7D={period === "7D"} />}
+          cursor={{ stroke: "#45464d" }}
+        />
+        {/* Colored band from range[0] to max */}
+        <Area type="monotone" dataKey="max" baseValue={range[0]}
+          stroke="none" fill={`url(#${bandId})`} isAnimationActive={false} legendType="none" />
+        {/* Mask from range[0] to min — covers the area below actual data minimum */}
+        <Area type="monotone" dataKey="min" baseValue={range[0]}
+          stroke="none" fill="#1b1b1d" isAnimationActive={false} legendType="none" />
+        {/* Mean line */}
+        <Line type="monotone" dataKey="mean" stroke={color} strokeWidth={2}
+          dot={showDots ? { r: 3, fill: color, stroke: "#131315", strokeWidth: 1.5 } : false}
+          activeDot={{ r: 4, fill: color, stroke: "#131315", strokeWidth: 2 }}
+          isAnimationActive={false} />
+      </ComposedChart>
+    );
+  }
+
+  function renderChart() {
+    if (period === "7D")  return bandChart(daily7,   xAxis7D(),  true);
+    if (period === "30D") return bandChart(daily30,  xAxis30D(), false);
+    if (period === "1Y")  return bandChart(daily365, xAxis1Y(),  false);
+
+    // 1D — original charts
+    const xAxis1D = (
+      <XAxis dataKey="hour" type="number" domain={[0, 24]} ticks={X_TICKS_1D}
+        tickFormatter={(h: number) => `${h.toString().padStart(2, "0")}:00`}
+        stroke="#45464d" tick={{ fill: "#c6c6cd", fontSize: 11 }} />
+    );
+
+    if (kind === "line") return (
+      <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+        {grid}{xAxis1D}{yAxis}
+        <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ stroke: "#45464d" }} />
+        <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2.5} dot={false}
+          activeDot={{ r: 4, fill: color, stroke: "#131315", strokeWidth: 2 }} isAnimationActive={false} />
+      </LineChart>
+    );
+
+    if (kind === "area") return (
+      <AreaChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={0.45} />
+            <stop offset="100%" stopColor={color} stopOpacity={0.03} />
+          </linearGradient>
+        </defs>
+        {grid}{xAxis1D}{yAxis}
+        <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ stroke: "#45464d" }} />
+        <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2.5}
+          fill={`url(#${gradientId})`} isAnimationActive={false} />
+      </AreaChart>
+    );
+
+    return (
+      <BarChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+        {grid}{xAxis1D}{yAxis}
+        <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+        <Bar dataKey={dataKey} fill={color} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+      </BarChart>
+    );
+  }
 
   return (
     <article className={`chart-card ${tone}`}>
@@ -103,132 +252,50 @@ export function ChartCard({
             <span className="metric-signal" aria-hidden="true" />
             <span>{title}</span>
           </div>
-          <p className="chart-card-subtitle">{subtitle}</p>
+          <p className="chart-card-subtitle">
+            {period === "1D"  ? subtitle :
+             period === "7D"  ? "Últimos 7 días" :
+             period === "30D" ? "Últimos 30 días" :
+             "Últimos 12 meses"}
+          </p>
         </div>
-        <div className="chart-card-peak">
-          <span className="chart-card-peak-value">{peak.value}<small>{unit}</small></span>
-          <span className="chart-card-peak-time">{peak.label}</span>
+        <div className="chart-card-head-right">
+          <div className="period-toggle">
+            {PERIODS.map((p) => (
+              <button
+                key={p}
+                className={`period-btn${p === period ? " active" : ""}`}
+                onClick={() => changePeriod(p)}
+                aria-pressed={p === period}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-
+      {/* <div className="chart-card-stats">
+        <div className="chart-card-stat">
+          <span className="chart-card-stat-label">Máx</span>
+          <span className="chart-card-stat-value" style={{ color }}>
+            {extremes.max}<small>{unit}</small>
+          </span>
+          <span className="chart-card-stat-when">{extremes.maxWhen}</span>
+        </div>
+        <div className="chart-card-stat">
+          <span className="chart-card-stat-label">Mín</span>
+          <span className="chart-card-stat-value">{extremes.min}<small>{unit}</small></span>
+          <span className="chart-card-stat-when">{extremes.minWhen}</span>
+        </div>
+      </div> */}
       <div className="chart-card-body">
         <ResponsiveContainer width="100%" height="100%">
-          {kind === "line" ? (
-            <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="hour"
-                type="number"
-                domain={[0, 24]}
-                ticks={X_TICKS}
-                tickFormatter={(h: number) => `${h.toString().padStart(2, "0")}:00`}
-                stroke="#45464d"
-              />
-              <YAxis
-                domain={[range[0], range[1]]}
-                ticks={yTicks}
-                stroke="#45464d"
-                width={40}
-              />
-              <Tooltip
-                content={<ChartTooltip unit={unit} valueLabel={title} />}
-                cursor={{ stroke: "#45464d" }}
-              />
-              <Line
-                type="monotone"
-                dataKey={dataKey}
-                stroke={color}
-                strokeWidth={2.5}
-                dot={false}
-                activeDot={{ r: 4, fill: color, stroke: "#131315", strokeWidth: 2 }}
-                isAnimationActive={false}
-              />
-            </LineChart>
-          ) : kind === "area" ? (
-            <AreaChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={color} stopOpacity={0.45} />
-                  <stop offset="100%" stopColor={color} stopOpacity={0.03} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="hour"
-                type="number"
-                domain={[0, 24]}
-                ticks={X_TICKS}
-                tickFormatter={(h: number) => `${h.toString().padStart(2, "0")}:00`}
-                stroke="#45464d"
-              />
-              <YAxis
-                domain={[range[0], range[1]]}
-                ticks={yTicks}
-                stroke="#45464d"
-                width={40}
-              />
-              <Tooltip
-                content={<ChartTooltip unit={unit} valueLabel={title} />}
-                cursor={{ stroke: "#45464d" }}
-              />
-              <Area
-                type="monotone"
-                dataKey={dataKey}
-                stroke={color}
-                strokeWidth={2.5}
-                fill={`url(#${gradientId})`}
-                isAnimationActive={false}
-              />
-            </AreaChart>
-          ) : (
-            <BarChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="hour"
-                type="number"
-                domain={[0, 24]}
-                ticks={X_TICKS}
-                tickFormatter={(h: number) => `${h.toString().padStart(2, "0")}:00`}
-                stroke="#45464d"
-              />
-              <YAxis
-                domain={[range[0], range[1]]}
-                ticks={yTicks}
-                stroke="#45464d"
-                width={40}
-              />
-              <Tooltip
-                content={<ChartTooltip unit={unit} valueLabel={title} />}
-                cursor={{ fill: "rgba(255,255,255,0.04)" }}
-              />
-              <Bar dataKey={dataKey} fill={color} radius={[3, 3, 0, 0]} isAnimationActive={false} />
-            </BarChart>
-          )}
+          {renderChart()}
         </ResponsiveContainer>
       </div>
 
-      {/* <div className="chart-card-controls">
-        <div className="axis-scale-control">
-          <span className="axis-scale-label">Escala eje Y</span>
-          <DualRangeSlider
-            min={domainMin}
-            max={domainMax}
-            step={axisStep}
-            value={range}
-            onChange={setRange}
-          />
-          <span className="axis-scale-values">
-            {range[0]} – {range[1]} {unit}
-          </span>
-        </div>
-        <button
-          className="reset-scale-btn"
-          type="button"
-          onClick={() => setRange(idealDomain)}
-        >
-          Auto
-        </button>
-      </div> */}
+      
+
     </article>
   );
 }
