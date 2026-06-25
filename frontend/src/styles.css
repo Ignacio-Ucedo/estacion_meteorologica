@@ -1129,8 +1129,96 @@ h2 {
     display: none;
   }
 
-  .log-table-body {
-    max-height: 420px;
+  .log-search-badge {
+    display: none;
+  }
+}
+
+/* ─── Mobile card layout para el log (≤ 480px) ─────────── */
+
+@media (max-width: 480px) {
+  /* Oculta el header de la tabla — las cards son auto-descriptivas */
+  .log-table-header {
+    display: none;
+  }
+
+  /* Cada fila se convierte en una card apilada */
+  .log-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 12px 14px;
+    border-top: 1px solid #2a2b2e;
+  }
+
+  .log-row:first-child {
+    border-top: none;
+  }
+
+  /* Cabecera de la card: timestamp a la izquierda, estación a la derecha */
+  .log-cell-time {
+    font-size: 11px;
+    color: #6b6c72;
+    margin-bottom: 2px;
+  }
+
+  .log-cell-station {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e4e2e4;
+    margin-bottom: 10px;
+  }
+
+  /* Grilla 2×2 para los 4 valores */
+  .log-row .log-cell-value {
+    display: none; /* se ocultan los spans originales */
+  }
+
+  /* Pseudo-grilla via CSS grid sobre los últimos 4 hijos */
+  .log-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    row-gap: 4px;
+    column-gap: 8px;
+  }
+
+  .log-cell-time   { grid-column: 1 / -1; }
+  .log-cell-station { grid-column: 1 / -1; margin-bottom: 6px; }
+
+  /* Los 4 valores métricos en 2×2 */
+  .log-cell-value {
+    display: flex !important;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    font-size: 15px;
+    font-weight: 700;
+    gap: 1px;
+  }
+
+  .log-cell-value::before {
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 400;
+    color: #6b6c72;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* Etiquetas de cada métrica via nth-child sobre .log-row */
+  .log-row span:nth-child(3)::before { content: "Temp"; }
+  .log-row span:nth-child(4)::before { content: "Humedad"; }
+  .log-row span:nth-child(5)::before { content: "Viento"; }
+  .log-row span:nth-child(6)::before { content: "Lluvia"; }
+
+  /* Barra de búsqueda compacta */
+  .log-search-input-wrap {
+    flex: 1;
+  }
+
+  .log-pagination {
+    flex-wrap: wrap;
   }
 }
 
