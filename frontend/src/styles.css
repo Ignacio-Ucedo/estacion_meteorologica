@@ -508,6 +508,69 @@ h2 {
   white-space: nowrap;
 }
 
+.chart-card-head-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.period-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.period-btn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #45464d;
+  border-radius: 6px;
+  background: transparent;
+  color: #c6c6cd;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.period-btn:hover:not(.active) {
+  border-color: #586171;
+  color: #e4e2e4;
+}
+
+.period-btn.active {
+  border-color: currentColor;
+  color: #bec6e0;
+  background: rgba(190, 198, 224, 0.1);
+}
+
+/* Tone-specific active color */
+.chart-card.warm  .period-btn.active { color: #d9a56c; }
+.chart-card.cool  .period-btn.active { color: #7cb7d8; }
+.chart-card.wind  .period-btn.active { color: #a2d2a8; }
+.chart-card.rain  .period-btn.active { color: #8da4de; }
+
+/* Daily band tooltip rows */
+.chart-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 3px 0 0;
+}
+
+.chart-tooltip-key {
+  color: #c6c6cd;
+  font-size: 12px;
+}
+
+.chart-tooltip-val {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: #e4e2e4;
+}
+
 .chart-card.warm .metric-signal { background: #d9a56c; }
 .chart-card.cool .metric-signal { background: #7cb7d8; }
 .chart-card.wind .metric-signal { background: #a2d2a8; }
