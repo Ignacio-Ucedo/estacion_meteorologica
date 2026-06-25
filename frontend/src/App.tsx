@@ -4,6 +4,8 @@ import { Topbar } from "./components/Topbar";
 import { StationPanel } from "./components/StationPanel";
 import { MetricCard } from "./components/MetricCard";
 import { PlaceholderPanel } from "./components/Placeholderpanel";
+import { GraficasPanel } from "./components/Graficaspanel";
+import { StationLogPanel } from "./components/Stationlogpanel";
 
 const station = {
   name: "Station Alpha",
@@ -46,9 +48,9 @@ function App() {
           </>
         );
       case "historial":
-        return <PlaceholderPanel title="Historial" />;
+        return <StationLogPanel />;
       case "graficas":
-        return <PlaceholderPanel title="Gráficas" />;
+        return <GraficasPanel />;
       case "gestion":
         return <PlaceholderPanel title="Gestión de estaciones" />;
       default:

@@ -6,7 +6,6 @@ export function Topbar({ onMenuOpen }: TopbarProps) {
   return (
     <header className="topbar">
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-        {/* Botón hamburger — visible solo en mobile via CSS */}
         <button
           className="hamburger"
           type="button"

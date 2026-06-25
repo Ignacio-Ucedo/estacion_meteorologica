@@ -19,7 +19,6 @@ export function Sidebar({ navItems, activeId, isOpen, onNavigate, onClose }: Sid
 
   return (
     <>
-      {/* Overlay para cerrar el drawer tocando afuera */}
       <div
         className={`sidebar-overlay${isOpen ? " open" : ""}`}
         onClick={onClose}

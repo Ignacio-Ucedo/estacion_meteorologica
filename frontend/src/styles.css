@@ -435,6 +435,401 @@ h2 {
   font-size: 14px;
 }
 
+/* ─── Charts panel ─────────────────────────────────────── */
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.chart-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 360px;
+  padding: 20px;
+  border: 1px solid #45464d;
+  border-radius: 8px;
+  background: #1b1b1d;
+}
+
+.chart-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.chart-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #e4e2e4;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.chart-card-subtitle {
+  margin: 4px 0 0;
+  color: #c6c6cd;
+  font-size: 12px;
+}
+
+.chart-card-current {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: #e4e2e4;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 20px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chart-card-current small {
+  color: #bec6e0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chart-card.warm .metric-signal { background: #d9a56c; }
+.chart-card.cool .metric-signal { background: #7cb7d8; }
+.chart-card.wind .metric-signal { background: #a2d2a8; }
+.chart-card.rain .metric-signal { background: #8da4de; }
+
+.chart-card-body {
+  flex: 1;
+  min-height: 0;
+  margin-top: 12px;
+}
+
+.chart-card-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #45464d;
+}
+
+.axis-scale-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.axis-scale-label {
+  flex-shrink: 0;
+  color: #c6c6cd;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.axis-scale-values {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  color: #bec6e0;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dual-range {
+  position: relative;
+  flex: 1;
+  height: 20px;
+  min-width: 80px;
+}
+
+.dual-range-track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: #45464d;
+  transform: translateY(-50%);
+}
+
+.dual-range-fill {
+  position: absolute;
+  top: 50%;
+  height: 3px;
+  border-radius: 999px;
+  background: #bec6e0;
+  transform: translateY(-50%);
+}
+
+.dual-range input[type="range"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.dual-range input[type="range"]::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #131315;
+  border-radius: 50%;
+  background: #e4e2e4;
+  cursor: pointer;
+  pointer-events: all;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.dual-range input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #131315;
+  border-radius: 50%;
+  background: #e4e2e4;
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.reset-scale-btn {
+  flex-shrink: 0;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #45464d;
+  border-radius: 6px;
+  color: #c6c6cd;
+  background: #131315;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reset-scale-btn:hover {
+  border-color: #586171;
+  color: #e4e2e4;
+}
+
+.recharts-cartesian-axis-tick text {
+  fill: #c6c6cd;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+}
+
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: #2a2b2e;
+}
+
+.recharts-tooltip-wrapper {
+  outline: none;
+}
+
+.chart-tooltip {
+  padding: 8px 12px;
+  border: 1px solid #45464d;
+  border-radius: 6px;
+  background: #232326;
+  font-size: 12px;
+}
+
+.chart-tooltip-time {
+  margin: 0 0 4px;
+  color: #c6c6cd;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 600;
+}
+
+.chart-tooltip-value {
+  margin: 0;
+  color: #e4e2e4;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 600;
+}
+
+/* ─── Live station log ────────────────────────────────── */
+
+.log-panel {
+  display: flex;
+  flex-direction: column;
+  margin-top: 18px;
+}
+
+.log-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.log-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.log-heading {
+  font-size: 20px;
+}
+
+.log-panel-subtitle {
+  margin: 6px 0 0;
+  color: #c6c6cd;
+  font-size: 13px;
+}
+
+.log-live-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #7ed69a;
+  box-shadow: 0 0 0 4px rgba(126, 214, 154, 0.12);
+  flex-shrink: 0;
+  animation: log-pulse 1.6s ease-in-out infinite;
+}
+
+.log-live-dot.paused {
+  background: #c6c6cd;
+  box-shadow: 0 0 0 4px rgba(198, 198, 205, 0.12);
+  animation: none;
+}
+
+@keyframes log-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.log-pause-btn {
+  flex-shrink: 0;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid #45464d;
+  border-radius: 8px;
+  color: #e4e2e4;
+  background: #1b1b1d;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.log-pause-btn:hover {
+  border-color: #586171;
+}
+
+.log-table-wrap {
+  border: 1px solid #45464d;
+  border-radius: 8px;
+  background: #1b1b1d;
+  overflow: hidden;
+}
+
+.log-table-header,
+.log-row {
+  display: grid;
+  grid-template-columns: 168px 1fr 110px 120px 130px 110px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+}
+
+.log-table-header {
+  color: #c6c6cd;
+  background: #232326;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.log-table-header .num {
+  text-align: right;
+}
+
+.log-table-body {
+  max-height: 560px;
+  overflow-y: auto;
+}
+
+.log-row {
+  border-top: 1px solid #2a2b2e;
+  color: #e4e2e4;
+  font-size: 14px;
+}
+
+.log-row:first-child {
+  border-top: none;
+}
+
+.log-cell-time,
+.log-cell-value {
+  font-family: "JetBrains Mono", monospace;
+}
+
+.log-cell-time {
+  color: #c6c6cd;
+  font-size: 13px;
+}
+
+.log-cell-station {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.log-cell-value {
+  text-align: right;
+  font-weight: 600;
+}
+
+.log-cell-value.alert-hot { color: #e08a6b; }
+.log-cell-value.alert-cold { color: #7cb7d8; }
+.log-cell-value.alert-humid { color: #7cb7d8; }
+.log-cell-value.alert-wind { color: #a2d2a8; }
+.log-cell-value.alert-rain { color: #8da4de; }
+
+.log-row-enter {
+  animation: log-row-in 0.5s ease-out;
+}
+
+@keyframes log-row-in {
+  0% {
+    background-color: rgba(190, 198, 224, 0.16);
+    transform: translateY(-6px);
+    opacity: 0;
+  }
+  60% {
+    background-color: rgba(190, 198, 224, 0.1);
+  }
+  100% {
+    background-color: transparent;
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .log-live-dot {
+    animation: none;
+  }
+  .log-row-enter {
+    animation: none;
+  }
+}
+
 /* ══════════════════════════════════════════════════════
    RESPONSIVE
    ══════════════════════════════════════════════════════ */
@@ -448,6 +843,10 @@ h2 {
 
   .metric-card.rain {
     grid-column: span 2;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -531,6 +930,48 @@ h2 {
 
   .metric-value span {
     font-size: 34px;
+  }
+
+  .chart-card {
+    min-height: 300px;
+    padding: 14px;
+  }
+
+  .chart-card-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .reset-scale-btn {
+    align-self: flex-start;
+  }
+
+  .log-panel-head {
+    flex-direction: column;
+  }
+
+  .log-pause-btn {
+    align-self: flex-start;
+  }
+
+  .log-table-header,
+  .log-row {
+    grid-template-columns: 128px 1fr 80px;
+    padding: 10px 14px;
+  }
+
+  .log-table-header span:nth-child(4),
+  .log-table-header span:nth-child(5),
+  .log-table-header span:nth-child(6),
+  .log-row span:nth-child(4),
+  .log-row span:nth-child(5),
+  .log-row span:nth-child(6) {
+    display: none;
+  }
+
+  .log-table-body {
+    max-height: 420px;
   }
 }
 
