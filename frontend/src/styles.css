@@ -760,8 +760,7 @@ h2 {
 }
 
 .log-table-body {
-  max-height: 560px;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .log-row {
@@ -828,6 +827,57 @@ h2 {
   .log-row-enter {
     animation: none;
   }
+}
+
+.log-pagination {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.log-page-btn {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #45464d;
+  border-radius: 6px;
+  color: #c6c6cd;
+  background: #1b1b1d;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.log-page-btn:hover:not(:disabled) {
+  border-color: #586171;
+  color: #e4e2e4;
+}
+
+.log-page-btn.active {
+  border-color: #7ed69a;
+  color: #7ed69a;
+  background: rgba(126, 214, 154, 0.08);
+}
+
+.log-page-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.log-page-info {
+  margin-left: 8px;
+  color: #c6c6cd;
+  font-size: 12px;
+}
+
+.log-page-ellipsis {
+  color: #c6c6cd;
+  font-size: 13px;
+  padding: 0 2px;
+  user-select: none;
 }
 
 /* ══════════════════════════════════════════════════════

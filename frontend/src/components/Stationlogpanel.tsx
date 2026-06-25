@@ -1,38 +1,34 @@
 import { useEffect, useRef, useState } from "react";
 import { generateReading, formatTimestamp, type StationReading } from "../data/Stationlog";
 
-const MAX_ROWS = 14;
+const PAGE_SIZE = 7;
 const INTERVAL_MS = 2200;
 
-// Umbrales simples para resaltar lecturas fuera de rango normal,
-// igual que la temperatura alta resaltada en la referencia de diseño.
-function isHot(temp: number) {
-  return temp >= 28;
-}
-function isCold(temp: number) {
-  return temp <= 0;
-}
-function isHumid(humidity: number) {
-  return humidity >= 85;
-}
-function isWindy(wind: number) {
-  return wind >= 40;
-}
-function isRaining(rain: number) {
-  return rain > 0;
-}
+function isHot(temp: number) { return temp >= 28; }
+function isCold(temp: number) { return temp <= 0; }
+function isHumid(humidity: number) { return humidity >= 85; }
+function isWindy(wind: number) { return wind >= 40; }
+function isRaining(rain: number) { return rain > 0; }
 
 export function StationLogPanel() {
-  const [rows, setRows] = useState<StationReading[]>(() => {
+  const [allRows, setAllRows] = useState<StationReading[]>(() => {
     const now = Date.now();
-    return Array.from({ length: 8 }, (_, i) =>
+    return Array.from({ length: PAGE_SIZE }, (_, i) =>
       generateReading(new Date(now - i * INTERVAL_MS)),
     );
   });
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set());
   const [paused, setPaused] = useState(false);
+  const [page, setPage] = useState(1);
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
+
+  const totalPages = Math.ceil(allRows.length / PAGE_SIZE);
+
+  // Page 1 always shows the newest PAGE_SIZE entries; higher pages show older ones.
+  const pageRows = page === 1
+    ? allRows.slice(0, PAGE_SIZE)
+    : allRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   useEffect(() => {
     const timeouts = new Set<number>();
@@ -41,7 +37,7 @@ export function StationLogPanel() {
       if (pausedRef.current) return;
       const reading = generateReading(new Date());
 
-      setRows((prev) => [reading, ...prev].slice(0, MAX_ROWS));
+      setAllRows((prev) => [reading, ...prev]);
       setFreshIds((prev) => {
         const next = new Set(prev);
         next.add(reading.id);
@@ -64,6 +60,31 @@ export function StationLogPanel() {
       timeouts.forEach((id) => window.clearTimeout(id));
     };
   }, []);
+
+  function renderRow(row: StationReading) {
+    return (
+      <div
+        key={row.id}
+        className={`log-row${freshIds.has(row.id) ? " log-row-enter" : ""}`}
+        role="row"
+      >
+        <span className="log-cell-time">{formatTimestamp(row.timestamp)}</span>
+        <span className="log-cell-station">{row.stationName}</span>
+        <span className={`num log-cell-value${isHot(row.temperature) ? " alert-hot" : isCold(row.temperature) ? " alert-cold" : ""}`}>
+          {row.temperature.toFixed(1)}
+        </span>
+        <span className={`num log-cell-value${isHumid(row.humidity) ? " alert-humid" : ""}`}>
+          {row.humidity.toFixed(1)}
+        </span>
+        <span className={`num log-cell-value${isWindy(row.windSpeed) ? " alert-wind" : ""}`}>
+          {row.windSpeed.toFixed(1)}
+        </span>
+        <span className={`num log-cell-value${isRaining(row.precipitation) ? " alert-rain" : ""}`}>
+          {row.precipitation.toFixed(1)}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <section className="log-panel" aria-label="Log de estaciones en vivo">
@@ -98,29 +119,59 @@ export function StationLogPanel() {
         </div>
 
         <div className="log-table-body" role="rowgroup">
-          {rows.map((row) => (
-            <div
-              key={row.id}
-              className={`log-row${freshIds.has(row.id) ? " log-row-enter" : ""}`}
-              role="row"
-            >
-              <span className="log-cell-time">{formatTimestamp(row.timestamp)}</span>
-              <span className="log-cell-station">{row.stationName}</span>
-              <span className={`num log-cell-value${isHot(row.temperature) ? " alert-hot" : isCold(row.temperature) ? " alert-cold" : ""}`}>
-                {row.temperature.toFixed(1)}
-              </span>
-              <span className={`num log-cell-value${isHumid(row.humidity) ? " alert-humid" : ""}`}>
-                {row.humidity.toFixed(1)}
-              </span>
-              <span className={`num log-cell-value${isWindy(row.windSpeed) ? " alert-wind" : ""}`}>
-                {row.windSpeed.toFixed(1)}
-              </span>
-              <span className={`num log-cell-value${isRaining(row.precipitation) ? " alert-rain" : ""}`}>
-                {row.precipitation.toFixed(1)}
-              </span>
-            </div>
-          ))}
+          {pageRows.map(renderRow)}
         </div>
+      </div>
+
+      <div className="log-pagination">
+        <button
+          className="log-page-btn"
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page === 1}
+          aria-label="Página anterior"
+        >
+          ‹
+        </button>
+
+        {(() => {
+          const delta = 2;
+          const pages: (number | "…")[] = [];
+          for (let p = 1; p <= totalPages; p++) {
+            if (p === 1 || p === totalPages || (p >= page - delta && p <= page + delta)) {
+              pages.push(p);
+            } else if (pages[pages.length - 1] !== "…") {
+              pages.push("…");
+            }
+          }
+          return pages.map((p, i) =>
+            p === "…" ? (
+              <span key={`ellipsis-${i}`} className="log-page-ellipsis">…</span>
+            ) : (
+              <button
+                key={p}
+                className={`log-page-btn${p === page ? " active" : ""}`}
+                onClick={() => setPage(p as number)}
+                aria-label={`Página ${p}`}
+                aria-current={p === page ? "page" : undefined}
+              >
+                {p}
+              </button>
+            )
+          );
+        })()}
+
+        <button
+          className="log-page-btn"
+          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          disabled={page === totalPages}
+          aria-label="Página siguiente"
+        >
+          ›
+        </button>
+
+        <span className="log-page-info">
+          {allRows.length} registros
+        </span>
       </div>
     </section>
   );
