@@ -36,6 +36,23 @@ type ChartCardProps = {
 
 const X_TICKS = [0, 4, 8, 12, 16, 20, 24];
 
+function computeIdealDomain(
+  data: WeatherPoint[],
+  dataKey: keyof WeatherPoint,
+  domainMin: number,
+  domainMax: number,
+  tickStep: number,
+): [number, number] {
+  const values = data.map((d) => d[dataKey] as number);
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  // Floor min to nearest tickStep, clamped to the absolute domainMin
+  const idealMin = Math.max(domainMin, Math.floor(rawMin / tickStep) * tickStep);
+  // Ceil max to the next tickStep above rawMax (epsilon ensures we go up if rawMax lands on a tick)
+  const idealMax = Math.min(domainMax, Math.ceil((rawMax + 1e-9) / tickStep) * tickStep + tickStep);
+  return [idealMin, idealMax];
+}
+
 export function ChartCard({
   title,
   subtitle,
@@ -51,7 +68,11 @@ export function ChartCard({
   tickStep,
   currentValue,
 }: ChartCardProps) {
-  const [range, setRange] = useState<[number, number]>([domainMin, domainMax]);
+  const idealDomain = useMemo(
+    () => computeIdealDomain(data, dataKey, domainMin, domainMax, tickStep),
+    [data, dataKey, domainMin, domainMax, tickStep],
+  );
+  const [range, setRange] = useState<[number, number]>(idealDomain);
 
   const yTicks = useMemo(() => {
     const ticks: number[] = [];
@@ -193,9 +214,9 @@ export function ChartCard({
         <button
           className="reset-scale-btn"
           type="button"
-          onClick={() => setRange([domainMin, domainMax])}
+          onClick={() => setRange(idealDomain)}
         >
-          Restablecer
+          Auto
         </button>
       </div>
     </article>
