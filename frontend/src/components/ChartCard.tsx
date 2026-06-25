@@ -31,7 +31,6 @@ type ChartCardProps = {
   domainMax: number;
   axisStep: number;
   tickStep: number;
-  currentValue: number;
 };
 
 const X_TICKS = [0, 4, 8, 12, 16, 20, 24];
@@ -66,13 +65,25 @@ export function ChartCard({
   domainMax,
   axisStep,
   tickStep,
-  currentValue,
 }: ChartCardProps) {
   const idealDomain = useMemo(
     () => computeIdealDomain(data, dataKey, domainMin, domainMax, tickStep),
     [data, dataKey, domainMin, domainMax, tickStep],
   );
   const [range, setRange] = useState<[number, number]>(idealDomain);
+
+  const peak = useMemo(() => {
+    let maxVal = -Infinity;
+    let maxHour = 0;
+    for (const point of data) {
+      const v = point[dataKey] as number;
+      if (v > maxVal) { maxVal = v; maxHour = point.hour; }
+    }
+    // hour es 0–23 en UTC-3 (America/Argentina/Buenos_Aires)
+    const h = maxHour % 24;
+    const label = `${h.toString().padStart(2, "0")}:00 ART`;
+    return { value: maxVal, label };
+  }, [data, dataKey]);
 
   const yTicks = useMemo(() => {
     const ticks: number[] = [];
@@ -95,9 +106,9 @@ export function ChartCard({
           </div>
           <p className="chart-card-subtitle">{subtitle}</p>
         </div>
-        <div className="chart-card-current">
-          {currentValue}
-          <small>{unit}</small>
+        <div className="chart-card-peak">
+          <span className="chart-card-peak-value">{peak.value}<small>{unit}</small></span>
+          <span className="chart-card-peak-time">{peak.label}</span>
         </div>
       </div>
 
