@@ -20,15 +20,33 @@ export function StationLogPanel() {
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set());
   const [paused, setPaused] = useState(false);
   const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState("");
+  const [activeSearch, setActiveSearch] = useState("");
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
 
-  const totalPages = Math.ceil(allRows.length / PAGE_SIZE);
+  const filteredRows = activeSearch
+    ? allRows.filter((r) =>
+        r.stationName.toLowerCase().includes(activeSearch.toLowerCase()),
+      )
+    : allRows;
 
-  // Page 1 always shows the newest PAGE_SIZE entries; higher pages show older ones.
+  const totalPages = Math.ceil(filteredRows.length / PAGE_SIZE);
+
   const pageRows = page === 1
-    ? allRows.slice(0, PAGE_SIZE)
-    : allRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    ? filteredRows.slice(0, PAGE_SIZE)
+    : filteredRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  function commitSearch() {
+    setPage(1);
+    setActiveSearch(searchInput.trim());
+  }
+
+  function clearSearch() {
+    setSearchInput("");
+    setActiveSearch("");
+    setPage(1);
+  }
 
   useEffect(() => {
     const timeouts = new Set<number>();
@@ -108,6 +126,46 @@ export function StationLogPanel() {
         </button>
       </div>
 
+      <div className="log-search-bar">
+        <div className="log-search-input-wrap">
+          <input
+            className="log-search-input"
+            type="text"
+            placeholder="Buscar estación…"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && commitSearch()}
+            aria-label="Buscar estación"
+          />
+          {activeSearch && (
+            <button
+              className="log-search-clear"
+              type="button"
+              onClick={clearSearch}
+              aria-label="Limpiar búsqueda"
+            >
+              ×
+            </button>
+          )}
+        </div>
+        <button
+          className="log-search-btn"
+          type="button"
+          onClick={commitSearch}
+          aria-label="Buscar"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.6"/>
+            <line x1="10.5" y1="10.5" x2="14" y2="14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+          </svg>
+        </button>
+        {activeSearch && (
+          <span className="log-search-badge">
+            Filtro: <strong>{activeSearch}</strong> — {filteredRows.length} resultado{filteredRows.length !== 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
+
       <div className="log-table-wrap">
         <div className="log-table-header" role="row">
           <span>Fecha/Hora</span>
@@ -119,7 +177,13 @@ export function StationLogPanel() {
         </div>
 
         <div className="log-table-body" role="rowgroup">
-          {pageRows.map(renderRow)}
+          {pageRows.length > 0 ? (
+            pageRows.map(renderRow)
+          ) : (
+            <div className="log-empty">
+              No se encontraron registros para <strong>{activeSearch}</strong>.
+            </div>
+          )}
         </div>
       </div>
 
