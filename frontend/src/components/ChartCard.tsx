@@ -12,7 +12,6 @@ import {
   CartesianGrid,
   Tooltip,
 } from "recharts";
-import { DualRangeSlider } from "./Dualrangeslider";
 import { ChartTooltip } from "./Charttooltip";
 import type { WeatherPoint } from "../data/Weatherseries";
 
@@ -31,10 +30,26 @@ type ChartCardProps = {
   domainMax: number;
   axisStep: number;
   tickStep: number;
-  currentValue: number;
 };
 
 const X_TICKS = [0, 4, 8, 12, 16, 20, 24];
+
+function computeIdealDomain(
+  data: WeatherPoint[],
+  dataKey: keyof WeatherPoint,
+  domainMin: number,
+  domainMax: number,
+  tickStep: number,
+): [number, number] {
+  const values = data.map((d) => d[dataKey] as number);
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  // Floor min to nearest tickStep, clamped to the absolute domainMin
+  const idealMin = Math.max(domainMin, Math.floor(rawMin / tickStep) * tickStep);
+  // Ceil max to the next tickStep above rawMax (epsilon ensures we go up if rawMax lands on a tick)
+  const idealMax = Math.min(domainMax, Math.ceil((rawMax + 1e-9) / tickStep) * tickStep);
+  return [idealMin, idealMax];
+}
 
 export function ChartCard({
   title,
@@ -49,9 +64,25 @@ export function ChartCard({
   domainMax,
   axisStep,
   tickStep,
-  currentValue,
 }: ChartCardProps) {
-  const [range, setRange] = useState<[number, number]>([domainMin, domainMax]);
+  const idealDomain = useMemo(
+    () => computeIdealDomain(data, dataKey, domainMin, domainMax, tickStep),
+    [data, dataKey, domainMin, domainMax, tickStep],
+  );
+  const [range, setRange] = useState<[number, number]>(idealDomain);
+
+  const peak = useMemo(() => {
+    let maxVal = -Infinity;
+    let maxHour = 0;
+    for (const point of data) {
+      const v = point[dataKey] as number;
+      if (v > maxVal) { maxVal = v; maxHour = point.hour; }
+    }
+    // hour es 0–23 en UTC-3 (America/Argentina/Buenos_Aires)
+    const h = maxHour % 24;
+    const label = `${h.toString().padStart(2, "0")}:00 ART`;
+    return { value: maxVal, label };
+  }, [data, dataKey]);
 
   const yTicks = useMemo(() => {
     const ticks: number[] = [];
@@ -74,9 +105,9 @@ export function ChartCard({
           </div>
           <p className="chart-card-subtitle">{subtitle}</p>
         </div>
-        <div className="chart-card-current">
-          {currentValue}
-          <small>{unit}</small>
+        <div className="chart-card-peak">
+          <span className="chart-card-peak-value">{peak.value}<small>{unit}</small></span>
+          <span className="chart-card-peak-time">{peak.label}</span>
         </div>
       </div>
 
@@ -176,7 +207,7 @@ export function ChartCard({
         </ResponsiveContainer>
       </div>
 
-      <div className="chart-card-controls">
+      {/* <div className="chart-card-controls">
         <div className="axis-scale-control">
           <span className="axis-scale-label">Escala eje Y</span>
           <DualRangeSlider
@@ -193,11 +224,11 @@ export function ChartCard({
         <button
           className="reset-scale-btn"
           type="button"
-          onClick={() => setRange([domainMin, domainMax])}
+          onClick={() => setRange(idealDomain)}
         >
-          Restablecer
+          Auto
         </button>
-      </div>
+      </div> */}
     </article>
   );
 }

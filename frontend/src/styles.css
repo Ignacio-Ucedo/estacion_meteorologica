@@ -477,10 +477,17 @@ h2 {
   font-size: 12px;
 }
 
-.chart-card-current {
+.chart-card-peak {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.chart-card-peak-value {
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 3px;
   color: #e4e2e4;
   font-family: "JetBrains Mono", monospace;
   font-size: 20px;
@@ -488,10 +495,17 @@ h2 {
   white-space: nowrap;
 }
 
-.chart-card-current small {
+.chart-card-peak-value small {
   color: #bec6e0;
   font-size: 13px;
   font-weight: 600;
+}
+
+.chart-card-peak-time {
+  color: #6b6c72;
+  font-size: 11px;
+  font-family: "JetBrains Mono", monospace;
+  white-space: nowrap;
 }
 
 .chart-card.warm .metric-signal { background: #d9a56c; }

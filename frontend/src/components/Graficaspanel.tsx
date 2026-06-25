@@ -2,8 +2,6 @@ import { ChartCard } from "./Chartcard";
 import { weatherSeries } from "../data/Weatherseries";
 
 export function GraficasPanel() {
-  const latest = weatherSeries[weatherSeries.length - 1];
-
   return (
     <section className="charts-grid" aria-label="Graficas historicas">
       <ChartCard
@@ -19,7 +17,6 @@ export function GraficasPanel() {
         domainMax={50}
         axisStep={5}
         tickStep={10}
-        currentValue={latest.temperature}
       />
       <ChartCard
         title="Humedad relativa"
@@ -33,8 +30,7 @@ export function GraficasPanel() {
         domainMin={0}
         domainMax={100}
         axisStep={5}
-        tickStep={20}
-        currentValue={latest.humidity}
+        tickStep={10}
       />
       <ChartCard
         title="Velocidad del viento"
@@ -49,7 +45,6 @@ export function GraficasPanel() {
         domainMax={50}
         axisStep={5}
         tickStep={10}
-        currentValue={latest.windSpeed}
       />
       <ChartCard
         title="Precipitación"
@@ -64,7 +59,6 @@ export function GraficasPanel() {
         domainMax={60}
         axisStep={5}
         tickStep={10}
-        currentValue={latest.precipitation}
       />
     </section>
   );
