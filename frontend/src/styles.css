@@ -125,7 +125,15 @@ h2{
   color: #c6c6cd;
   background: transparent;
   text-align: left;
-  cursor: default;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+
+}
+
+.nav-item:not(.active):hover {
+  border-color: #2e3849;
+  color: #e4e2e4;
+  background: #2e3137;
 }
 
 .nav-item.active {

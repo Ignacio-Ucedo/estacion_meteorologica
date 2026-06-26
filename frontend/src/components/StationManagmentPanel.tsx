@@ -121,9 +121,9 @@ function formatRelativeTime(date: Date): string {
 
 function StatusBadge({ status }: { status: StationStatus }) {
   const labels: Record<StationStatus, string> = {
-    online: "Online",
-    offline: "Offline",
-    degraded: "Degraded",
+    online: "En linea",
+    offline: "Desconectada",
+    degraded: "Inestable",
   };
   return (
     <span className={`smp-status-badge smp-status-${status}`}>
@@ -287,15 +287,15 @@ export function StationManagementPanel() {
         <div className="smp-summary">
           <span className="smp-summary-item smp-summary-online">
             <span className="smp-summary-dot" />
-            {counts.online} Online
+            {counts.online} En linea
           </span>
           <span className="smp-summary-item smp-summary-degraded">
             <span className="smp-summary-dot" />
-            {counts.degraded} Degraded
+            {counts.degraded} Inestable
           </span>
           <span className="smp-summary-item smp-summary-offline">
             <span className="smp-summary-dot" />
-            {counts.offline} Offline
+            {counts.offline} Desconectada
           </span>
         </div>
       </div>

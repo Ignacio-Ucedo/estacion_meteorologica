@@ -3,7 +3,6 @@ import { Sidebar } from "./components/Sidebar";
 import { Topbar } from "./components/Topbar";
 import { StationPanel } from "./components/StationPanel";
 import { MetricCard } from "./components/MetricCard";
-import { PlaceholderPanel } from "./components/Placeholderpanel";
 import { GraficasPanel } from "./components/Graficaspanel";
 import { StationLogPanel } from "./components/Stationlogpanel";
 import { StationManagementPanel } from "./components/StationManagmentPanel";
@@ -11,9 +10,9 @@ import { StationManagementPanel } from "./components/StationManagmentPanel";
 const station = {
   name: "Station Alpha",
   location: "Mendoza, Argentina",
-  status: "Online",
-  badge: "All systems operational",
-  lastUpdated: "Last updated: 2 minutes ago",
+  status: "En linea",
+  badge: "Todos los sistemas operativos",
+  lastUpdated: "Última actualización: hace 2 minutos",
 };
 
 const navItems = [
