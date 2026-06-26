@@ -1,0 +1,2 @@
+"""WeatherOS FastAPI backend."""
+
