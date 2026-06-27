@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { BatteryBar } from "./BatteryBar";
 
 type StationStatus = "online" | "offline" | "degraded";
 type ConnectionQuality = "buena" | "regular" | "perdida";
@@ -130,21 +131,6 @@ function StatusBadge({ status }: { status: StationStatus }) {
       <span className="smp-status-dot" aria-hidden="true" />
       {labels[status]}
     </span>
-  );
-}
-
-function BatteryBar({ value }: { value: number }) {
-  const level = value > 60 ? "high" : value > 25 ? "mid" : "low";
-  return (
-    <div className="smp-battery-wrap" title={`${value}%`}>
-      <div className="smp-battery-track">
-        <div
-          className={`smp-battery-fill smp-battery-${level}`}
-          style={{ width: `${value}%` }}
-        />
-      </div>
-      <span className="smp-battery-label">{value}%</span>
-    </div>
   );
 }
 

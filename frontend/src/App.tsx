@@ -3,6 +3,7 @@ import { Sidebar } from "./components/Sidebar";
 import { Topbar } from "./components/Topbar";
 import { StationPanel } from "./components/StationPanel";
 import { MetricCard } from "./components/MetricCard";
+import { BatteryBar } from "./components/BatteryBar";
 import { GraficasPanel } from "./components/Graficaspanel";
 import { StationLogPanel } from "./components/Stationlogpanel";
 import { StationManagementPanel } from "./components/StationManagmentPanel";
@@ -30,6 +31,8 @@ const metrics = [
   { label: "Precipitación acumulada", value: "12.6", unit: "mm", detail: "Ultimas 24 horas", tone: "rain" },
 ];
 
+const batteryLevel: number | null = 78;
+
 function App() {
   const [activeId, setActiveId] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -44,6 +47,14 @@ function App() {
               {metrics.map((metric) => (
                 <MetricCard key={metric.label} {...metric} />
               ))}
+              <article className="metric-card battery">
+                <div className="metric-header">
+                  <span>Batería</span>
+                  <span className="metric-signal" aria-hidden="true" />
+                </div>
+                <BatteryBar value={batteryLevel} />
+                <p>Nivel de carga de la estación</p>
+              </article>
             </section>
           </>
         );

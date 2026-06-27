@@ -431,6 +431,12 @@ h2 {
 .metric-card.wind .metric-signal { background: #a2d2a8; }
 .metric-card.direction .metric-signal { background: #c4a6d8; }
 .metric-card.rain .metric-signal { background: #8da4de; }
+.metric-card.battery .metric-signal { background: #7ed69a; }
+
+.metric-card.battery {
+  align-content: start;
+  gap: 18px;
+}
 
 .metric-value {
   display: flex;
@@ -1575,13 +1581,13 @@ h2 {
 
 /* ── Battery bar ── */
 
-.smp-battery-wrap {
+.battery-bar-wrap {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.smp-battery-track {
+.battery-bar-track {
   width: 72px;
   height: 6px;
   border-radius: 3px;
@@ -1589,17 +1595,17 @@ h2 {
   overflow: hidden;
 }
 
-.smp-battery-fill {
+.battery-bar-fill {
   height: 100%;
   border-radius: 3px;
   transition: width 0.4s ease;
 }
 
-.smp-battery-high { background: #7ed69a; }
-.smp-battery-mid  { background: #d9a56c; }
-.smp-battery-low  { background: #d96c6c; }
+.battery-bar-high { background: #7ed69a; }
+.battery-bar-mid  { background: #d9a56c; }
+.battery-bar-low  { background: #d96c6c; }
 
-.smp-battery-label {
+.battery-bar-label {
   font-size: 12px;
   font-family: "JetBrains Mono", monospace;
   color: #c6c6cd;
