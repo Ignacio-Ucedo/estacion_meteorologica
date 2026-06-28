@@ -408,6 +408,24 @@ h2 {
   grid-column: span 2;
 }
 
+.metric-card.selectable {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.metric-card.selectable:hover,
+.metric-card.selectable:focus-visible {
+  border-color: #6b6c75;
+  transform: translateY(-1px);
+}
+
+.metric-card.selectable.active {
+  border-color: #bec6e0;
+  box-shadow: 0 0 0 1px #bec6e0 inset;
+}
+
 .metric-header {
   display: flex;
   align-items: center;
@@ -478,7 +496,7 @@ h2 {
 .chart-card {
   display: flex;
   flex-direction: column;
-  min-height: 360px;
+  height: 360px;
   padding: 20px;
   border: 1px solid #45464d;
   border-radius: 8px;
@@ -1235,7 +1253,7 @@ h2 {
   }
 
   .chart-card {
-    min-height: 300px;
+    height: 300px;
     padding: 14px;
   }
 
@@ -1665,6 +1683,12 @@ h2 {
   }
 }
 
+
+/* ─── Selected metric chart (inline dashboard panel) ──── */
+
+.selected-metric-chart {
+  margin-top: 18px;
+}
 
 /* ─── Small mobile (≤ 400px) ──────────────────────────── */
 

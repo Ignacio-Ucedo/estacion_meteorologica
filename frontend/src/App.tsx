@@ -7,6 +7,8 @@ import { BatteryBar } from "./components/BatteryBar";
 import { GraficasPanel } from "./components/Graficaspanel";
 import { StationLogPanel } from "./components/Stationlogpanel";
 import { StationManagementPanel } from "./components/StationManagmentPanel";
+import { SelectedMetricChart } from "./components/SelectedMetricChart";
+import type { MetricKey } from "./data/WeatherSeries";
 
 const station = {
   name: "Station Alpha",
@@ -23,12 +25,19 @@ const navItems = [
   { label: "Gestión de estaciones", id: "gestion" },
 ];
 
-const metrics = [
-  { label: "Temperatura", value: "24.8", unit: "°C", detail: "Sensacion estable", tone: "warm" },
-  { label: "Humedad", value: "61", unit: "%", detail: "Rango operativo", tone: "cool" },
-  { label: "Velocidad del viento", value: "18.4", unit: "km/h", detail: "Brisa moderada", tone: "wind" },
+const metrics: Array<{
+  label: string;
+  value: string;
+  unit: string;
+  detail: string;
+  tone: string;
+  metricKey?: MetricKey;
+}> = [
+  { label: "Temperatura", value: "24.8", unit: "°C", detail: "Sensacion estable", tone: "warm", metricKey: "temperature" },
+  { label: "Humedad", value: "61", unit: "%", detail: "Rango operativo", tone: "cool", metricKey: "humidity" },
+  { label: "Velocidad del viento", value: "18.4", unit: "km/h", detail: "Brisa moderada", tone: "wind", metricKey: "windSpeed" },
   { label: "Dirección del viento", value: "NE", unit: "", detail: "Orientacion cardinal", tone: "direction" },
-  { label: "Precipitación acumulada", value: "12.6", unit: "mm", detail: "Ultimas 24 horas", tone: "rain" },
+  { label: "Precipitación acumulada", value: "12.6", unit: "mm", detail: "Ultimas 24 horas", tone: "rain", metricKey: "precipitation" },
 ];
 
 const batteryLevel: number | null = 78;
@@ -36,6 +45,7 @@ const batteryLevel: number | null = 78;
 function App() {
   const [activeId, setActiveId] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedMetricKey, setSelectedMetricKey] = useState<MetricKey>("temperature");
 
   const renderPanel = () => {
     switch (activeId) {
@@ -44,8 +54,13 @@ function App() {
           <>
             <StationPanel {...station} />
             <section className="metrics-grid" aria-label="Metricas actuales">
-              {metrics.map((metric) => (
-                <MetricCard key={metric.label} {...metric} />
+              {metrics.map(({ metricKey, ...metric }) => (
+                <MetricCard
+                  key={metric.label}
+                  {...metric}
+                  active={metricKey === selectedMetricKey}
+                  onSelect={metricKey ? () => setSelectedMetricKey(metricKey) : undefined}
+                />
               ))}
               <article className="metric-card battery">
                 <div className="metric-header">
@@ -56,6 +71,7 @@ function App() {
                 <p>Nivel de carga de la estación</p>
               </article>
             </section>
+            <SelectedMetricChart metricKey={selectedMetricKey} />
           </>
         );
       case "historial":

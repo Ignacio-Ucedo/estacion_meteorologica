@@ -1,4 +1,4 @@
-import type { DailySummary } from "../data/Weatherseries";
+import type { DailySummary } from "../data/WeatherSeries";
 
 type ChartTooltipProps = {
   active?: boolean;
