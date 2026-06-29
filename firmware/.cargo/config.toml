@@ -1,0 +1,9 @@
+[build]
+target = "xtensa-esp32-espidf"
+
+[target.xtensa-esp32-espidf]
+linker = "ldproxy"
+
+[env]
+MCU = "esp32"
+ESP_IDF_VERSION = "v5.2.2"

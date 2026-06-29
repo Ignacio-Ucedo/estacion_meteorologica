@@ -1,0 +1,27 @@
+# ChirpStack v4 — configuración para prototipo con band plan EU433
+# Referencia: https://www.chirpstack.io/docs/chirpstack/configuration.html
+
+[logging]
+level = "info"
+
+[postgresql]
+dsn = "postgres://chirpstack:chirpstack@postgres/chirpstack?sslmode=disable"
+
+[redis]
+servers = ["redis://redis/"]
+
+[network]
+net_id = "000000"
+# EU433: 433.175 – 434.665 MHz, 3 canales por defecto
+# El gateway single-channel opera en canal 0 (433.175 MHz SF7BW125)
+enabled_regions = ["eu433"]
+
+[api]
+bind = "0.0.0.0:8080"
+secret = "change-this-secret-in-production"
+
+[integration]
+enabled = ["mqtt"]
+
+[integration.mqtt]
+server = "tcp://mosquitto:1883/"

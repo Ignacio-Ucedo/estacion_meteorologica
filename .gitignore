@@ -9,6 +9,9 @@ backend/tmp_test.db
 __pycache__/
 *.pyc
 
+firmware/target/
+firmware/.embuild/
+
 # compiled output
 /dist
 /node_modules

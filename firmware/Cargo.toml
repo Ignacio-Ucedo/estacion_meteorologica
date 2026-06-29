@@ -1,0 +1,49 @@
+[package]
+name = "weather-firmware"
+version = "0.1.0"
+edition = "2021"
+resolver = "2"
+
+[lib]
+name = "weather_firmware"
+path = "src/lib.rs"
+
+# Nodo sensor LoRaWAN con sensores físicos (DHT22, pluviómetro, anemómetro)
+[[bin]]
+name = "sensor-node"
+path = "src/bin/sensor-node.rs"
+
+# Nodo sensor mock: datos simulados, sin GPIO de sensores, para pruebas de banco
+[[bin]]
+name = "sensor-node-mock"
+path = "src/bin/sensor-node-mock.rs"
+
+# Gateway single-channel UDP packet forwarder hacia ChirpStack
+[[bin]]
+name = "gateway-node"
+path = "src/bin/gateway-node.rs"
+
+# Receptor P2P del spike (legacy, referencia de rollback)
+[[bin]]
+name = "receiver-node"
+path = "src/bin/receiver-node.rs"
+
+[dependencies]
+anyhow = "1"
+log = "0.4"
+heapless = "0.8"
+esp-idf-hal = "0.44"
+esp-idf-svc = "0.49"
+embedded-svc = "0.28"
+
+# LoRaWAN EU433: crypto primitives para OTAA y uplinks Class A
+aes = { version = "0.8", default-features = false }
+cmac = "0.7"
+
+# Serialización JSON para el protocolo Semtech UDP del gateway
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.21"
+
+[build-dependencies]
+embuild = "0.32"

@@ -31,11 +31,11 @@
 - [ ] 5.2 Validar salida serial de DHT22 y MPL115A2 en el nodo sensor. Requiere sensores físicos.
 - [ ] 5.3 Validar conteo de pulsos de lluvia y viento usando pulsos simulados o hardware confirmado. Requiere prueba física de entradas.
 - [ ] 5.4 Validar entrega LoRa P2P a corta distancia de banco/patio y capturar logs seriales representativos de ambas placas. Requiere dos ESP32 y dos módulos SX1278.
-- [ ] 5.5 Registrar limitaciones conocidas: sin deep sleep, sin medición de batería/panel solar, sin WiFi/backend, sin calibración BLE, sin validación de alcance en campo, sin constantes finales de calibración y sin payload binario de producción. Commit sugerido `docs(firmware): documentar resultados y limites del spike`.
+- [x] 5.5 Registrar limitaciones conocidas: sin deep sleep, sin medición de batería/panel solar, sin WiFi/backend, sin calibración BLE, sin validación de alcance en campo, sin constantes finales de calibración y sin payload binario de producción. Commit sugerido `docs(firmware): documentar resultados y limites del spike`.
 
 ## 6. Planificacion De Seguimientos Diferidos
 
-- [ ] 6.1 Crear notas de seguimiento para confirmar la variante de salida del anemómetro RS-FSJT-N01 antes del diseño de hardware final. Commit sugerido `docs(firmware): registrar pendiente de interfaz del anemometro`.
-- [ ] 6.2 Crear notas de seguimiento para constantes de calibración de lluvia/viento y flujo posterior de calibración BLE. Commit sugerido `docs(firmware): registrar pendientes de calibracion`.
-- [ ] 6.3 Crear notas de seguimiento para migrar el payload LoRa de CSV de depuración a binario de tamaño fijo antes de producción o autonomía en campo. Commit sugerido `docs(firmware): registrar migracion futura a payload binario`.
-- [ ] 6.4 Crear notas de seguimiento para deep sleep, presupuesto energético, batería/panel solar y validación de alcance en campo. Commit sugerido `docs(firmware): registrar pendientes de autonomia y alcance`.
+- [x] 6.1 Crear notas de seguimiento para confirmar la variante de salida del anemómetro RS-FSJT-N01 antes del diseño de hardware final. Commit sugerido `docs(firmware): registrar pendiente de interfaz del anemometro`.
+- [x] 6.2 Crear notas de seguimiento para constantes de calibración de lluvia/viento y flujo posterior de calibración BLE. Commit sugerido `docs(firmware): registrar pendientes de calibracion`.
+- [x] 6.3 Crear notas de seguimiento para migrar el payload LoRa de CSV de depuración a binario de tamaño fijo antes de producción o autonomía en campo. Commit sugerido `docs(firmware): registrar migracion futura a payload binario`.
+- [x] 6.4 Crear notas de seguimiento para deep sleep, presupuesto energético, batería/panel solar y validación de alcance en campo. Commit sugerido `docs(firmware): registrar pendientes de autonomia y alcance`.
