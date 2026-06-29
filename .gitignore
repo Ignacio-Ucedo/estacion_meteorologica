@@ -11,6 +11,7 @@ __pycache__/
 
 firmware/target/
 firmware/.embuild/
+firmware/gateway-mock/target/
 
 # TypeScript build artifacts
 *.tsbuildinfo
