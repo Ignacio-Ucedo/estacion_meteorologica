@@ -39,6 +39,8 @@ jobs:
 
       - name: Build
         working-directory: frontend
+        env:
+          VITE_API_URL: https://estacion-meteorologica-nnsz.onrender.com
         run: pnpm run build
 
       - uses: actions/configure-pages@v5
