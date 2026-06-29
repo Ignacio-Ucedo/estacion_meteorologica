@@ -404,10 +404,6 @@ h2 {
   background: #1b1b1d;
 }
 
-.metric-card.rain {
-  grid-column: span 2;
-}
-
 .metric-card.selectable {
   cursor: pointer;
   user-select: none;
@@ -1141,7 +1137,7 @@ h2 {
 
 .log-empty {
   padding: 28px 20px;
-  color: #6b6c72;
+  color: #ffffff;
   font-size: 14px;
   text-align: center;
 }
@@ -1159,10 +1155,6 @@ h2 {
 @media (max-width: 1200px) {
   .metrics-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  .metric-card.rain {
-    grid-column: span 2;
   }
 
   .charts-grid {
