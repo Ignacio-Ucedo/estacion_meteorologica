@@ -103,19 +103,63 @@ O usar `esptool.py` con un archivo NVS CSV generado por `nvs_partition_gen.py`.
 
 ---
 
-## 4. Verificar el flujo completo
+## 4. Registrar el sensor mock en ChirpStack (opcional, sin sensores físicos)
 
-1. Flashear firmware `sensor-node` y `gateway-node` en ambos ESP32
-2. Abrir logs seriales de ambas placas
-3. Verificar en ChirpStack:
-   - Gateway online (heartbeats recibidos)
-   - Device: join OTAA completado (LiveLoRaWAN frames)
-   - Uplinks recibidos cada 10 minutos
-4. Verificar en InfluxDB (`weather` bucket) que los puntos `weather_reading` se escriben correctamente
+Si los sensores físicos no están soldados, usar `sensor-node-mock` para
+validar el pipeline completo. El mock envía datos simulados plausibles con
+`device_id=2`.
+
+### 4.1 Registrar un segundo dispositivo
+
+Repetir los pasos 3.3–3.5 con datos distintos:
+
+- **Name**: `sensor-node-mock`
+- **DevEUI**: nuevo EUI-64 (diferente al del nodo real)
+- **AppKey**: nueva clave de 16 bytes (diferente)
+
+### 4.2 Escribir las claves del mock en NVS
+
+```bash
+cargo run --bin nvs-provision -- \
+  --dev-eui  <dev-eui-del-mock> \
+  --app-eui  0000000000000000 \
+  --app-key  <app-key-del-mock>
+```
+
+### 4.3 Flashear el firmware mock
+
+```bash
+cargo build --bin sensor-node-mock --release
+espflash flash target/xtensa-esp32-espidf/release/sensor-node-mock
+```
+
+El mock aparecerá en ChirpStack como un segundo dispositivo y en InfluxDB
+con `device_id=2`. Los uplinks son indistinguibles del nodo real en formato;
+solo difieren en `device_id` y en que los valores varían de forma cíclica.
 
 ---
 
-## 5. Variables de entorno del backend
+## 5. Verificar el flujo completo
+
+### Con sensor-node-mock (sin sensores físicos)
+
+1. Flashear `sensor-node-mock` (nodo) y `gateway-node` (gateway) en dos ESP32
+2. Abrir logs seriales de ambas placas
+3. Verificar en ChirpStack:
+   - Gateway online (heartbeats recibidos)
+   - `sensor-node-mock`: join OTAA completado, uplinks cada 10 minutos
+4. Verificar en InfluxDB (`weather` bucket): puntos `weather_reading` con
+   `device_id=2` y temperatura ∈ [15, 25]°C
+
+### Con sensor-node real (sensores soldados)
+
+1. Flashear `sensor-node` y `gateway-node` en dos ESP32
+2. Verificar en ChirpStack: join OTAA completado, uplinks con `device_id=1`
+3. Verificar en InfluxDB: puntos con valores reales de DHT22
+
+---
+
+## 6. Variables de entorno del backend
 
 El backend FastAPI (ver `backend/`) necesita:
 
