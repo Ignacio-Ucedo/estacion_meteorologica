@@ -22,17 +22,24 @@ context: |
   - Framework: ecosistema esp-rs (esp-hal / esp-idf-hal)
   - DHT22: driver vía crate de sensor DHT existente en el ecosistema
   - Pluviómetro y anemómetro: conteo de pulsos por interrupción GPIO
-  - Comunicación: LoRa punto a punto (P2P, sin LoRaWAN) con módulo SX127x.
-    Payload binario de tamaño fijo (no JSON) para minimizar tiempo de aire
-    y consumo de batería. Campos sugeridos: device_id, seq, temp_c*100 (i16),
-    hum*100 (u16), lluvia_mm*10 (u16), viento_kmh*10 (u16), bateria_mv (u16),
-    crc8
+  - Comunicación: LoRaWAN (topología estrella) con módulo SX1278 a 433 MHz,
+    band plan EU433 (433.175–434.665 MHz), activación OTAA, stack LMIC.
+    Payload binario de 14 bytes de campos fijos (FRMPayload): device_id (u8),
+    seq (u16 LE), temp_c*100 (i16 LE), hum*100 (u16 LE),
+    lluvia_pulsos (u16 LE), viento_pulsos (u16 LE), bateria_mv (u16 LE), crc8.
+    Decisión de hardware: se mantiene SX1278 (no se migra a SX1276/AU915);
+    EU433 es el band plan LoRaWAN más cercano al hardware disponible.
+    Para instalación de campo permanente, evaluar migración a AU915/SX1276.
 
   ### Gateway LoRa
-  - Segundo nodo ESP32 (mismo stack Rust) con módulo LoRa + WiFi
-  - Recibe paquetes LoRa y los reenvía por HTTPS (POST JSON) al backend
-  - Justificación: reutiliza el lenguaje y el conocimiento del nodo sensor,
-    bajo costo de hardware adicional
+  - Segundo ESP32 (mismo stack Rust) con módulo SX1278 + WiFi
+  - Opera como single-channel UDP packet forwarder en 433.175 MHz SF7BW125
+    usando el protocolo Semtech UDP hacia ChirpStack (network server)
+  - Limitación de prototipo documentada: canal único fijo, no spec-compliant
+    con LoRaWAN completo; suficiente para un nodo en canal fijo
+  - Para producción: reemplazar con gateway multi-canal o hardware dedicado
+  - ChirpStack (Docker, self-hosted) es intermediario obligatorio entre
+    gateway y backend; reenvío HTTPS directo al backend queda obsoleto
 
   ### Backend / API
   - Python + FastAPI

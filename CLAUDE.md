@@ -6,12 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Autonomous weather station: ESP32 (Rust) firmware reads a DHT22 sensor plus
 pulse-counting rain gauge and anemometer inputs, transmits readings over
-point-to-point LoRa (no LoRaWAN) to a gateway ESP32, which forwards them via
-HTTPS/JSON to a FastAPI backend storing time-series data (InfluxDB, or
-Postgres+TimescaleDB as an accepted alternative). A React frontend visualizes
-the history, and a Kotlin/Jetpack Compose Android app handles field
-calibration over BLE plus verification against the backend API. 3D-printed
-enclosure files round out the deliverables.
+LoRaWAN (star topology, EU433 band plan, OTAA) using SX1278 modules to a
+single-channel gateway ESP32, which forwards packets via the Semtech UDP
+Packet Forwarder Protocol to a self-hosted ChirpStack network server; ChirpStack
+delivers uplinks to a FastAPI backend (via MQTT) storing time-series data in
+InfluxDB. A React frontend visualizes the history, and a Kotlin/Jetpack Compose
+Android app handles field calibration over BLE plus verification against the
+backend API. 3D-printed enclosure files round out the deliverables.
 
 The full stack (firmware, gateway, backend, Android app, 3D models) is only
 partially implemented today:
@@ -104,29 +105,47 @@ the OpenSpec skills:
 ```
 DHT22 + rain-gauge/anemometer pulses
         │
-   ESP32 sensor node (Rust, esp-rs)
-        │  LoRa P2P, fixed-size binary payload:
-        │  device_id, seq, temp_c*100 (i16), hum*100 (u16),
-        │  lluvia_mm*10 (u16), viento_kmh*10 (u16), bateria_mv (u16), crc8
+   ESP32 sensor node (Rust, esp-rs, SX1278)
+        │  LoRaWAN EU433 — 433.175 MHz SF7BW125, OTAA, uplink every 10 min
+        │  FRMPayload 14 bytes: device_id (u8), seq (u16 LE),
+        │  temp_c*100 (i16 LE), hum*100 (u16 LE), lluvia_pulsos (u16 LE),
+        │  viento_pulsos (u16 LE), bateria_mv (u16 LE), crc8
         ▼
-   ESP32 LoRa gateway (Rust, same stack + WiFi)
-        │  HTTPS POST JSON
+   ESP32 single-channel gateway (Rust, SX1278 + WiFi)
+        │  [POC limitation: 1 fixed channel, not full LoRaWAN spec-compliant]
+        │  Semtech UDP Packet Forwarder Protocol → ChirpStack
+        ▼
+   ChirpStack v4 (Docker, self-hosted, EU433)
+        │  Decrypts FRMPayload, verifies MIC
+        │  MQTT: application/{appId}/device/{devEUI}/event/up
         ▼
    FastAPI backend  ──────────────►  InfluxDB (time series)
+        │  paho-mqtt client          measurement: weather_reading
         │  REST API                  (alt: Postgres+TimescaleDB)
         ├──────────────► React + Recharts/Chart.js frontend
         └──────────────► Android app (Kotlin/Compose) — verification flow
    ESP32 sensor node  ◄───── BLE ─────  Android app — calibration flow
 ```
 
+**Hardware note**: SX1278 modules (137–525 MHz) are used throughout.
+AU915 (902–928 MHz, Argentina's LoRaWAN regulatory band plan) would require
+SX1276/SX1262; this is deferred to a future change. EU433 is used for the
+prototype because it matches the available hardware.
+
 Note the **firmware spike currently in progress** (see
 `openspec/changes/spike-firmware-lora-sensors/`) deliberately diverges from
-the production design above to de-risk hardware first: it uses ESP-IDF
-(`esp-idf-hal`/`esp-idf-svc`) rather than bare-metal `esp-hal`, a debug CSV
-payload (`id,seq,temp,hum,pres,pulsos_lluvia,pulsos_viento`) instead of the
-fixed binary payload, an MPL115A2 pressure sensor in addition to the DHT22,
-and explicitly defers deep sleep, battery/solar power, WiFi, the backend,
-BLE calibration, and field-range validation to later changes.
+the target design above to de-risk hardware first: it uses ESP-IDF
+(`esp-idf-hal`/`esp-idf-svc`) rather than bare-metal `esp-hal`, LoRa P2P
+(not LoRaWAN), a debug CSV payload (`id,seq,temp,hum,pres,pulsos_lluvia,
+pulsos_viento`) instead of the fixed binary payload, an MPL115A2 pressure
+sensor in addition to the DHT22, and explicitly defers deep sleep,
+battery/solar power, WiFi, the backend, BLE calibration, and field-range
+validation to later changes.
+
+The **LoRaWAN migration** is tracked in
+`openspec/changes/migrate-lorawan-sx1278/` — it supersedes the archived
+`migrate-lorawan-sx1276` change (which assumed SX1276/AU915 hardware that
+was not acquired).
 
 ## Frontend (`frontend/`)
 
