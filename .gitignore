@@ -12,6 +12,11 @@ __pycache__/
 firmware/target/
 firmware/.embuild/
 
+# TypeScript build artifacts
+*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
 # compiled output
 /dist
 /node_modules

@@ -14,8 +14,8 @@ import {
   Tooltip,
 } from "recharts";
 import { ChartTooltip, DailyBandTooltip } from "./Charttooltip";
-import type { WeatherPoint } from "../data/Weatherseries";
-import type { DailySummary, MetricKey } from "../data/Weatherseries";
+import type { WeatherPoint } from "../data/WeatherSeries";
+import type { DailySummary, MetricKey } from "../data/WeatherSeries";
 
 export type ChartKind = "line" | "area" | "bar";
 type Period = "1D" | "7D" | "30D" | "1Y";
