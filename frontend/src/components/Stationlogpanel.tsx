@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { generateReading, formatTimestamp, type StationReading } from "../data/Stationlog";
+import { useReadings } from "../api/hooks";
+import { STATION_ID } from "../api/config";
+import { formatTimestamp } from "../data/Stationlog";
+import type { ReadingResponse } from "../api/types";
 
 const PAGE_SIZE = 7;
-const INTERVAL_MS = 2200;
+const REFRESH_INTERVAL_MS = 30_000;
 
 function isHot(temp: number) { return temp >= 28; }
 function isCold(temp: number) { return temp <= 0; }
@@ -11,35 +14,27 @@ function isWindy(wind: number) { return wind >= 40; }
 function isRaining(rain: number) { return rain > 0; }
 
 export function StationLogPanel() {
-  const [allRows, setAllRows] = useState<StationReading[]>(() => {
-    const now = Date.now();
-    return Array.from({ length: PAGE_SIZE }, (_, i) =>
-      generateReading(new Date(now - i * INTERVAL_MS)),
-    );
-  });
-  const [freshIds, setFreshIds] = useState<Set<string>>(new Set());
   const [paused, setPaused] = useState(false);
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
+
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
 
-  
-  const filteredRows = activeSearch
-    ? allRows.filter((r) =>
-        r.stationName.toLowerCase().includes(activeSearch.toLowerCase()),
-    )
-    : allRows;
+  const { data, loading, error, refresh } = useReadings(STATION_ID, page, activeSearch);
 
-  const totalPages = Math.ceil(filteredRows.length / PAGE_SIZE);
+  const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 1;
 
-  // Page 1 always shows the newest PAGE_SIZE entries; higher pages show older ones.
-  const pageRows = page === 1
-    ? filteredRows.slice(0, PAGE_SIZE)
-    : filteredRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  useEffect(() => {
+    if (paused) return;
+    const interval = window.setInterval(() => {
+      refresh();
+    }, REFRESH_INTERVAL_MS);
+    return () => window.clearInterval(interval);
+  }, [paused, refresh]);
 
-    function commitSearch() {
+  function commitSearch() {
     setPage(1);
     setActiveSearch(searchInput.trim());
   }
@@ -50,45 +45,11 @@ export function StationLogPanel() {
     setPage(1);
   }
 
-  useEffect(() => {
-    const timeouts = new Set<number>();
-
-    const interval = window.setInterval(() => {
-      if (pausedRef.current) return;
-      const reading = generateReading(new Date());
-
-      setAllRows((prev) => [reading, ...prev]);
-      setFreshIds((prev) => {
-        const next = new Set(prev);
-        next.add(reading.id);
-        return next;
-      });
-
-      const timeoutId = window.setTimeout(() => {
-        timeouts.delete(timeoutId);
-        setFreshIds((prev) => {
-          const next = new Set(prev);
-          next.delete(reading.id);
-          return next;
-        });
-      }, 900);
-      timeouts.add(timeoutId);
-    }, INTERVAL_MS);
-
-    return () => {
-      clearInterval(interval);
-      timeouts.forEach((id) => window.clearTimeout(id));
-    };
-  }, []);
-
-  function renderRow(row: StationReading) {
+  function renderRow(row: ReadingResponse) {
+    const ts = new Date(row.timestamp);
     return (
-      <div
-        key={row.id}
-        className={`log-row${freshIds.has(row.id) ? " log-row-enter" : ""}`}
-        role="row"
-      >
-        <span className="log-cell-time">{formatTimestamp(row.timestamp)}</span>
+      <div key={row.id} className="log-row" role="row">
+        <span className="log-cell-time">{formatTimestamp(ts)}</span>
         <span className="log-cell-station">{row.stationName}</span>
         <span className={`num log-cell-value${isHot(row.temperature) ? " alert-hot" : isCold(row.temperature) ? " alert-cold" : ""}`}>
           {row.temperature.toFixed(1)}
@@ -107,7 +68,7 @@ export function StationLogPanel() {
   }
 
   return (
-    <section className="log-panel" aria-label="Log de estaciones en vivo">
+    <section className="log-panel" aria-label="Log de estaciones">
       <div className="log-panel-head">
         <div className="section-title-wrap">
           <div className="log-panel-title">
@@ -115,7 +76,7 @@ export function StationLogPanel() {
             <h2>Log de estaciones</h2>
           </div>
           <span className="section-subtitle">
-            Transmisión en vivo de telemetría de todas las estaciones activas.
+            Historial de telemetría — actualización cada 30 segundos.
           </span>
         </div>
         <button
@@ -128,8 +89,7 @@ export function StationLogPanel() {
         </button>
       </div>
 
-
-    <div className="log-search-bar">
+      <div className="log-search-bar">
         <div className="log-search-input-wrap">
           <input
             className="log-search-input"
@@ -164,7 +124,7 @@ export function StationLogPanel() {
         </button>
         {activeSearch && (
           <span className="log-search-badge">
-            Filtro: <strong>{activeSearch}</strong> — {filteredRows.length} resultado{filteredRows.length !== 1 ? "s" : ""}
+            Filtro: <strong>{activeSearch}</strong>
           </span>
         )}
       </div>
@@ -180,12 +140,18 @@ export function StationLogPanel() {
         </div>
 
         <div className="log-table-body" role="rowgroup">
-          {pageRows.length > 0 ? (
-            pageRows.map(renderRow)
-          ) : (
+          {loading ? (
+            <div className="log-empty">Cargando…</div>
+          ) : error ? (
+            <div className="log-empty">Error al conectar con el servidor.</div>
+          ) : !data || data.data.length === 0 ? (
             <div className="log-empty">
-              No se encontraron registros para <strong>{activeSearch}</strong>.
+              {activeSearch
+                ? <>No se encontraron registros para <strong>{activeSearch}</strong>.</>
+                : "Sin registros disponibles."}
             </div>
+          ) : (
+            data.data.map(renderRow)
           )}
         </div>
       </div>
@@ -237,7 +203,7 @@ export function StationLogPanel() {
         </button>
 
         <span className="log-page-info">
-          {allRows.length} registros
+          {data?.total ?? 0} registros
         </span>
       </div>
     </section>

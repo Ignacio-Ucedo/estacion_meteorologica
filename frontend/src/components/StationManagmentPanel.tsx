@@ -1,124 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { BatteryBar } from "./BatteryBar";
+import { useStations } from "../api/hooks";
+import type { StationResponse } from "../api/types";
 
 type StationStatus = "online" | "offline" | "degraded";
-type ConnectionQuality = "buena" | "regular" | "perdida";
-
-type ManagedStation = {
-  id: string;
-  name: string;
-  location: string;
-  status: StationStatus;
-  lastCommunication: Date;
-  battery: number;
-  connection: ConnectionQuality;
-};
 
 const PAGE_SIZE = 6;
-
-const INITIAL_STATIONS: ManagedStation[] = [
-  {
-    id: "alpha",
-    name: "Alpha Base Station",
-    location: "Mendoza, Argentina",
-    status: "online",
-    lastCommunication: new Date(Date.now() - 12000),
-    battery: 88,
-    connection: "buena",
-  },
-  {
-    id: "beta",
-    name: "Beta Ridge Anemometer",
-    location: "Córdoba, Argentina",
-    status: "online",
-    lastCommunication: new Date(Date.now() - 45000),
-    battery: 62,
-    connection: "regular",
-  },
-  {
-    id: "gamma",
-    name: "Gamma Valley Array",
-    location: "Tucumán, Argentina",
-    status: "degraded",
-    lastCommunication: new Date(Date.now() - 210000),
-    battery: 34,
-    connection: "regular",
-  },
-  {
-    id: "delta",
-    name: "Delta Peak Sensor",
-    location: "Bariloche, Argentina",
-    status: "offline",
-    lastCommunication: new Date(Date.now() - 7200000),
-    battery: 11,
-    connection: "perdida",
-  },
-  {
-    id: "epsilon",
-    name: "Epsilon Coastal Buoy",
-    location: "Mar del Plata, Argentina",
-    status: "online",
-    lastCommunication: new Date(Date.now() - 8000),
-    battery: 95,
-    connection: "buena",
-  },
-  {
-    id: "zeta",
-    name: "Zeta Desert Outpost",
-    location: "San Juan, Argentina",
-    status: "degraded",
-    lastCommunication: new Date(Date.now() - 540000),
-    battery: 47,
-    connection: "regular",
-  },
-  {
-    id: "eta",
-    name: "Eta Summit Monitor",
-    location: "Salta, Argentina",
-    status: "online",
-    lastCommunication: new Date(Date.now() - 22000),
-    battery: 79,
-    connection: "buena",
-  },
-  {
-    id: "theta",
-    name: "Theta Wetlands Node",
-    location: "Corrientes, Argentina",
-    status: "degraded",
-    lastCommunication: new Date(Date.now() - 380000),
-    battery: 28,
-    connection: "regular",
-  },
-  {
-    id: "iota",
-    name: "Iota Plateau Station",
-    location: "La Rioja, Argentina",
-    status: "offline",
-    lastCommunication: new Date(Date.now() - 18000000),
-    battery: 5,
-    connection: "perdida",
-  },
-  {
-    id: "kappa",
-    name: "Kappa Urban Relay",
-    location: "Buenos Aires, Argentina",
-    status: "online",
-    lastCommunication: new Date(Date.now() - 3000),
-    battery: 100,
-    connection: "buena",
-  },
-];
-
-function formatRelativeTime(date: Date): string {
-  const diffMs = Date.now() - date.getTime();
-  const diffSec = Math.floor(diffMs / 1000);
-  if (diffSec < 60) return `hace ${diffSec}s`;
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `hace ${diffMin}m`;
-  const diffH = Math.floor(diffMin / 60);
-  if (diffH < 24) return `hace ${diffH}h`;
-  return `hace ${Math.floor(diffH / 24)}d`;
-}
 
 function StatusBadge({ status }: { status: StationStatus }) {
   const labels: Record<StationStatus, string> = {
@@ -134,40 +21,7 @@ function StatusBadge({ status }: { status: StationStatus }) {
   );
 }
 
-function ConnectionPill({ quality }: { quality: ConnectionQuality }) {
-  const bars: Record<ConnectionQuality, number> = { buena: 3, regular: 2, perdida: 1 };
-  const labels: Record<ConnectionQuality, string> = {
-    buena: "Buena",
-    regular: "Regular",
-    perdida: "Perdida",
-  };
-  const active = bars[quality];
-  return (
-    <div className={`smp-connection smp-conn-${quality}`}>
-      <div className="smp-conn-bars">
-        {[1, 2, 3].map((b) => (
-          <div
-            key={b}
-            className={`smp-conn-bar ${b <= active ? "smp-conn-bar--active" : ""}`}
-            style={{ height: `${6 + b * 4}px` }}
-          />
-        ))}
-      </div>
-      <span className="smp-conn-label">{labels[quality]}</span>
-    </div>
-  );
-}
-
-function StationCard({ station }: { station: ManagedStation }) {
-  const [relTime, setRelTime] = useState(() => formatRelativeTime(station.lastCommunication));
-
-  useEffect(() => {
-    const t = setInterval(() => {
-      setRelTime(formatRelativeTime(station.lastCommunication));
-    }, 5000);
-    return () => clearInterval(t);
-  }, [station.lastCommunication]);
-
+function StationCard({ station }: { station: StationResponse }) {
   return (
     <article className={`smp-card smp-card--${station.status}`}>
       <header className="smp-card-header">
@@ -178,7 +32,7 @@ function StationCard({ station }: { station: ManagedStation }) {
             {station.location}
           </p>
         </div>
-        <StatusBadge status={station.status} />
+        <StatusBadge status={station.status as StationStatus} />
       </header>
 
       <div className="smp-divider" />
@@ -186,15 +40,15 @@ function StationCard({ station }: { station: ManagedStation }) {
       <div className="smp-card-body">
         <div className="smp-metric-row">
           <span className="smp-metric-label">Última comunicación</span>
-          <span className="smp-metric-value smp-lastcomm">{relTime}</span>
+          <span className="smp-metric-value smp-lastcomm">—</span>
         </div>
         <div className="smp-metric-row">
           <span className="smp-metric-label">Batería</span>
-          <BatteryBar value={station.battery} />
+          <BatteryBar value={null} />
         </div>
         <div className="smp-metric-row">
           <span className="smp-metric-label">Conexión</span>
-          <ConnectionPill quality={station.connection} />
+          <span className="smp-metric-value">—</span>
         </div>
       </div>
     </article>
@@ -251,16 +105,17 @@ function Pagination({
 }
 
 export function StationManagementPanel() {
-  const [stations] = useState<ManagedStation[]>(INITIAL_STATIONS);
+  const { data: stations, loading, error } = useStations();
   const [page, setPage] = useState(1);
 
-  const totalPages = Math.ceil(stations.length / PAGE_SIZE);
-  const pageStations = stations.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const list = stations ?? [];
+  const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  const pageStations = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const counts = {
-    online: stations.filter((s) => s.status === "online").length,
-    degraded: stations.filter((s) => s.status === "degraded").length,
-    offline: stations.filter((s) => s.status === "offline").length,
+    online: list.filter((s) => s.status === "online").length,
+    degraded: list.filter((s) => s.status === "degraded").length,
+    offline: list.filter((s) => s.status === "offline").length,
   };
 
   return (
@@ -286,13 +141,22 @@ export function StationManagementPanel() {
         </div>
       </div>
 
-      <div className="smp-grid">
-        {pageStations.map((s) => (
-          <StationCard key={s.id} station={s} />
-        ))}
-      </div>
-
-      <Pagination page={page} totalPages={totalPages} total={stations.length} onChange={setPage} />
+      {loading ? (
+        <div className="log-empty">Cargando estaciones…</div>
+      ) : error ? (
+        <div className="log-empty">Error al conectar con el servidor.</div>
+      ) : list.length === 0 ? (
+        <div className="log-empty">No hay estaciones registradas.</div>
+      ) : (
+        <>
+          <div className="smp-grid">
+            {pageStations.map((s) => (
+              <StationCard key={s.id} station={s} />
+            ))}
+          </div>
+          <Pagination page={page} totalPages={totalPages} total={list.length} onChange={setPage} />
+        </>
+      )}
     </section>
   );
 }

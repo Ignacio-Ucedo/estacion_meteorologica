@@ -37,6 +37,8 @@ type ChartCardProps = {
   domainMax: number;
   axisStep: number;
   tickStep: number;
+  loading?: boolean;
+  error?: string | null;
 };
 
 const X_TICKS_1D = [0, 4, 8, 12, 16, 20, 24];
@@ -48,6 +50,7 @@ function idealFrom1D(
   data: WeatherPoint[], dataKey: keyof WeatherPoint,
   domainMin: number, domainMax: number, tickStep: number,
 ): [number, number] {
+  if (data.length === 0) return [domainMin, domainMax];
   const values = data.map((d) => d[dataKey] as number);
   const rawMin = Math.min(...values);
   const rawMax = Math.max(...values);
@@ -59,6 +62,7 @@ function idealFrom1D(
 function idealFromDaily(
   summaries: DailySummary[], domainMin: number, domainMax: number, tickStep: number,
 ): [number, number] {
+  if (summaries.length === 0) return [domainMin, domainMax];
   const rawMin = Math.min(...summaries.map((d) => d.min));
   const rawMax = Math.max(...summaries.map((d) => d.max));
   const min = Math.max(domainMin, Math.floor(rawMin / tickStep) * tickStep);
@@ -82,6 +86,8 @@ export function ChartCard({
   domainMax,
   axisStep,
   tickStep,
+  loading = false,
+  error = null,
 }: ChartCardProps) {
   const [period, setPeriod] = useState<Period>("1D");
 
@@ -105,6 +111,7 @@ export function ChartCard({
 
   const extremes = useMemo(() => {
     if (period === "1D") {
+      if (data.length === 0) return { max: 0, maxWhen: "—", min: 0, minWhen: "—" };
       let maxVal = -Infinity, maxHour = 0;
       let minVal = Infinity, minHour = 0;
       for (const pt of data) {
@@ -116,6 +123,7 @@ export function ChartCard({
       return { max: maxVal, maxWhen: fh(maxHour), min: minVal, minWhen: fh(minHour) };
     }
     const src = period === "7D" ? daily7 : period === "30D" ? daily30 : daily365;
+    if (src.length === 0) return { max: 0, maxWhen: "—", min: 0, minWhen: "—" };
     let maxVal = -Infinity, maxIdx = 0;
     let minVal = Infinity, minIdx = 0;
     for (let i = 0; i < src.length; i++) {
@@ -184,13 +192,10 @@ export function ChartCard({
           content={<DailyBandTooltip unit={unit} is7D={period === "7D"} />}
           cursor={{ stroke: "#45464d" }}
         />
-        {/* Colored band from range[0] to max */}
         <Area type="monotone" dataKey="max" baseValue={range[0]}
           stroke="none" fill={`url(#${bandId})`} isAnimationActive={false} legendType="none" />
-        {/* Mask from range[0] to min — covers the area below actual data minimum */}
         <Area type="monotone" dataKey="min" baseValue={range[0]}
           stroke="none" fill="#1b1b1d" isAnimationActive={false} legendType="none" />
-        {/* Mean line */}
         <Line type="monotone" dataKey="mean" stroke={color} strokeWidth={2}
           dot={showDots ? { r: 3, fill: color, stroke: "#131315", strokeWidth: 1.5 } : false}
           activeDot={{ r: 4, fill: color, stroke: "#131315", strokeWidth: 2 }}
@@ -204,7 +209,6 @@ export function ChartCard({
     if (period === "30D") return bandChart(daily30,  xAxis30D(), false);
     if (period === "1Y")  return bandChart(daily365, xAxis1Y(),  false);
 
-    // 1D — original charts
     const xAxis1D = (
       <XAxis dataKey="hour" type="number" domain={[0, 24]} ticks={X_TICKS_1D}
         tickFormatter={(h: number) => `${h.toString().padStart(2, "0")}:00`}
@@ -244,6 +248,9 @@ export function ChartCard({
     );
   }
 
+  const currentData = period === "1D" ? data : period === "7D" ? daily7 : period === "30D" ? daily30 : daily365;
+  const isEmpty = !loading && !error && currentData.length === 0;
+
   return (
     <article className={`chart-card ${tone}`}>
       <div className="chart-card-head">
@@ -274,28 +281,21 @@ export function ChartCard({
           </div>
         </div>
       </div>
-      {/* <div className="chart-card-stats">
-        <div className="chart-card-stat">
-          <span className="chart-card-stat-label">Máx</span>
-          <span className="chart-card-stat-value" style={{ color }}>
-            {extremes.max}<small>{unit}</small>
-          </span>
-          <span className="chart-card-stat-when">{extremes.maxWhen}</span>
-        </div>
-        <div className="chart-card-stat">
-          <span className="chart-card-stat-label">Mín</span>
-          <span className="chart-card-stat-value">{extremes.min}<small>{unit}</small></span>
-          <span className="chart-card-stat-when">{extremes.minWhen}</span>
-        </div>
-      </div> */}
       <div className="chart-card-body">
-        <ResponsiveContainer width="100%" height="100%">
-          {renderChart()}
-        </ResponsiveContainer>
+        {loading ? (
+          <div className="chart-state-overlay">Cargando datos…</div>
+        ) : error ? (
+          <div className="chart-state-overlay chart-state-error">
+            Sin conexión al servidor
+          </div>
+        ) : isEmpty ? (
+          <div className="chart-state-overlay">Sin datos disponibles</div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            {renderChart()}
+          </ResponsiveContainer>
+        )}
       </div>
-
-      
-
     </article>
   );
 }

@@ -1,18 +1,4 @@
-1. Resumen Tecnológico
-
-    Framework: React 19 + TypeScript + Vite.
-    Librería de Gráficos: Recharts.
-    Consumo de Datos: API REST del backend FastAPI vía capa de cliente tipada en `src/api/`.
-
-2. Requisitos Funcionales
-El frontend debe permitir visualizar la evolución temporal de las siguientes variables:
-
-    Temperatura: Gráfico de línea en grados Celsius (°C), rango -15 a 45.
-    Humedad: Gráfico de línea en porcentaje (%), rango 0–100.
-    Precipitación Acumulada: Gráfico de barras o línea en milímetros (mm), rango 0–60.
-    Velocidad del Viento: Gráfico de evolución en kilómetros por hora (km/h), rango 0–120.
-
-3. Escenarios de Usuario (Formato Given/When/Then)
+## MODIFIED Requirements
 
 ### Requirement: Visualización de datos históricos
 La aplicación SHALL obtener los datos históricos desde la API REST del backend FastAPI en lugar de generarlos en el cliente. Los gráficos de temperatura (°C, rango -15 a 45), humedad (%, 0–100), velocidad del viento (km/h, 0–120) y precipitación (mm, 0–60) SHALL renderizarse con datos reales de PostgreSQL.
@@ -28,6 +14,8 @@ La aplicación SHALL obtener los datos históricos desde la API REST del backend
 #### Scenario: Backend no disponible al cargar gráficos
 - **WHEN** el frontend intenta cargar datos de métricas y el backend no responde
 - **THEN** cada gráfico muestra un mensaje de error de conectividad en lugar de datos vacíos o errores de consola
+
+## ADDED Requirements
 
 ### Requirement: Panel de estación con datos reales
 El StationPanel y las MetricCards del dashboard principal SHALL mostrar datos provenientes de `GET /api/stations/{id}`, incluyendo nombre, ubicación, estado y valores actuales de temperatura, humedad, viento y precipitación.
@@ -73,12 +61,3 @@ El StationManagementPanel SHALL consumir `GET /api/stations` y mostrar las estac
 #### Scenario: Lista de estaciones vacía
 - **WHEN** la API retorna una lista vacía
 - **THEN** el panel muestra un mensaje "No hay estaciones registradas"
-
-4. Diseño y Flujo de Datos
-El frontend es el último eslabón de la cadena: Sensor → ESP32 → LoRa → Gateway → Backend (FastAPI) → PostgreSQL → Frontend (React). El módulo `src/api/` centraliza toda comunicación HTTP y provee hooks React para cada dominio de datos.
-
-5. Convenciones de Trabajo
-Para cualquier tarea o avance en este componente, recuerda usar Conventional Commits con el scope frontend:
-
-    Ejemplo de nueva funcionalidad: feat(frontend): implementar gráfico de precipitación acumulada con Recharts
-    Ejemplo de corrección: fix(frontend): corregir escala del eje Y en el gráfico de velocidad del viento
