@@ -1,0 +1,89 @@
+version: "3.8"
+
+# Stack: ChirpStack v4 (EU433) + Mosquitto + InfluxDB
+# Uso: docker compose up -d
+# ChirpStack UI: http://localhost:8080  (admin / admin)
+# InfluxDB UI:   http://localhost:8086  (admin / adminpassword)
+# Semtech UDP Packet Forwarder: puerto 1700/UDP (ESP32 gateway → este host)
+
+services:
+
+  # ChirpStack v4 — network server + application server (monolítico)
+  chirpstack:
+    image: chirpstack/chirpstack:4
+    command: -c /etc/chirpstack
+    restart: unless-stopped
+    volumes:
+      - ./chirpstack:/etc/chirpstack
+    depends_on:
+      - postgres
+      - mosquitto
+      - redis
+    environment:
+      - MQTT_BROKER_HOST=mosquitto
+      - REDIS_HOST=redis
+      - POSTGRESQL_HOST=postgres
+    ports:
+      - "8080:8080"
+
+  # ChirpStack Gateway Bridge — traduce Semtech UDP → MQTT para gateways legacy
+  # El ESP32 single-channel packet forwarder apunta a este puesto UDP 1700
+  chirpstack-gateway-bridge:
+    image: chirpstack/chirpstack-gateway-bridge:4
+    restart: unless-stopped
+    ports:
+      - "1700:1700/udp"
+    volumes:
+      - ./chirpstack-gateway-bridge:/etc/chirpstack-gateway-bridge
+    depends_on:
+      - mosquitto
+
+  # PostgreSQL — base de datos de ChirpStack
+  postgres:
+    image: postgres:14-alpine
+    restart: unless-stopped
+    volumes:
+      - chirpstack-postgres-data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
+    environment:
+      - POSTGRES_PASSWORD=chirpstack
+      - POSTGRES_USER=chirpstack
+      - POSTGRES_DB=chirpstack
+
+  # Redis — estado de sesiones LoRaWAN y caché de ChirpStack
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - chirpstack-redis-data:/data
+
+  # Mosquitto — broker MQTT entre Gateway Bridge y ChirpStack
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+
+  # InfluxDB v2 — almacenamiento de series temporales de lecturas
+  influxdb:
+    image: influxdb:2.7
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=adminpassword
+      - DOCKER_INFLUXDB_INIT_ORG=weather-station
+      - DOCKER_INFLUXDB_INIT_BUCKET=weather
+      - DOCKER_INFLUXDB_INIT_RETENTION=30d
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=weather-station-token
+
+volumes:
+  chirpstack-postgres-data:
+  chirpstack-redis-data:
+  influxdb-data:
