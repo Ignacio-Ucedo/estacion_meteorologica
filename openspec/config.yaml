@@ -46,10 +46,13 @@ context: |
   - Justificación: genera spec OpenAPI automáticamente a partir del código,
     alineado con la metodología spec-driven; soporte async para recibir el
     flujo del gateway; pandas reutilizable para el análisis del informe final
-  - Base de datos histórica: InfluxDB (serie temporal) — timestamp + valor +
-    tags de dispositivo, retención configurable, agregaciones para gráficos
-    - Alternativa válida: PostgreSQL + TimescaleDB si se prefiere SQL
-      relacional
+  - REST API (implementada, change `implement-backend-rest-api`):
+    PostgreSQL + TimescaleDB vía SQLAlchemy async y Alembic.
+    Gestión de estaciones, historial de lecturas y series horarias/diarias.
+  - Ingesta LoRaWAN (pendiente, change `backend-lorawan-ingestion`):
+    cliente paho-mqtt suscrito a ChirpStack; escritura en InfluxDB
+    (measurement `weather_reading`) como serie temporal de lecturas brutas.
+  - Las dos responsabilidades coexisten en `backend/` como módulos independientes.
 
   ### Frontend web
   - React + Recharts (o Chart.js), consumiendo la API REST del backend

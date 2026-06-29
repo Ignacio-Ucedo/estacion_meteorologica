@@ -14,7 +14,6 @@ use esp_idf_hal::{
 };
 use log::{error, info, warn};
 use weather_firmware::{
-    config::PINS,
     lorawan,
     nvs::load_otaa_keys,
     payload::{build_binary, BinaryMeasurement},

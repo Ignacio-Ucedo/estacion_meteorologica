@@ -4,7 +4,7 @@ El gateway LoRaWAN (change `migrate-lorawan-sx1278`) entrega tramas al network s
 
 ## What Changes
 
-- Nuevo directorio `backend/` con aplicación FastAPI.
+- Directorio `backend/` existente (REST API implementada en `implement-backend-rest-api`): agregar cliente paho-mqtt y writer de InfluxDB como módulo de ingesta independiente.
 - Cliente paho-mqtt en el startup de FastAPI que se suscribe al topic `application/{appId}/device/{devEUI}/event/up` de ChirpStack y reconecta automáticamente ante caídas del broker.
 - Deserialización del FRMPayload binario de 14 bytes (base64 → little-endian) y validación CRC-8/MAXIM.
 - Escritura en InfluxDB con measurement `weather_reading`, tags `device_id` / `dev_eui` y campos numéricos convertidos a unidades reales.
@@ -23,6 +23,6 @@ _(ninguna — no hay specs principales de backend en `openspec/specs/`)_
 
 ## Impact
 
-- **Backend** (`backend/`): directorio nuevo; no afecta firmware, gateway ni frontend.
+- **Backend** (`backend/`): agrega módulo de ingesta MQTT + InfluxDB al directorio existente; no modifica los endpoints REST ya implementados ni el esquema PostgreSQL.
 - **Infraestructura**: depende del stack ChirpStack + Mosquitto + InfluxDB definido en `infra/docker-compose.yml` (change `migrate-lorawan-sx1278`). No genera cambios en ese docker-compose.
 - **Rollback**: eliminar el directorio `backend/` y detener el proceso uvicorn. No hay datos en riesgo (InfluxDB es append-only; un rollback no borra lecturas ya escritas).

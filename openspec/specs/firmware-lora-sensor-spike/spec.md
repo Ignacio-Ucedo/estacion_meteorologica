@@ -1,7 +1,12 @@
 # firmware-lora-sensor-spike Specification
 
 ## Purpose
-TBD - created by archiving change spike-firmware-lora-sensors. Update Purpose after archive.
+Spec de referencia del spike inicial de firmware (change `spike-firmware-lora-sensors`, archivado).
+Describe el comportamiento del spike: LoRa P2P a 433 MHz, payload CSV de depuración
+(`id,seq,temp,hum,pres,pulsos_lluvia,pulsos_viento`), sensores DHT22 + MPL115A2 en banco,
+binarios `sensor-node` y `receiver-node`. **Supersedida por el change `migrate-lorawan-sx1278`**
+(LoRaWAN EU433, payload binario de 14 bytes, gateway single-channel UDP → ChirpStack).
+Conservada como registro histórico de las decisiones del spike.
 ## Requirements
 ### Requirement: El nodo sensor lee sensores ambientales
 El firmware del nodo sensor SHALL leer temperatura y humedad desde un sensor DHT22 y presión desde un sensor MPL115A2 en una placa ESP32 DevKitC V1 usando Rust con ESP-IDF.

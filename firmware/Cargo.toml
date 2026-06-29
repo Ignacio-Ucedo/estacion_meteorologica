@@ -23,11 +23,6 @@ path = "src/bin/sensor-node-mock.rs"
 name = "gateway-node"
 path = "src/bin/gateway-node.rs"
 
-# Receptor P2P del spike (legacy, referencia de rollback)
-[[bin]]
-name = "receiver-node"
-path = "src/bin/receiver-node.rs"
-
 [dependencies]
 anyhow = "1"
 log = "0.4"

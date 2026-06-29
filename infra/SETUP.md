@@ -159,9 +159,12 @@ solo difieren en `device_id` y en que los valores varían de forma cíclica.
 
 ---
 
-## 6. Variables de entorno del backend
+## 6. Variables de entorno del módulo de ingesta LoRaWAN
 
-El backend FastAPI (ver `backend/`) necesita:
+> **Nota:** estas variables corresponden al módulo de ingesta MQTT + InfluxDB del
+> change `backend-lorawan-ingestion`, que aún no está implementado. El backend
+> REST API actual (`backend/`) usa PostgreSQL y no requiere estas variables.
+> Configurar aquí como referencia para cuando se implemente ese change.
 
 ```bash
 export CHIRPSTACK_MQTT_BROKER=localhost:1883
@@ -171,3 +174,6 @@ export INFLUXDB_TOKEN=weather-station-token
 export INFLUXDB_ORG=weather-station
 export INFLUXDB_BUCKET=weather
 ```
+
+El backend REST API actual necesita su propio PostgreSQL (distinto al de ChirpStack).
+Ver `backend/.env.example` para las variables requeridas (`DATABASE_URL`, etc.).
