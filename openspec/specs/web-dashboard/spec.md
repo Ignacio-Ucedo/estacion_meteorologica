@@ -15,14 +15,19 @@ El frontend debe permitir visualizar la evolución temporal de las siguientes va
 3. Escenarios de Usuario (Formato Given/When/Then)
 
 ### Requirement: Visualización de datos históricos
-La aplicación SHALL obtener los datos históricos desde la API REST del backend FastAPI en lugar de generarlos en el cliente. Los gráficos de temperatura (°C, rango -15 a 45), humedad (%, 0–100), velocidad del viento (km/h, 0–120) y precipitación (mm, 0–60) SHALL renderizarse con datos reales de PostgreSQL.
+La aplicación SHALL obtener los datos históricos desde la API REST del backend FastAPI en lugar de generarlos en el cliente. Los gráficos de temperatura (°C, rango -15 a 45), humedad (%, 0–100), velocidad del viento (km/h, 0–120) y precipitación (mm, 0–60) SHALL renderizarse con datos reales de PostgreSQL. El componente SHALL recibir `stationId` como prop en lugar de importar la constante `STATION_ID`.
 
 #### Scenario: Carga de gráficos con datos disponibles
-- **WHEN** el componente de gráficos se carga y el backend tiene lecturas en la base de datos
-- **THEN** la aplicación realiza peticiones a los endpoints de métricas hourly/daily, recibe el JSON con las series temporales y renderiza los gráficos
+- **WHEN** el componente de gráficos se carga y el backend tiene lecturas en la base de datos para la estación seleccionada
+- **THEN** la aplicación realiza peticiones a los endpoints de métricas hourly/daily con el `stationId` activo, y renderiza los gráficos
+
+#### Scenario: Cambio de estación actualiza los gráficos
+
+- **WHEN** el usuario selecciona una estación diferente desde el modal
+- **THEN** la sección de Gráficas cancela los fetches anteriores y realiza nuevas peticiones con el nuevo `stationId`
 
 #### Scenario: Carga de gráficos sin datos en la base
-- **WHEN** el componente de gráficos se carga y el backend no tiene lecturas para la estación
+- **WHEN** el componente de gráficos se carga y el backend no tiene lecturas para la estación seleccionada
 - **THEN** los gráficos muestran un estado "sin datos" con mensaje descriptivo, sin crashear
 
 #### Scenario: Backend no disponible al cargar gráficos
@@ -30,18 +35,23 @@ La aplicación SHALL obtener los datos históricos desde la API REST del backend
 - **THEN** cada gráfico muestra un mensaje de error de conectividad en lugar de datos vacíos o errores de consola
 
 ### Requirement: Panel de estación con datos reales
-El StationPanel y las MetricCards del dashboard principal SHALL mostrar datos provenientes de `GET /api/stations/{id}`, incluyendo nombre, ubicación, estado y valores actuales de temperatura, humedad, viento y precipitación.
+El StationPanel y las MetricCards del dashboard principal SHALL mostrar datos provenientes de `GET /api/stations/{id}` donde `id` es la estación actualmente seleccionada por el usuario (no una constante hardcodeada). El StationPanel SHALL ser clickeable y SHALL abrir el modal de selección de estación al hacer click.
 
 #### Scenario: Lectura actual disponible
-- **WHEN** el dashboard se carga y la API retorna una lectura actual para la estación
+- **WHEN** el dashboard se carga y la API retorna una lectura actual para la estación seleccionada
 - **THEN** las MetricCards muestran los valores reales con 1 decimal de precisión
 
 #### Scenario: Sin lectura actual disponible
 - **WHEN** la API retorna `current: null` (estación sin lecturas)
 - **THEN** las MetricCards muestran "—" o "Sin datos" en lugar de un número
 
+#### Scenario: Click en StationPanel abre modal de selección
+
+- **WHEN** el usuario hace click sobre el StationPanel
+- **THEN** el modal de selección de estación se abre
+
 ### Requirement: Log de historial con datos paginados reales
-El StationLogPanel SHALL consumir `GET /api/stations/{id}/readings?page=N&search=X` en lugar de generar lecturas aleatorias. La tabla SHALL actualizarse automáticamente cada 30 segundos. El botón "Pausar" SHALL detener el polling automático.
+El StationLogPanel SHALL consumir `GET /api/stations/{id}/readings?page=N&search=X` en lugar de generar lecturas aleatorias. La tabla SHALL actualizarse automáticamente cada 30 segundos. El botón "Pausar" SHALL detener el polling automático. El StationLogPanel SHALL ser independiente de la estación activa seleccionada en el dashboard y SHALL continuar usando su propio ID de estación configurado.
 
 #### Scenario: Carga inicial del historial
 - **WHEN** el StationLogPanel se monta

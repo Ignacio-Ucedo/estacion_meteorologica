@@ -107,24 +107,76 @@ Registra una nueva estación meteorológica.
 
 ### Descripción
 
-Obtiene todas las estaciones registradas.
+Obtiene estaciones registradas con soporte de paginación y búsqueda por nombre. Devuelve un objeto `StationPage` en lugar de una lista plana.
+
+### Query Params
+
+| Param  | Tipo   | Obligatorio | Descripción                                          |
+| ------ | ------ | ----------- | ---------------------------------------------------- |
+| page   | int    | No          | Página (default: 1, mínimo: 1)                       |
+| search | string | No          | Filtro por nombre de estación (case-insensitive)     |
 
 ### Response 200
 
 ```json
-[
-  {
-    "id": "alpha",
-    "name": "Alpha Base Station",
-    "location": "Mendoza, Argentina",
-    "status": "online"
-  }
-]
+{
+  "total": 12,
+  "page": 1,
+  "data": [
+    {
+      "id": "alpha",
+      "name": "Alpha Base Station",
+      "location": "Mendoza, Argentina",
+      "status": "online"
+    }
+  ]
+}
+```
+
+### Reglas de negocio
+
+* Tamaño de página fijo: 6 estaciones.
+* Orden alfabético por nombre.
+* El filtro `search` es case-insensitive y compara contra el nombre de la estación.
+* Si `page < 1`, la API responde con 422 Unprocessable Entity.
+* Si `page` excede el total de páginas disponibles, `data` devuelve `[]` con `total` correcto y sin error 4xx.
+
+### Scenarios
+
+#### Scenario: Listado sin parámetros devuelve primera página
+
+- **WHEN** se realiza `GET /api/stations` sin parámetros
+- **THEN** la respuesta contiene `page: 1`, `total` igual al total de estaciones en la base, y `data` con hasta 6 estaciones ordenadas alfabéticamente por nombre
+
+#### Scenario: Paginación con page=N
+
+- **WHEN** se realiza `GET /api/stations?page=2`
+- **THEN** la respuesta contiene `page: 2` y `data` con las estaciones de la segunda página (offset 6)
+
+#### Scenario: Filtrado por nombre
+
+- **WHEN** se realiza `GET /api/stations?search=alpha`
+- **THEN** `data` contiene solo estaciones cuyo nombre incluye "alpha" (case-insensitive) y `total` refleja el conteo filtrado
+
+#### Scenario: Página fuera de rango devuelve data vacía
+
+- **WHEN** se realiza `GET /api/stations?page=999` y hay menos de 6×998 estaciones
+- **THEN** la respuesta retorna `data: []` con `total` correcto y sin error 4xx
+
+#### Scenario: page menor a 1 es rechazado
+
+- **WHEN** se realiza `GET /api/stations?page=0`
+- **THEN** la API responde con 422 Unprocessable Entity
+
+### Errores
+
+```text
+422 Unprocessable Entity (page < 1)
 ```
 
 ### Uso
 
-* Dashboard
+* Dashboard (modal de selección de estación)
 * Historial
 * Gestión de estaciones
 
