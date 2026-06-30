@@ -10,7 +10,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "https://ignacio-ucedo.github.io/estacion_meteorologica"],
+        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "https://ignacio-ucedo.github.io"],
         allow_methods=["*"],
         allow_headers=["*"],
     )
