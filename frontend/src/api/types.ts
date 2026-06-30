@@ -5,6 +5,12 @@ export type StationResponse = {
   status: "online" | "offline" | "degraded";
 };
 
+export type StationPage = {
+  total: number;
+  page: number;
+  data: StationResponse[];
+};
+
 export type CurrentReading = {
   temperature: number;
   humidity: number;

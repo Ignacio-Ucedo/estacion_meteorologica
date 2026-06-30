@@ -4,7 +4,7 @@ import type {
   HourlyMetricResponse,
   ReadingPage,
   StationDetail,
-  StationResponse,
+  StationPage,
 } from "./types";
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -19,8 +19,10 @@ export function getStation(id: string): Promise<StationDetail> {
   return apiFetch(`/stations/${id}`);
 }
 
-export function listStations(): Promise<StationResponse[]> {
-  return apiFetch(`/stations`);
+export function listStations(page: number, search?: string): Promise<StationPage> {
+  const params = new URLSearchParams({ page: String(page) });
+  if (search) params.set("search", search);
+  return apiFetch(`/stations?${params}`);
 }
 
 export function getReadings(

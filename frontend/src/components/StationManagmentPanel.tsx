@@ -105,17 +105,17 @@ function Pagination({
 }
 
 export function StationManagementPanel() {
-  const { data: stations, loading, error } = useStations();
   const [page, setPage] = useState(1);
+  const { data, loading, error } = useStations(page, "");
 
-  const list = stations ?? [];
-  const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
-  const pageStations = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pageStations = data?.data ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const counts = {
-    online: list.filter((s) => s.status === "online").length,
-    degraded: list.filter((s) => s.status === "degraded").length,
-    offline: list.filter((s) => s.status === "offline").length,
+    online: pageStations.filter((s) => s.status === "online").length,
+    degraded: pageStations.filter((s) => s.status === "degraded").length,
+    offline: pageStations.filter((s) => s.status === "offline").length,
   };
 
   return (
@@ -145,7 +145,7 @@ export function StationManagementPanel() {
         <div className="log-empty">Cargando estaciones…</div>
       ) : error ? (
         <div className="log-empty">Error al conectar con el servidor.</div>
-      ) : list.length === 0 ? (
+      ) : pageStations.length === 0 ? (
         <div className="log-empty">No hay estaciones registradas.</div>
       ) : (
         <>
@@ -154,7 +154,7 @@ export function StationManagementPanel() {
               <StationCard key={s.id} station={s} />
             ))}
           </div>
-          <Pagination page={page} totalPages={totalPages} total={list.length} onChange={setPage} />
+          <Pagination page={page} totalPages={totalPages} total={total} onChange={setPage} />
         </>
       )}
     </section>

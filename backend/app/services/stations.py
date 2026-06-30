@@ -8,6 +8,7 @@ from app.db.models import Reading, Station
 from app.schemas import StationCreate
 
 PAGE_SIZE = 7
+PAGE_SIZE_STATIONS = 6
 
 
 def slugify_station_id(name: str) -> str:
@@ -32,9 +33,17 @@ async def create_station(session: AsyncSession, payload: StationCreate) -> Stati
     return station
 
 
-async def list_stations(session: AsyncSession) -> list[Station]:
-    result = await session.execute(select(Station).order_by(Station.name.asc()))
-    return list(result.scalars().all())
+async def list_stations(
+    session: AsyncSession, page: int, search: str | None = None
+) -> tuple[int, list[Station]]:
+    query = select(Station).order_by(Station.name.asc())
+    if search:
+        query = query.where(func.lower(Station.name).contains(search.lower()))
+    total = await session.scalar(select(func.count()).select_from(query.subquery()))
+    result = await session.execute(
+        query.limit(PAGE_SIZE_STATIONS).offset((page - 1) * PAGE_SIZE_STATIONS)
+    )
+    return int(total or 0), list(result.scalars().all())
 
 
 async def latest_reading(session: AsyncSession, station_id: str) -> Reading | None:

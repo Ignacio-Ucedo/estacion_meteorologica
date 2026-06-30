@@ -15,6 +15,7 @@ from app.schemas import (
     ReadingResponse,
     StationCreate,
     StationDetail,
+    StationPage,
     StationResponse,
 )
 from app.services.metrics import METRICS, daily_summaries, get_metric, hourly_points, utc_now
@@ -51,10 +52,18 @@ async def post_station(
     return StationResponse.model_validate(station, from_attributes=True)
 
 
-@router.get("/stations", response_model=list[StationResponse])
-async def get_stations(session: SessionDep) -> list[StationResponse]:
-    stations = await list_stations(session)
-    return [StationResponse.model_validate(station, from_attributes=True) for station in stations]
+@router.get("/stations", response_model=StationPage)
+async def get_stations(
+    session: SessionDep,
+    page: PageQuery = 1,
+    search: str | None = None,
+) -> StationPage:
+    total, stations = await list_stations(session, page, search)
+    return StationPage(
+        total=total,
+        page=page,
+        data=[StationResponse.model_validate(s, from_attributes=True) for s in stations],
+    )
 
 
 @router.get("/stations/{station_id}", response_model=StationDetail)

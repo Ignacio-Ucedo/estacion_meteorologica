@@ -11,7 +11,7 @@ import type {
   HourlyMetricResponse,
   ReadingPage,
   StationDetail,
-  StationResponse,
+  StationPage,
 } from "./types";
 
 type FetchState<T> = { data: T | null; loading: boolean; error: string | null };
@@ -47,8 +47,8 @@ export function useStation(id: string): FetchState<StationDetail> {
   return useFetch(() => getStation(id), [id]);
 }
 
-export function useStations(): FetchState<StationResponse[]> {
-  return useFetch(() => listStations(), []);
+export function useStations(page: number, search: string): FetchState<StationPage> {
+  return useFetch(() => listStations(page, search || undefined), [page, search]);
 }
 
 export function useReadings(

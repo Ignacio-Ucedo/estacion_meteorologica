@@ -48,6 +48,12 @@ class ReadingResponse(ApiModel):
     precipitation: float
 
 
+class StationPage(ApiModel):
+    total: int
+    page: int
+    data: list[StationResponse]
+
+
 class ReadingPage(ApiModel):
     total: int
     page: int

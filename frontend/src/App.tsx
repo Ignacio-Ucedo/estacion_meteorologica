@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Topbar } from "./components/Topbar";
 import { StationPanel } from "./components/StationPanel";
@@ -8,8 +8,10 @@ import { GraficasPanel } from "./components/Graficaspanel";
 import { StationLogPanel } from "./components/Stationlogpanel";
 import { StationManagementPanel } from "./components/StationManagmentPanel";
 import { SelectedMetricChart } from "./components/SelectedMetricChart";
+import { StationSwitcherModal } from "./components/StationSwitcherModal";
 import { useStation } from "./api/hooks";
-import { STATION_ID } from "./api/config";
+import { listStations } from "./api/client";
+import { getPersistedStationId, persistStationId } from "./api/config";
 import type { MetricKey } from "./data/WeatherSeries";
 
 const navItems = [
@@ -50,13 +52,42 @@ function App() {
   const [activeId, setActiveId] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedMetricKey, setSelectedMetricKey] = useState<MetricKey>("temperature");
+  const [selectedStationId, setSelectedStationId] = useState<string>(() => getPersistedStationId());
+  const [switcherOpen, setSwitcherOpen] = useState(false);
 
-  const { data: station, loading, error } = useStation(STATION_ID);
+  const { data: station, loading, error } = useStation(selectedStationId);
+
+  // Fallback: si la estación persistida ya no existe (404), auto-seleccionar la primera disponible
+  const fallbackAttempted = useRef(false);
+  useEffect(() => {
+    if (!error || fallbackAttempted.current) return;
+    if (!error.includes("404")) return;
+    fallbackAttempted.current = true;
+    listStations(1).then((page) => {
+      if (page.data.length > 0) {
+        const firstId = page.data[0].id;
+        persistStationId(firstId);
+        setSelectedStationId(firstId);
+      }
+    }).catch(() => {/* sin estaciones disponibles, el banner de error existente se muestra */});
+  }, [error]);
+
+  // Reiniciar el flag de fallback cuando cambia la estación exitosamente
+  useEffect(() => {
+    if (station) fallbackAttempted.current = false;
+  }, [station?.id]);
+
+  function handleSelectStation(id: string) {
+    persistStationId(id);
+    setSelectedStationId(id);
+    setSwitcherOpen(false);
+  }
 
   const stationPanelProps = {
     name: station?.name ?? "—",
     location: station?.location ?? "—",
     status: station ? (STATUS_LABELS[station.status] ?? station.status) : "—",
+    statusKey: station?.status,
     badge: station ? (STATUS_BADGES[station.status] ?? "") : "Cargando…",
     lastUpdated: station?.lastUpdatedAt
       ? formatRelativeTime(station.lastUpdatedAt)
@@ -121,12 +152,15 @@ function App() {
       case "dashboard":
         return (
           <>
-            {error && (
+            {error && !error.includes("404") && (
               <div className="api-error-banner" role="alert">
                 No se pudo conectar al servidor: {error}
               </div>
             )}
-            <StationPanel {...stationPanelProps} />
+            <StationPanel
+              {...stationPanelProps}
+              onSwitchStation={() => setSwitcherOpen(true)}
+            />
             <section className="metrics-grid" aria-label="Metricas actuales">
               {metrics.map(({ metricKey, ...metric }) => (
                 <MetricCard
@@ -145,13 +179,13 @@ function App() {
                 <p>Nivel de carga de la estación</p>
               </article>
             </section>
-            <SelectedMetricChart metricKey={selectedMetricKey} stationId={STATION_ID} />
+            <SelectedMetricChart metricKey={selectedMetricKey} stationId={selectedStationId} />
           </>
         );
       case "historial":
         return <StationLogPanel />;
       case "graficas":
-        return <GraficasPanel />;
+        return <GraficasPanel stationId={selectedStationId} />;
       case "gestion":
         return <StationManagementPanel />;
       default:
@@ -170,9 +204,20 @@ function App() {
       />
 
       <section className="workspace" aria-label="Dashboard principal">
-        <Topbar onMenuOpen={() => setSidebarOpen(true)} />
+        <Topbar
+          onMenuOpen={() => setSidebarOpen(true)}
+          stationName={station?.name ?? "—"}
+          onSwitchStation={() => setSwitcherOpen(true)}
+        />
         {renderPanel()}
       </section>
+
+      <StationSwitcherModal
+        open={switcherOpen}
+        onClose={() => setSwitcherOpen(false)}
+        selectedId={selectedStationId}
+        onSelect={handleSelectStation}
+      />
     </main>
   );
 }
