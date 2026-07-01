@@ -7,6 +7,14 @@ class Settings(BaseSettings):
     environment: str = "development"
     database_url: str
 
+    chirpstack_mqtt_broker: str = "localhost:1883"
+    chirpstack_app_id: str = ""
+
+    # Calibration constants (provisional — calibrate with real hardware)
+    # K_WIND: m/s per wind pulse; K_RAIN: mm per rain pulse
+    sensor_k_wind: float = 0.5
+    sensor_k_rain: float = 0.2794
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore"

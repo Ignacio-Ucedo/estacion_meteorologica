@@ -83,6 +83,35 @@ services:
       - DOCKER_INFLUXDB_INIT_RETENTION=30d
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=weather-station-token
 
+  # Backend WeatherOS — REST API + subscriber MQTT → PostgreSQL
+  backend:
+    build: ../backend
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+      - postgres
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://weatheros:weatheros@postgres:5432/weatheros
+      - CHIRPSTACK_MQTT_BROKER=mosquitto:1883
+      - CHIRPSTACK_APP_ID=${CHIRPSTACK_APP_ID:-1}
+      - SENSOR_K_WIND=${SENSOR_K_WIND:-0.5}
+      - SENSOR_K_RAIN=${SENSOR_K_RAIN:-0.2794}
+    ports:
+      - "8000:8000"
+
+  # Gateway mock — publica uplinks sintéticos al broker MQTT sin hardware real
+  # Uso: docker compose --profile mock up -d
+  gateway-mock:
+    build: ../firmware/gateway-mock
+    profiles: [mock]
+    depends_on:
+      - mosquitto
+    environment:
+      - GATEWAY_MOCK_MQTT_BROKER=mosquitto:1883
+      - GATEWAY_MOCK_APP_ID=${CHIRPSTACK_APP_ID:-1}
+      - GATEWAY_MOCK_DEV_EUI=${GATEWAY_MOCK_DEV_EUI:-0000000000000002}
+      - GATEWAY_MOCK_INTERVAL_SECONDS=${GATEWAY_MOCK_INTERVAL_SECONDS:-10}
+
 volumes:
   chirpstack-postgres-data:
   chirpstack-redis-data:
