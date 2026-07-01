@@ -58,3 +58,85 @@ pub fn store_otaa_keys(dev_eui: &[u8; 8], app_eui: &[u8; 8], app_key: &[u8; 16])
 pub fn dev_eui_from_mac(mac: &[u8; 6]) -> [u8; 8] {
     [mac[0], mac[1], mac[2], 0xFF, 0xFE, mac[3], mac[4], mac[5]]
 }
+
+/// Persiste la sesión LoRaWAN activa en NVS para sobrevivir reinicios.
+/// Argumentos en bytes raw para evitar dependencia circular con lorawan::session.
+pub fn store_lorawan_session(
+    dev_addr: &[u8; 4],
+    nwk_skey: &[u8; 16],
+    app_skey: &[u8; 16],
+    fcnt_up: u32,
+) -> Result<()> {
+    let partition = EspDefaultNvsPartition::take()
+        .context("no se pudo tomar la partición NVS")?;
+    let mut nvs = EspNvs::new(partition, NVS_NAMESPACE, true)
+        .context("no se pudo abrir namespace NVS para escritura")?;
+
+    nvs.set_raw("dev_addr", dev_addr).context("error escribiendo dev_addr")?;
+    nvs.set_raw("nwk_skey", nwk_skey).context("error escribiendo nwk_skey")?;
+    nvs.set_raw("app_skey", app_skey).context("error escribiendo app_skey")?;
+    nvs.set_raw("fcnt_up", &fcnt_up.to_le_bytes())
+        .context("error escribiendo fcnt_up")?;
+    Ok(())
+}
+
+/// Carga la sesión LoRaWAN desde NVS.
+/// Retorna `None` si no hay sesión persistida (primer arranque o post-reset de sesión).
+pub fn load_lorawan_session() -> Result<Option<([u8; 4], [u8; 16], [u8; 16], u32)>> {
+    let partition = EspDefaultNvsPartition::take()
+        .context("no se pudo tomar la partición NVS")?;
+    let nvs = EspNvs::new(partition, NVS_NAMESPACE, false)
+        .context("no se pudo abrir namespace NVS")?;
+
+    let mut dev_addr = [0u8; 4];
+    if nvs
+        .get_raw("dev_addr", &mut dev_addr)
+        .context("error leyendo dev_addr")?
+        .is_none()
+    {
+        return Ok(None);
+    }
+
+    let mut nwk_skey = [0u8; 16];
+    nvs.get_raw("nwk_skey", &mut nwk_skey)
+        .context("error leyendo nwk_skey")?
+        .ok_or_else(|| anyhow::anyhow!("nwk_skey ausente en NVS"))?;
+
+    let mut app_skey = [0u8; 16];
+    nvs.get_raw("app_skey", &mut app_skey)
+        .context("error leyendo app_skey")?
+        .ok_or_else(|| anyhow::anyhow!("app_skey ausente en NVS"))?;
+
+    let mut fcnt_buf = [0u8; 4];
+    nvs.get_raw("fcnt_up", &mut fcnt_buf)
+        .context("error leyendo fcnt_up")?
+        .ok_or_else(|| anyhow::anyhow!("fcnt_up ausente en NVS"))?;
+    let fcnt_up = u32::from_le_bytes(fcnt_buf);
+
+    Ok(Some((dev_addr, nwk_skey, app_skey, fcnt_up)))
+}
+
+/// Persiste el contador de secuencia del payload (no confundir con FCnt LoRaWAN).
+pub fn store_seq(seq: u16) -> Result<()> {
+    let partition = EspDefaultNvsPartition::take()
+        .context("no se pudo tomar la partición NVS")?;
+    let mut nvs = EspNvs::new(partition, NVS_NAMESPACE, true)
+        .context("no se pudo abrir namespace NVS para escritura")?;
+
+    nvs.set_raw("seq", &seq.to_le_bytes()).context("error escribiendo seq")?;
+    Ok(())
+}
+
+/// Carga el contador de secuencia desde NVS; devuelve 0 si no existe.
+pub fn load_seq() -> Result<u16> {
+    let partition = EspDefaultNvsPartition::take()
+        .context("no se pudo tomar la partición NVS")?;
+    let nvs = EspNvs::new(partition, NVS_NAMESPACE, false)
+        .context("no se pudo abrir namespace NVS")?;
+
+    let mut buf = [0u8; 2];
+    match nvs.get_raw("seq", &mut buf).context("error leyendo seq")? {
+        None => Ok(0),
+        Some(_) => Ok(u16::from_le_bytes(buf)),
+    }
+}

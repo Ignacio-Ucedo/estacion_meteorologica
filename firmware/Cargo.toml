@@ -23,6 +23,11 @@ path = "src/bin/sensor-node-mock.rs"
 name = "gateway-node"
 path = "src/bin/gateway-node.rs"
 
+# Gateway sintético: WiFi + LoRaWAN via UDP, sin SX1278, para validar la cadena completa
+[[bin]]
+name = "gateway-node-mock"
+path = "src/bin/gateway-node-mock.rs"
+
 [dependencies]
 anyhow = "1"
 log = "0.4"
