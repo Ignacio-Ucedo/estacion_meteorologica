@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useStations } from "../api/hooks";
+import { InlineError } from "./InlineError";
 import type { StationResponse } from "../api/types";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -19,7 +20,7 @@ export function StationSwitcherModal({ open, onClose, selectedId, onSelect }: Pr
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  const { data, loading, error } = useStations(page, search);
+  const { data, loading, error, refresh } = useStations(page, search);
 
   useEffect(() => {
     setPage(1);
@@ -83,7 +84,12 @@ export function StationSwitcherModal({ open, onClose, selectedId, onSelect }: Pr
 
         <div className="modal-station-list">
           {loading && <div className="modal-empty">Cargando…</div>}
-          {error && <div className="modal-empty">Error al cargar estaciones.</div>}
+          {error && (
+            <InlineError
+              message="No se pudo cargar la lista de estaciones."
+              onRetry={refresh}
+            />
+          )}
           {!loading && !error && data && data.data.length === 0 && (
             <div className="modal-empty">
               {search ? <>Sin resultados para <strong>{search}</strong>.</> : "Sin estaciones disponibles."}

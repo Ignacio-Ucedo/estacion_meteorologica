@@ -1,4 +1,5 @@
 import { ChartCard } from "./ChartCard";
+import { InlineError } from "./InlineError";
 import { metricChartConfig } from "../data/MetricChartConfig";
 import type { MetricKey, WeatherPoint, DailySummary } from "../data/WeatherSeries";
 import { useHourlyMetric, useDailyMetric } from "../api/hooks";
@@ -38,6 +39,14 @@ function MetricChart({ metricKey, stationId }: { metricKey: MetricKey; stationId
   const loading = hourly.loading || daily7.loading || daily30.loading || daily365.loading;
   const error = hourly.error ?? daily7.error ?? daily30.error ?? daily365.error ?? null;
 
+  if (error) {
+    return (
+      <article className={`chart-card ${config.tone}`}>
+        <InlineError message="No se pudieron cargar las gráficas de la estación." />
+      </article>
+    );
+  }
+
   const data = hourly.data ? toWeatherPoints(hourly.data.points, metricKey) : [];
   const d7 = daily7.data ? toDailySummaries(daily7.data.summaries) : [];
   const d30 = daily30.data ? toDailySummaries(daily30.data.summaries) : [];
@@ -62,7 +71,7 @@ function MetricChart({ metricKey, stationId }: { metricKey: MetricKey; stationId
       axisStep={config.axisStep}
       tickStep={config.tickStep}
       loading={loading}
-      error={error}
+      error={null}
     />
   );
 }

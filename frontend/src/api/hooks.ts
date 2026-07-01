@@ -43,12 +43,18 @@ function useFetch<T>(fetcher: () => Promise<T>, deps: unknown[]): FetchState<T> 
   return state;
 }
 
-export function useStation(id: string): FetchState<StationDetail> {
-  return useFetch(() => getStation(id), [id]);
+export function useStation(id: string): FetchState<StationDetail> & { refresh: () => void } {
+  const [tick, setTick] = useState(0);
+  const refresh = useCallback(() => setTick((t) => t + 1), []);
+  const state = useFetch(() => getStation(id), [id, tick]);
+  return { ...state, refresh };
 }
 
-export function useStations(page: number, search: string): FetchState<StationPage> {
-  return useFetch(() => listStations(page, search || undefined), [page, search]);
+export function useStations(page: number, search: string): FetchState<StationPage> & { refresh: () => void } {
+  const [tick, setTick] = useState(0);
+  const refresh = useCallback(() => setTick((t) => t + 1), []);
+  const state = useFetch(() => listStations(page, search || undefined), [page, search, tick]);
+  return { ...state, refresh };
 }
 
 export function useReadings(

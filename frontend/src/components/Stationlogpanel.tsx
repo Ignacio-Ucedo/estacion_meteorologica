@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useReadings } from "../api/hooks";
+import { getReadings } from "../api/client";
 import { STATION_ID } from "../api/config";
 import { formatTimestamp } from "../data/Stationlog";
+import { InlineError } from "./InlineError";
+import { useToast } from "../hooks/useToast";
 import type { ReadingResponse } from "../api/types";
 
 const PAGE_SIZE = 7;
@@ -19,20 +22,37 @@ export function StationLogPanel() {
   const [searchInput, setSearchInput] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
 
-  const pausedRef = useRef(paused);
-  pausedRef.current = paused;
-
   const { data, loading, error, refresh } = useReadings(STATION_ID, page, activeSearch);
+  const { addToast } = useToast();
 
-  const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 1;
+  // bgData holds the result of the most recent successful background poll.
+  // It overrides `data` for display so the auto-refresh doesn't trigger a
+  // second useReadings fetch. Reset on page / search change so stale results
+  // from a previous page never bleed into the new one.
+  const [bgData, setBgData] = useState<(typeof data)>(null);
+  useEffect(() => { setBgData(null); }, [page, activeSearch]);
+
+  const effectiveData = bgData ?? data;
+  const totalPages = effectiveData ? Math.ceil(effectiveData.total / PAGE_SIZE) : 1;
+
+  const hasDataRef = useRef(false);
+  useEffect(() => {
+    if (effectiveData !== null) hasDataRef.current = true;
+  }, [effectiveData]);
 
   useEffect(() => {
     if (paused) return;
     const interval = window.setInterval(() => {
-      refresh();
+      getReadings(STATION_ID, page, activeSearch || undefined)
+        .then((result) => setBgData(result))
+        .catch(() => {
+          if (hasDataRef.current) {
+            addToast("No se pudo actualizar el historial de lecturas.");
+          }
+        });
     }, REFRESH_INTERVAL_MS);
     return () => window.clearInterval(interval);
-  }, [paused, refresh]);
+  }, [paused, page, activeSearch, addToast]);
 
   function commitSearch() {
     setPage(1);
@@ -143,15 +163,18 @@ export function StationLogPanel() {
           {loading ? (
             <div className="log-empty">Cargando…</div>
           ) : error ? (
-            <div className="log-empty">Error al conectar con el servidor.</div>
-          ) : !data || data.data.length === 0 ? (
+            <InlineError
+              message="No se pudo cargar el historial de lecturas."
+              onRetry={refresh}
+            />
+          ) : !effectiveData || effectiveData.data.length === 0 ? (
             <div className="log-empty">
               {activeSearch
                 ? <>No se encontraron registros para <strong>{activeSearch}</strong>.</>
                 : "Sin registros disponibles."}
             </div>
           ) : (
-            data.data.map(renderRow)
+            effectiveData.data.map(renderRow)
           )}
         </div>
       </div>
@@ -203,7 +226,7 @@ export function StationLogPanel() {
         </button>
 
         <span className="log-page-info">
-          {data?.total ?? 0} registros
+          {effectiveData?.total ?? 0} registros
         </span>
       </div>
     </section>

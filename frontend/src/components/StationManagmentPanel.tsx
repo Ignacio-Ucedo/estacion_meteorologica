@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { BatteryBar } from "./BatteryBar";
 import { useStations } from "../api/hooks";
+import { InlineError } from "./InlineError";
 import type { StationResponse } from "../api/types";
 
 type StationStatus = "online" | "offline" | "degraded";
@@ -106,7 +107,7 @@ function Pagination({
 
 export function StationManagementPanel() {
   const [page, setPage] = useState(1);
-  const { data, loading, error } = useStations(page, "");
+  const { data, loading, error, refresh } = useStations(page, "");
 
   const pageStations = data?.data ?? [];
   const total = data?.total ?? 0;
@@ -144,7 +145,10 @@ export function StationManagementPanel() {
       {loading ? (
         <div className="log-empty">Cargando estaciones…</div>
       ) : error ? (
-        <div className="log-empty">Error al conectar con el servidor.</div>
+        <InlineError
+          message="No se pudo cargar la lista de estaciones."
+          onRetry={() => { setPage(1); refresh(); }}
+        />
       ) : pageStations.length === 0 ? (
         <div className="log-empty">No hay estaciones registradas.</div>
       ) : (

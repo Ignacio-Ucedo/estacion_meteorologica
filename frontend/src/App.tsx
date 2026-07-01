@@ -9,6 +9,8 @@ import { StationLogPanel } from "./components/Stationlogpanel";
 import { StationManagementPanel } from "./components/StationManagmentPanel";
 import { SelectedMetricChart } from "./components/SelectedMetricChart";
 import { StationSwitcherModal } from "./components/StationSwitcherModal";
+import { InlineError } from "./components/InlineError";
+import { ToastProvider } from "./components/ToastProvider";
 import { useStation } from "./api/hooks";
 import { listStations } from "./api/client";
 import { getPersistedStationId, persistStationId } from "./api/config";
@@ -55,7 +57,7 @@ function App() {
   const [selectedStationId, setSelectedStationId] = useState<string>(() => getPersistedStationId());
   const [switcherOpen, setSwitcherOpen] = useState(false);
 
-  const { data: station, loading, error } = useStation(selectedStationId);
+  const { data: station, loading, error, refresh: refreshStation } = useStation(selectedStationId);
 
   // Fallback: si la estación persistida ya no existe (404), auto-seleccionar la primera disponible
   const fallbackAttempted = useRef(false);
@@ -153,9 +155,10 @@ function App() {
         return (
           <>
             {error && !error.includes("404") && (
-              <div className="api-error-banner" role="alert">
-                No se pudo conectar al servidor: {error}
-              </div>
+              <InlineError
+                message="No se pudieron cargar los datos de la estación."
+                onRetry={refreshStation}
+              />
             )}
             <StationPanel
               {...stationPanelProps}
@@ -194,6 +197,7 @@ function App() {
   };
 
   return (
+    <ToastProvider>
     <main className="app-shell">
       <Sidebar
         navItems={navItems}
@@ -219,6 +223,7 @@ function App() {
         onSelect={handleSelectStation}
       />
     </main>
+    </ToastProvider>
   );
 }
 
