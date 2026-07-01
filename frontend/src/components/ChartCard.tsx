@@ -14,6 +14,7 @@ import {
   Tooltip,
 } from "recharts";
 import { ChartTooltip, DailyBandTooltip } from "./Charttooltip";
+import { Skeleton } from "./Skeleton";
 import type { WeatherPoint } from "../data/WeatherSeries";
 import type { DailySummary, MetricKey } from "../data/WeatherSeries";
 
@@ -45,6 +46,31 @@ const X_TICKS_1D = [0, 4, 8, 12, 16, 20, 24];
 const X_TICKS_7D = [0, 1, 2, 3, 4, 5, 6];
 const X_TICKS_30D = [0, 3, 6, 9, 12, 15, 18, 21, 24, 27];
 const PERIODS: Period[] = ["1D", "7D", "30D", "1Y"];
+
+const CHART_SKELETON_BAR_HEIGHTS = [40, 65, 30, 80, 50, 70, 35];
+
+function ChartCardSkeleton({ kind }: { kind: ChartKind }) {
+  if (kind === "bar") {
+    return (
+      <div className="chart-skeleton-bars">
+        {CHART_SKELETON_BAR_HEIGHTS.map((h, i) => (
+          <Skeleton key={i} width="100%" height={`${h}%`} radius="3px 3px 0 0" />
+        ))}
+      </div>
+    );
+  }
+  return (
+    <svg className="chart-skeleton-curve" viewBox="0 0 300 100" preserveAspectRatio="none" aria-hidden="true">
+      <path
+        className="skeleton"
+        d="M0,70 C30,20 60,90 90,50 C120,10 150,80 180,40 C210,15 240,75 270,35 C285,20 300,55 300,55"
+        fill="none"
+        stroke="#3a3b40"
+        strokeWidth="4"
+      />
+    </svg>
+  );
+}
 
 function idealFrom1D(
   data: WeatherPoint[], dataKey: keyof WeatherPoint,
@@ -283,7 +309,7 @@ export function ChartCard({
       </div>
       <div className="chart-card-body">
         {loading ? (
-          <div className="chart-state-overlay">Cargando datos…</div>
+          <ChartCardSkeleton kind={kind} />
         ) : error ? (
           <div className="chart-state-overlay chart-state-error">
             Sin conexión al servidor

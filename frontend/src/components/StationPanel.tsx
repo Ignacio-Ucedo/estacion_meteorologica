@@ -1,3 +1,5 @@
+import { Skeleton } from "./Skeleton";
+
 type StationPanelProps = {
   name: string;
   location: string;
@@ -5,6 +7,7 @@ type StationPanelProps = {
   statusKey?: "online" | "offline" | "degraded";
   badge: string;
   lastUpdated: string;
+  loading?: boolean;
   onSwitchStation: () => void;
 };
 
@@ -15,6 +18,7 @@ export function StationPanel({
   statusKey,
   badge,
   lastUpdated,
+  loading = false,
   onSwitchStation,
 }: StationPanelProps) {
   return (
@@ -38,8 +42,16 @@ export function StationPanel({
         <p className="station-location">{location}</p>
       </div>
       <div className="station-meta">
-        <span className="system-badge">{badge}</span>
-        <span className="last-updated">{lastUpdated}</span>
+        {loading ? (
+          <Skeleton width="140px" height="34px" radius={999} />
+        ) : (
+          <span className="system-badge">{badge}</span>
+        )}
+        {loading ? (
+          <Skeleton width="110px" height="13px" />
+        ) : (
+          <span className="last-updated">{lastUpdated}</span>
+        )}
       </div>
     </section>
   );

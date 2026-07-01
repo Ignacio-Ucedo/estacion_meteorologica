@@ -2,11 +2,44 @@ import { useState } from "react";
 import { BatteryBar } from "./BatteryBar";
 import { useStations } from "../api/hooks";
 import { InlineError } from "./InlineError";
+import { Skeleton } from "./Skeleton";
 import type { StationResponse } from "../api/types";
 
 type StationStatus = "online" | "offline" | "degraded";
 
 const PAGE_SIZE = 6;
+const SKELETON_CARD_COUNT = 5;
+
+function StationCardSkeleton() {
+  return (
+    <article className="smp-card">
+      <header className="smp-card-header">
+        <div className="smp-card-name-wrap">
+          <Skeleton width="120px" height="15px" />
+          <Skeleton width="90px" height="12px" />
+        </div>
+        <Skeleton width="70px" height="20px" radius={999} />
+      </header>
+
+      <div className="smp-divider" />
+
+      <div className="smp-card-body">
+        <div className="smp-metric-row">
+          <Skeleton width="110px" height="12px" />
+          <Skeleton width="60px" height="13px" />
+        </div>
+        <div className="smp-metric-row">
+          <Skeleton width="60px" height="12px" />
+          <Skeleton width="70px" height="13px" />
+        </div>
+        <div className="smp-metric-row">
+          <Skeleton width="70px" height="12px" />
+          <Skeleton width="50px" height="13px" />
+        </div>
+      </div>
+    </article>
+  );
+}
 
 function StatusBadge({ status }: { status: StationStatus }) {
   const labels: Record<StationStatus, string> = {
@@ -143,7 +176,11 @@ export function StationManagementPanel() {
       </div>
 
       {loading ? (
-        <div className="log-empty">Cargando estaciones…</div>
+        <div className="smp-grid">
+          {Array.from({ length: SKELETON_CARD_COUNT }, (_, i) => (
+            <StationCardSkeleton key={i} />
+          ))}
+        </div>
       ) : error ? (
         <InlineError
           message="No se pudo cargar la lista de estaciones."

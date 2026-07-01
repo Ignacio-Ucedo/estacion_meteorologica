@@ -90,12 +90,13 @@ function App() {
     location: station?.location ?? "—",
     status: station ? (STATUS_LABELS[station.status] ?? station.status) : "—",
     statusKey: station?.status,
-    badge: station ? (STATUS_BADGES[station.status] ?? "") : "Cargando…",
+    badge: station ? (STATUS_BADGES[station.status] ?? "") : "",
     lastUpdated: station?.lastUpdatedAt
       ? formatRelativeTime(station.lastUpdatedAt)
       : loading
-      ? "Cargando…"
+      ? ""
       : "Sin datos",
+    loading,
   };
 
   const current = station?.current ?? null;
@@ -169,6 +170,7 @@ function App() {
                 <MetricCard
                   key={metric.label}
                   {...metric}
+                  loading={loading}
                   active={metricKey === selectedMetricKey}
                   onSelect={metricKey ? () => setSelectedMetricKey(metricKey) : undefined}
                 />

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useStations } from "../api/hooks";
 import { InlineError } from "./InlineError";
+import { Skeleton } from "./Skeleton";
 import type { StationResponse } from "../api/types";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -8,6 +9,20 @@ const STATUS_LABELS: Record<string, string> = {
   offline: "Desconectada",
   degraded: "Inestable",
 };
+
+const SKELETON_ITEM_COUNT = 5;
+
+function StationItemSkeleton() {
+  return (
+    <div className="modal-station-item">
+      <div className="modal-station-info">
+        <Skeleton width="120px" height="14px" />
+        <Skeleton width="90px" height="12px" />
+      </div>
+      <Skeleton width="70px" height="20px" radius={999} />
+    </div>
+  );
+}
 
 type Props = {
   open: boolean;
@@ -83,7 +98,8 @@ export function StationSwitcherModal({ open, onClose, selectedId, onSelect }: Pr
         </div>
 
         <div className="modal-station-list">
-          {loading && <div className="modal-empty">Cargando…</div>}
+          {loading &&
+            Array.from({ length: SKELETON_ITEM_COUNT }, (_, i) => <StationItemSkeleton key={i} />)}
           {error && (
             <InlineError
               message="No se pudo cargar la lista de estaciones."

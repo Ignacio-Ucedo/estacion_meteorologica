@@ -4,11 +4,26 @@ import { getReadings } from "../api/client";
 import { STATION_ID } from "../api/config";
 import { formatTimestamp } from "../data/Stationlog";
 import { InlineError } from "./InlineError";
+import { Skeleton } from "./Skeleton";
 import { useToast } from "../hooks/useToast";
 import type { ReadingResponse } from "../api/types";
 
 const PAGE_SIZE = 7;
 const REFRESH_INTERVAL_MS = 30_000;
+const SKELETON_ROW_COUNT = 5;
+
+function renderSkeletonRow(key: number) {
+  return (
+    <div key={key} className="log-row log-row-skeleton" role="row">
+      <Skeleton width="90px" height="13px" />
+      <Skeleton width="65%" height="14px" />
+      <Skeleton width="36px" height="14px" className="skeleton-cell-end" />
+      <Skeleton width="36px" height="14px" className="skeleton-cell-end" />
+      <Skeleton width="36px" height="14px" className="skeleton-cell-end" />
+      <Skeleton width="36px" height="14px" className="skeleton-cell-end" />
+    </div>
+  );
+}
 
 function isHot(temp: number) { return temp >= 28; }
 function isCold(temp: number) { return temp <= 0; }
@@ -161,7 +176,7 @@ export function StationLogPanel() {
 
         <div className="log-table-body" role="rowgroup">
           {loading ? (
-            <div className="log-empty">Cargando…</div>
+            Array.from({ length: SKELETON_ROW_COUNT }, (_, i) => renderSkeletonRow(i))
           ) : error ? (
             <InlineError
               message="No se pudo cargar el historial de lecturas."
