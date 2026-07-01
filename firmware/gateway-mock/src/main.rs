@@ -15,7 +15,7 @@ const DEFAULT_BROKER: &str = "localhost:1883";
 const DEFAULT_APP_ID: &str = "1";
 const DEFAULT_DEV_EUI: &str = "0000000000000002";
 const DEFAULT_DEVICE_ID: u8 = 2;
-const DEFAULT_INTERVAL_SECONDS: u64 = 10;
+const DEFAULT_INTERVAL_SECONDS: u64 = 15;
 const PAYLOAD_LEN: usize = 14;
 
 #[derive(Debug, Clone)]

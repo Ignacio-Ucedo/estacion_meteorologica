@@ -37,7 +37,7 @@ Luego correr el mock:
 
 ```bash
 cd firmware/gateway-mock
-cargo run -- --app-id 1 --interval-seconds 10
+cargo run -- --app-id 1 --interval-seconds 15
 ```
 
 Variables/flags utiles:
@@ -46,7 +46,7 @@ Variables/flags utiles:
 - `--app-id 1` o `GATEWAY_MOCK_APP_ID` / `CHIRPSTACK_APP_ID`
 - `--dev-eui 0000000000000002` o `GATEWAY_MOCK_DEV_EUI`
 - `--device-id 2` o `GATEWAY_MOCK_DEVICE_ID`
-- `--interval-seconds 10` o `GATEWAY_MOCK_INTERVAL_SECONDS`
+- `--interval-seconds 15` o `GATEWAY_MOCK_INTERVAL_SECONDS`
 - `--once` o `GATEWAY_MOCK_ONCE=true`
 
 `--once` publica una sola lectura y termina; es util para pruebas rapidas.

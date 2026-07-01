@@ -16,6 +16,8 @@ import type {
 
 type FetchState<T> = { data: T | null; loading: boolean; error: string | null };
 
+const REALTIME_REFRESH_MS = 15_000;
+
 function useFetch<T>(fetcher: () => Promise<T>, deps: unknown[]): FetchState<T> {
   const [state, setState] = useState<FetchState<T>>({
     data: null,
@@ -25,17 +27,35 @@ function useFetch<T>(fetcher: () => Promise<T>, deps: unknown[]): FetchState<T> 
 
   useEffect(() => {
     let cancelled = false;
-    setState({ data: null, loading: true, error: null });
-    fetcher().then(
-      (data) => {
-        if (!cancelled) setState({ data, loading: false, error: null });
-      },
-      (err: Error) => {
-        if (!cancelled) setState({ data: null, loading: false, error: err.message });
-      },
-    );
+
+    const load = () => {
+      setState((current) => ({
+        data: current.data,
+        loading: current.data === null,
+        error: null,
+      }));
+      fetcher().then(
+        (data) => {
+          if (!cancelled) setState({ data, loading: false, error: null });
+        },
+        (err: Error) => {
+          if (!cancelled) {
+            setState((current) => ({
+              data: current.data,
+              loading: false,
+              error: err.message,
+            }));
+          }
+        },
+      );
+    };
+
+    load();
+    const intervalId = window.setInterval(load, REALTIME_REFRESH_MS);
+
     return () => {
       cancelled = true;
+      window.clearInterval(intervalId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
