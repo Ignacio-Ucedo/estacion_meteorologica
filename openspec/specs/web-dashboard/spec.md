@@ -15,7 +15,7 @@ El frontend debe permitir visualizar la evolución temporal de las siguientes va
 3. Escenarios de Usuario (Formato Given/When/Then)
 
 ### Requirement: Visualización de datos históricos
-La aplicación SHALL obtener los datos históricos desde la API REST del backend FastAPI en lugar de generarlos en el cliente. Los gráficos de temperatura (°C, rango -15 a 45), humedad (%, 0–100), velocidad del viento (km/h, 0–120) y precipitación (mm, 0–60) SHALL renderizarse con datos reales de PostgreSQL. El componente SHALL recibir `stationId` como prop en lugar de importar la constante `STATION_ID`.
+La aplicación SHALL obtener los datos históricos desde la API REST del backend FastAPI en lugar de generarlos en el cliente. Los gráficos de temperatura (°C, rango -15 a 45), humedad (%, 0–100), velocidad del viento (km/h, 0–120) y precipitación (mm, 0–60) SHALL renderizarse con datos reales de PostgreSQL. El componente SHALL recibir `stationId` como prop en lugar de importar la constante `STATION_ID`. El encabezado de cada gráfico (título y selector de período) SHALL permanecer legible y sin desbordarse en cualquier ancho de pantalla.
 
 #### Scenario: Carga de gráficos con datos disponibles
 - **WHEN** el componente de gráficos se carga y el backend tiene lecturas en la base de datos para la estación seleccionada
@@ -32,10 +32,15 @@ La aplicación SHALL obtener los datos históricos desde la API REST del backend
 
 #### Scenario: Backend no disponible al cargar gráficos
 - **WHEN** el frontend intenta cargar datos de métricas y el backend no responde
-- **THEN** cada gráfico muestra un mensaje de error de conectividad en lugar de datos vacíos o errores de consola
+- **THEN** cada gráfico (tanto en la pestaña "Gráficas" como en el gráfico inline del Dashboard principal) muestra `InlineError` con el mensaje "No se pudieron cargar las gráficas de la estación.", en lugar de un texto de error genérico o hardcodeado
+
+#### Scenario: Encabezado del gráfico se adapta a anchos angostos
+- **GIVEN** un `ChartCard` cuyo ancho disponible no alcanza para mostrar el título y los 4 botones de período (1D/7D/30D/1Y) en una sola fila
+- **WHEN** el gráfico se renderiza en ese ancho
+- **THEN** los botones de período bajan a una segunda línea debajo del título, sin desbordar el contenedor ni solaparse con el texto
 
 ### Requirement: Panel de estación con datos reales
-El StationPanel y las MetricCards del dashboard principal SHALL mostrar datos provenientes de `GET /api/stations/{id}` donde `id` es la estación actualmente seleccionada por el usuario (no una constante hardcodeada). El StationPanel SHALL ser clickeable y SHALL abrir el modal de selección de estación al hacer click.
+El StationPanel y las MetricCards del dashboard principal SHALL mostrar datos provenientes de `GET /api/stations/{id}` donde `id` es la estación actualmente seleccionada por el usuario (no una constante hardcodeada). El StationPanel SHALL ser clickeable y SHALL abrir el modal de selección de estación al hacer click. El badge de estado del sistema (`system-badge`) SHALL no renderizarse cuando no tiene contenido, en lugar de mostrarse vacío.
 
 #### Scenario: Lectura actual disponible
 - **WHEN** el dashboard se carga y la API retorna una lectura actual para la estación seleccionada
@@ -49,6 +54,11 @@ El StationPanel y las MetricCards del dashboard principal SHALL mostrar datos pr
 
 - **WHEN** el usuario hace click sobre el StationPanel
 - **THEN** el modal de selección de estación se abre
+
+#### Scenario: Badge de estado no se muestra cuando no hay contenido
+- **GIVEN** el dashboard tiene un error de carga de la estación (no está cargando y no hay estación disponible)
+- **WHEN** se renderiza el `StationPanel`
+- **THEN** el `system-badge` no se renderiza (sin `<span>` vacío ni espacio en blanco reservado), y el resto del panel (`lastUpdated`, etc.) se muestra normalmente
 
 ### Requirement: Log de historial con datos paginados reales
 El StationLogPanel SHALL consumir `GET /api/stations/{id}/readings?page=N&search=X` en lugar de generar lecturas aleatorias. La tabla SHALL actualizarse automáticamente cada 30 segundos. El botón "Pausar" SHALL detener el polling automático. El StationLogPanel SHALL ser independiente de la estación activa seleccionada en el dashboard y SHALL continuar usando su propio ID de estación configurado. Cuando el auto-refresh falla, SHALL emitir un toast con mensaje amigable en lugar de fallar silenciosamente. La carga inicial fallida SHALL mostrar `InlineError` dentro del panel.
