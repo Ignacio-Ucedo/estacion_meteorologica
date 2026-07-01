@@ -139,7 +139,94 @@ solo difieren en `device_id` y en que los valores varían de forma cíclica.
 
 ---
 
-## 5. Verificar el flujo completo
+## 5. Gateway-node-mock: validar la cadena con un solo ESP32 (sin SX1278)
+
+`gateway-node-mock` actúa simultáneamente como gateway sintético y como
+nodo sensor simulado. No requiere módulo SX1278. Valida la cadena completa
+**ESP32 → WiFi → UDP → ChirpStack → MQTT → Backend → PostgreSQL → Frontend**
+con un solo ESP32 y sin hardware de radio.
+
+Diferencia clave con los otros mocks:
+
+| Binary | device_id | SX1278 | ChirpStack flow |
+|---|---|---|---|
+| `sensor-node-mock` | 2 | Sí (TX) | Completa via LoRa RF |
+| `gateway-mock` (Docker) | N/A | No | Bypasea ChirpStack (publica directo a MQTT) |
+| `gateway-node-mock` | 3 | No | **Completa via UDP** (ejercita ChirpStack OTAA) |
+
+### 5.1 Registrar el gateway en ChirpStack
+
+Obtener el GatewayEUI del ESP32 (ver sección 2.1 — se imprime por serial al arrancar
+por primera vez con el binario). Registrarlo en ChirpStack siguiendo la sección 2.2.
+
+### 5.2 Crear el Device Profile EU433
+
+Si no existe ya (ver sección 3.1), crear el profile `esp32-sensor-eu433` con
+LoRaWAN 1.0.2, EU433, OTAA habilitado.
+
+### 5.3 Registrar el dispositivo gateway-node-mock
+
+En la application `weather-station` → **Add device**:
+
+- **Name**: `gateway-node-mock`
+- **DevEUI**: nuevo EUI-64 (diferente al del nodo real y al sensor-node-mock)
+- **Device profile**: `esp32-sensor-eu433`
+
+Tras guardar, pestaña **Keys (OTAA)**:
+- **AppKey**: generar nueva (diferente a todos los demás dispositivos)
+- **JoinEUI / AppEUI**: `0000000000000000`
+
+Anotar DevEUI y AppKey.
+
+### 5.4 Escribir las claves en NVS
+
+```bash
+cargo run --bin nvs-provision -- \
+  --dev-eui  <dev-eui-gateway-node-mock> \
+  --app-eui  0000000000000000 \
+  --app-key  <app-key-gateway-node-mock>
+```
+
+### 5.5 Compilar y flashear
+
+```bash
+WIFI_SSID="<tu-ssid>" \
+WIFI_PASS="<tu-password>" \
+CHIRPSTACK_HOST="<ip-del-host-docker>" \
+cargo build --bin gateway-node-mock --release
+
+espflash flash target/xtensa-esp32-espidf/release/gateway-node-mock
+```
+
+> `CHIRPSTACK_HOST` es la IP de la máquina donde corre `docker compose up`
+> (p.ej. `192.168.1.100`). El puerto UDP 1700 debe ser accesible desde el ESP32.
+
+### 5.6 Verificar el flujo
+
+1. Abrir monitor serial: `espflash monitor`
+2. Buscar en el log:
+   - `wifi_connected` — WiFi ok
+   - `gateway_eui=…` — EUI a registrar si no se hizo antes
+   - `lorawan_join attempt=1` — JoinRequest enviado via UDP
+   - `lorawan_join_ok dev_addr=…` — JoinAccept recibido y procesado
+   - `uplink_sent seq=1` — primer uplink inyectado
+3. En ChirpStack UI (http://localhost:8080): la application debe mostrar
+   el dispositivo `gateway-node-mock` con la última actividad.
+4. En el backend: `GET /api/stations` debe listar la estación auto-provisionada
+   con id `dev-<primeros-8-chars-del-devEUI>`.
+
+### 5.7 Notas de troubleshooting
+
+- **join_timeout**: verificar que el gateway esté registrado en ChirpStack con el EUI
+  correcto y que el puerto UDP 1700 no esté bloqueado por firewall.
+- **mic_invalid**: verificar que las claves en NVS coincidan con las registradas
+  en ChirpStack (DevEUI, AppEUI=todos-ceros, AppKey).
+- **nvs_load_failed**: ejecutar `nvs-provision` antes de flashear el mock.
+- **wifi_reconnect**: el firmware reconecta automáticamente y reenvía PULL_DATA.
+
+---
+
+## 6. Verificar el flujo completo
 
 ### Con sensor-node-mock (sin sensores físicos)
 
@@ -159,7 +246,7 @@ solo difieren en `device_id` y en que los valores varían de forma cíclica.
 
 ---
 
-## 6. Variables de entorno del módulo de ingesta LoRaWAN
+## 7. Variables de entorno del módulo de ingesta LoRaWAN
 
 > **Nota:** estas variables corresponden al módulo de ingesta MQTT + InfluxDB del
 > change `backend-lorawan-ingestion`, que aún no está implementado. El backend
