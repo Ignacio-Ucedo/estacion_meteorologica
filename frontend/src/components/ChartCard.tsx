@@ -14,6 +14,7 @@ import {
   Tooltip,
 } from "recharts";
 import { ChartTooltip, DailyBandTooltip } from "./Charttooltip";
+import { InlineError } from "./InlineError";
 import { Skeleton } from "./Skeleton";
 import type { WeatherPoint } from "../data/WeatherSeries";
 import type { DailySummary, MetricKey } from "../data/WeatherSeries";
@@ -280,7 +281,7 @@ export function ChartCard({
   return (
     <article className={`chart-card ${tone}`}>
       <div className="chart-card-head">
-        <div>
+        <div className="chart-card-title-wrap">
           <div className="chart-card-title">
             <span className="metric-signal" aria-hidden="true" />
             <span>{title}</span>
@@ -311,9 +312,7 @@ export function ChartCard({
         {loading ? (
           <ChartCardSkeleton kind={kind} />
         ) : error ? (
-          <div className="chart-state-overlay chart-state-error">
-            Sin conexión al servidor
-          </div>
+          <InlineError message="No se pudieron cargar las gráficas de la estación." />
         ) : isEmpty ? (
           <div className="chart-state-overlay">Sin datos disponibles</div>
         ) : (

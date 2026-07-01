@@ -44,9 +44,9 @@ export function StationPanel({
       <div className="station-meta">
         {loading ? (
           <Skeleton width="140px" height="34px" radius={999} />
-        ) : (
+        ) : badge ? (
           <span className="system-badge">{badge}</span>
-        )}
+        ) : null}
         {loading ? (
           <Skeleton width="110px" height="13px" />
         ) : (
