@@ -30,6 +30,7 @@ class CurrentReading(ApiModel):
     wind_speed: float = Field(alias="windSpeed")
     wind_direction: str = Field(alias="windDirection")
     precipitation: float
+    battery_level: float | None = Field(alias="batteryLevel")
 
 
 class StationDetail(StationResponse):
@@ -46,6 +47,7 @@ class ReadingResponse(ApiModel):
     humidity: float
     wind_speed: float = Field(alias="windSpeed")
     precipitation: float
+    battery_level: float | None = Field(alias="batteryLevel")
 
 
 class StationPage(ApiModel):

@@ -27,6 +27,7 @@ def reading(**overrides) -> SimpleNamespace:
         "wind_speed": 18.4,
         "wind_direction": "NE",
         "precipitation": 0.0,
+        "battery_level": 78.5,
     }
     values.update(overrides)
     return SimpleNamespace(**values)
@@ -191,6 +192,54 @@ async def test_daily_metric_summary_and_validation(client, monkeypatch):
 
     invalid_metric = await client.get("/api/stations/alpha/metrics/pressure/daily?days=7")
     assert invalid_metric.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_battery_level_in_station_detail(client, monkeypatch):
+    async def fake_get_station(_session, station_id):
+        return station(station_id) if station_id == "alpha" else None
+
+    async def fake_latest_reading_with_battery(_session, _station_id):
+        return reading(battery_level=78.5)
+
+    async def fake_latest_reading_no_battery(_session, _station_id):
+        return reading(battery_level=None)
+
+    monkeypatch.setattr(routes, "get_station", fake_get_station)
+    monkeypatch.setattr(routes, "latest_reading", fake_latest_reading_with_battery)
+
+    response = await client.get("/api/stations/alpha")
+    assert response.status_code == 200
+    assert response.json()["current"]["batteryLevel"] == 78.5
+
+    monkeypatch.setattr(routes, "latest_reading", fake_latest_reading_no_battery)
+    response = await client.get("/api/stations/alpha")
+    assert response.status_code == 200
+    assert response.json()["current"]["batteryLevel"] is None
+
+
+@pytest.mark.asyncio
+async def test_battery_level_in_readings_list(client, monkeypatch):
+    rows = [
+        (reading(temperature=i, battery_level=80.0 - i), "Alpha Base Station")
+        for i in range(3)
+    ]
+
+    async def fake_get_station(_session, station_id):
+        return station(station_id) if station_id == "alpha" else None
+
+    async def fake_paginated_readings(_session, _station_id, page, search):
+        return 3, rows
+
+    monkeypatch.setattr(routes, "get_station", fake_get_station)
+    monkeypatch.setattr(routes, "paginated_readings", fake_paginated_readings)
+
+    response = await client.get("/api/stations/alpha/readings")
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data[0]["batteryLevel"] == 80.0
+    assert data[1]["batteryLevel"] == 79.0
+    assert data[2]["batteryLevel"] == 78.0
 
 
 @pytest.mark.asyncio

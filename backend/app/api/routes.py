@@ -84,6 +84,7 @@ async def get_station_detail(
             windSpeed=reading.wind_speed,
             windDirection=reading.wind_direction,
             precipitation=reading.precipitation,
+            batteryLevel=reading.battery_level,
         )
     return StationDetail(
         id=station.id,
@@ -116,6 +117,7 @@ async def get_readings(
             humidity=reading.humidity,
             windSpeed=reading.wind_speed,
             precipitation=reading.precipitation,
+            batteryLevel=reading.battery_level,
         )
         for reading, station_name in rows
     ]
