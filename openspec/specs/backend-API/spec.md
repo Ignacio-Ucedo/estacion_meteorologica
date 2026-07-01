@@ -337,13 +337,7 @@ La respuesta debe contener exactamente:
 hora 0 -> hora 24
 ```
 
-Los datos faltantes deberán completarse según la estrategia definida por el frontend:
-
-* valor nulo
-* interpolación
-* último valor conocido
-
-(la decisión final deberá documentarse en la implementación).
+Los buckets horarios sin lecturas deben representarse con valor `null`, sin interpolar ni repetir el último valor conocido.
 
 ### Errores
 
