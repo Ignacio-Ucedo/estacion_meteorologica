@@ -180,7 +180,7 @@ function App() {
                   <span>Batería</span>
                   <span className="metric-signal" aria-hidden="true" />
                 </div>
-                <BatteryBar value={null} />
+                <BatteryBar value={current?.batteryLevel ?? null} />
                 <p>Nivel de carga de la estación</p>
               </article>
             </section>
