@@ -39,6 +39,21 @@ La aplicación SHALL obtener los datos históricos desde la API REST del backend
 - **WHEN** el gráfico se renderiza en ese ancho
 - **THEN** los botones de período bajan a una segunda línea debajo del título, sin desbordar el contenedor ni solaparse con el texto
 
+#### Scenario: El eje X de "1H" muestra la hora exacta de cada lectura
+- **GIVEN** que el componente está en la pestaña "1H"
+- **WHEN** se reciben puntos del endpoint `/metrics/{metric}/recent`
+- **THEN** el eje X SHALL mostrar el timestamp real de cada lectura en formato HH:MM (no buckets de hora de reloj)
+
+#### Scenario: El estado de carga de la pestaña "1H" es consistente con el resto
+- **GIVEN** que el componente está en la pestaña "1H"
+- **WHEN** la petición al endpoint de lecturas recientes está en curso
+- **THEN** el gráfico SHALL mostrar el mismo indicador de carga que las demás pestañas
+
+#### Scenario: Sin cambios en las pestañas 7D, 30D, 1A
+- **GIVEN** que el usuario selecciona cualquier pestaña distinta de "1H"
+- **WHEN** el componente obtiene datos
+- **THEN** SHALL seguir usando los endpoints de métricas diarias sin ningún cambio en comportamiento, formato de eje o fuente de datos
+
 ### Requirement: Panel de estación con datos reales
 El StationPanel y las MetricCards del dashboard principal SHALL mostrar datos provenientes de `GET /api/stations/{id}` donde `id` es la estación actualmente seleccionada por el usuario (no una constante hardcodeada). El StationPanel SHALL ser clickeable y SHALL abrir el modal de selección de estación al hacer click. El badge de estado del sistema (`system-badge`) SHALL no renderizarse cuando no tiene contenido, en lugar de mostrarse vacío.
 
