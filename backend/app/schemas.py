@@ -63,6 +63,18 @@ class ReadingPage(ApiModel):
     data: list[ReadingResponse]
 
 
+class MetricPoint(ApiModel):
+    timestamp: datetime
+    value: float
+
+
+class RecentMetricResponse(ApiModel):
+    metric: str
+    unit: str
+    minutes: int
+    points: list[MetricPoint]
+
+
 class HourlyPoint(ApiModel):
     hour: int
     value: float | None
