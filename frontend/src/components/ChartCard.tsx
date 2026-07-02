@@ -20,7 +20,7 @@ import type { WeatherPoint } from "../data/WeatherSeries";
 import type { DailySummary, MetricKey } from "../data/WeatherSeries";
 
 export type ChartKind = "line" | "area" | "bar";
-type Period = "1D" | "7D" | "30D" | "1Y";
+type Period = "1H" | "7D" | "30D" | "1Y";
 
 type ChartCardProps = {
   title: string;
@@ -43,10 +43,9 @@ type ChartCardProps = {
   error?: string | null;
 };
 
-const X_TICKS_1D = [0, 4, 8, 12, 16, 20, 24];
 const X_TICKS_7D = [0, 1, 2, 3, 4, 5, 6];
 const X_TICKS_30D = [0, 3, 6, 9, 12, 15, 18, 21, 24, 27];
-const PERIODS: Period[] = ["1D", "7D", "30D", "1Y"];
+const PERIODS: Period[] = ["1H", "7D", "30D", "1Y"];
 
 const CHART_SKELETON_BAR_HEIGHTS = [40, 65, 30, 80, 50, 70, 35];
 
@@ -116,7 +115,7 @@ export function ChartCard({
   loading = false,
   error = null,
 }: ChartCardProps) {
-  const [period, setPeriod] = useState<Period>("1D");
+  const [period, setPeriod] = useState<Period>("1H");
 
   const idealDomain1D  = useMemo(() => idealFrom1D(data, dataKey, domainMin, domainMax, tickStep), [data, dataKey, domainMin, domainMax, tickStep]);
   const idealDomain7D  = useMemo(() => idealFromDaily(daily7,   domainMin, domainMax, tickStep), [daily7,   domainMin, domainMax, tickStep]);
@@ -126,7 +125,7 @@ export function ChartCard({
   const [range, setRange] = useState<[number, number]>(idealDomain1D);
 
   const activeIdealDomain =
-    period === "1D"  ? idealDomain1D  :
+    period === "1H"  ? idealDomain1D  :
     period === "7D"  ? idealDomain7D  :
     period === "30D" ? idealDomain30D : idealDomain1Y;
 
@@ -137,7 +136,7 @@ export function ChartCard({
   }
 
   const extremes = useMemo(() => {
-    if (period === "1D") {
+    if (period === "1H") {
       if (data.length === 0) return { max: 0, maxWhen: "—", min: 0, minWhen: "—" };
       let maxVal = -Infinity, maxHour = 0;
       let minVal = Infinity, minHour = 0;
@@ -236,15 +235,15 @@ export function ChartCard({
     if (period === "30D") return bandChart(daily30,  xAxis30D(), false);
     if (period === "1Y")  return bandChart(daily365, xAxis1Y(),  false);
 
-    const xAxis1D = (
-      <XAxis dataKey="hour" type="number" domain={[0, 24]} ticks={X_TICKS_1D}
-        tickFormatter={(h: number) => `${h.toString().padStart(2, "0")}:00`}
+    const xInterval = data.length <= 1 ? 0 : Math.ceil((data.length - 1) / 5);
+    const xAxis1H = (
+      <XAxis dataKey="label" type="category" interval={xInterval}
         stroke="#45464d" tick={{ fill: "#c6c6cd", fontSize: 11 }} />
     );
 
     if (kind === "line") return (
       <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-        {grid}{xAxis1D}{yAxis}
+        {grid}{xAxis1H}{yAxis}
         <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ stroke: "#45464d" }} />
         <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2.5} dot={false}
           activeDot={{ r: 4, fill: color, stroke: "#131315", strokeWidth: 2 }} isAnimationActive={false} />
@@ -259,7 +258,7 @@ export function ChartCard({
             <stop offset="100%" stopColor={color} stopOpacity={0.03} />
           </linearGradient>
         </defs>
-        {grid}{xAxis1D}{yAxis}
+        {grid}{xAxis1H}{yAxis}
         <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ stroke: "#45464d" }} />
         <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2.5}
           fill={`url(#${gradientId})`} isAnimationActive={false} />
@@ -268,14 +267,14 @@ export function ChartCard({
 
     return (
       <BarChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-        {grid}{xAxis1D}{yAxis}
+        {grid}{xAxis1H}{yAxis}
         <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
         <Bar dataKey={dataKey} fill={color} radius={[3, 3, 0, 0]} isAnimationActive={false} />
       </BarChart>
     );
   }
 
-  const currentData = period === "1D" ? data : period === "7D" ? daily7 : period === "30D" ? daily30 : daily365;
+  const currentData = period === "1H" ? data : period === "7D" ? daily7 : period === "30D" ? daily30 : daily365;
   const isEmpty = !loading && !error && currentData.length === 0;
 
   return (
@@ -287,7 +286,7 @@ export function ChartCard({
             <span>{title}</span>
           </div>
           <p className="chart-card-subtitle">
-            {period === "1D"  ? subtitle :
+            {period === "1H"  ? "Última hora" :
              period === "7D"  ? "Últimos 7 días" :
              period === "30D" ? "Últimos 30 días" :
              "Últimos 12 meses"}
