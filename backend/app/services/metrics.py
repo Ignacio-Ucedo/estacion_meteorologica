@@ -56,6 +56,29 @@ async def hourly_points(
     return [{"hour": hour, "value": values.get(hour)} for hour in range(25)]
 
 
+async def get_recent_metric(
+    session: AsyncSession,
+    station_id: str,
+    metric: str,
+    minutes: int,
+) -> list[dict[str, object]]:
+    config = METRICS[metric]
+    since = utc_now() - timedelta(minutes=minutes)
+    column = getattr(Reading, config.column_name)
+    result = await session.execute(
+        select(Reading.timestamp, column)
+        .where(Reading.station_id == station_id)
+        .where(Reading.timestamp >= since)
+        .order_by(Reading.timestamp.asc())
+    )
+    points = []
+    for timestamp, value in result.all():
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=UTC)
+        points.append({"timestamp": timestamp, "value": float(value)})
+    return points
+
+
 async def daily_summaries(
     session: AsyncSession,
     station_id: str,
