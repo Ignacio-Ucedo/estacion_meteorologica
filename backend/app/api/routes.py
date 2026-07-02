@@ -58,11 +58,20 @@ async def get_stations(
     page: PageQuery = 1,
     search: str | None = None,
 ) -> StationPage:
-    total, stations = await list_stations(session, page, search)
+    total, rows = await list_stations(session, page, search)
     return StationPage(
         total=total,
         page=page,
-        data=[StationResponse.model_validate(s, from_attributes=True) for s in stations],
+        data=[
+            StationResponse(
+                id=s.id,
+                name=s.name,
+                location=s.location,
+                status=s.status,
+                batteryLevel=battery,
+            )
+            for s, battery in rows
+        ],
     )
 
 
@@ -76,20 +85,24 @@ async def get_station_detail(
     reading = await latest_reading(session, station_id)
     current = None
     last_updated_at = None
+    battery_level = None
     if reading is not None:
         last_updated_at = reading.timestamp
+        battery_level = reading.battery_level
         current = CurrentReading(
             temperature=reading.temperature,
             humidity=reading.humidity,
             windSpeed=reading.wind_speed,
             windDirection=reading.wind_direction,
             precipitation=reading.precipitation,
+            batteryLevel=reading.battery_level,
         )
     return StationDetail(
         id=station.id,
         name=station.name,
         location=station.location,
         status=station.status,
+        batteryLevel=battery_level,
         lastUpdatedAt=last_updated_at,
         current=current,
     )
@@ -116,6 +129,7 @@ async def get_readings(
             humidity=reading.humidity,
             windSpeed=reading.wind_speed,
             precipitation=reading.precipitation,
+            batteryLevel=reading.battery_level,
         )
         for reading, station_name in rows
     ]

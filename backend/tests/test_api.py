@@ -27,6 +27,7 @@ def reading(**overrides) -> SimpleNamespace:
         "wind_speed": 18.4,
         "wind_direction": "NE",
         "precipitation": 0.0,
+        "battery_level": 62.0,
     }
     values.update(overrides)
     return SimpleNamespace(**values)
@@ -45,8 +46,8 @@ async def test_station_create_duplicate_list_and_validation(client, monkeypatch)
     async def duplicate_station(_session, _payload):
         raise IntegrityError("insert", {}, Exception("duplicate"))
 
-    async def fake_list_stations(_session):
-        return [station("alpha-base-station")]
+    async def fake_list_stations(_session, _page, _search):
+        return 1, [(station("alpha-base-station"), 88.0)]
 
     monkeypatch.setattr(routes, "create_station", fake_create_station)
     monkeypatch.setattr(routes, "list_stations", fake_list_stations)
@@ -69,7 +70,9 @@ async def test_station_create_duplicate_list_and_validation(client, monkeypatch)
 
     listed = await client.get("/api/stations")
     assert listed.status_code == 200
-    assert listed.json()[0]["name"] == "Alpha Base Station"
+    listed_body = listed.json()
+    assert listed_body["data"][0]["name"] == "Alpha Base Station"
+    assert listed_body["data"][0]["batteryLevel"] == 88.0
 
 
 @pytest.mark.asyncio
@@ -89,9 +92,47 @@ async def test_station_detail_and_not_found(client, monkeypatch):
     assert body["lastUpdatedAt"] is not None
     assert body["current"]["windSpeed"] == 18.4
     assert body["current"]["windDirection"] == "NE"
+    assert body["current"]["batteryLevel"] == 62.0
+    assert body["batteryLevel"] == 62.0
 
     missing = await client.get("/api/stations/missing")
     assert missing.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_station_detail_battery_defaults_to_zero_not_null(client, monkeypatch):
+    async def fake_get_station(_session, station_id):
+        return station(station_id) if station_id == "alpha" else None
+
+    async def fake_latest_reading(_session, _station_id):
+        return reading(battery_level=0.0)
+
+    monkeypatch.setattr(routes, "get_station", fake_get_station)
+    monkeypatch.setattr(routes, "latest_reading", fake_latest_reading)
+
+    response = await client.get("/api/stations/alpha")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["current"]["batteryLevel"] == 0
+    assert body["current"]["batteryLevel"] is not None
+
+
+@pytest.mark.asyncio
+async def test_station_detail_without_readings_has_null_battery(client, monkeypatch):
+    async def fake_get_station(_session, station_id):
+        return station(station_id) if station_id == "alpha" else None
+
+    async def fake_latest_reading(_session, _station_id):
+        return None
+
+    monkeypatch.setattr(routes, "get_station", fake_get_station)
+    monkeypatch.setattr(routes, "latest_reading", fake_latest_reading)
+
+    response = await client.get("/api/stations/alpha")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["current"] is None
+    assert body["batteryLevel"] is None
 
 
 @pytest.mark.asyncio
@@ -118,6 +159,7 @@ async def test_readings_are_paginated_ordered_and_searchable(client, monkeypatch
     assert len(body["data"]) == 7
     assert body["data"][0]["temperature"] == 0
     assert body["data"][0]["stationName"] == "Alpha Base Station"
+    assert body["data"][0]["batteryLevel"] == 62.0
 
     no_match = await client.get("/api/stations/alpha/readings?search=bravo")
     assert no_match.status_code == 200

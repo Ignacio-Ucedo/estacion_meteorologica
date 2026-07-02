@@ -42,5 +42,6 @@ class Reading(Base):
     wind_speed: Mapped[float] = mapped_column(Float, nullable=False)
     wind_direction: Mapped[str] = mapped_column(String(8), nullable=False)
     precipitation: Mapped[float] = mapped_column(Float, nullable=False)
+    battery_level: Mapped[float] = mapped_column(Float, nullable=False, server_default="0")
 
     station: Mapped[Station] = relationship(back_populates="readings")
