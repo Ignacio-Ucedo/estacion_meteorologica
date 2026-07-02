@@ -60,6 +60,36 @@ El StationPanel y las MetricCards del dashboard principal SHALL mostrar datos pr
 - **WHEN** se renderiza el `StationPanel`
 - **THEN** el `system-badge` no se renderiza (sin `<span>` vacío ni espacio en blanco reservado), y el resto del panel (`lastUpdated`, etc.) se muestra normalmente
 
+### Requirement: Visualización del nivel de batería en el dashboard principal
+El grid de metric cards del dashboard principal SHALL incluir una métrica de batería junto al resto de las variables ambientales (temperatura, humedad, viento, precipitación), consumiendo el campo `batteryLevel` expuesto por `GET /api/stations/{id}`. Cuando existe una lectura actual (`current` no es `null`), el campo SHALL tratarse siempre como un número (nunca `null`), con `0` como valor por defecto cuando la estación no reportó batería explícitamente.
+
+#### Scenario: Batería con dato disponible
+- **WHEN** el backend retorna `current.batteryLevel = 78` para la estación seleccionada
+- **THEN** la metric card de batería muestra `78%`
+
+#### Scenario: Batería en su valor por defecto
+- **WHEN** el backend retorna `current.batteryLevel = 0` (default, sin dato explícito) para la estación seleccionada
+- **THEN** la metric card de batería muestra `0%`, igual que cualquier otro valor numérico bajo
+
+#### Scenario: Sin lectura actual disponible
+- **WHEN** la API retorna `current: null` para la estación seleccionada
+- **THEN** la metric card de batería muestra "—", igual que el resto de las metric cards del dashboard en ese mismo caso
+
+### Requirement: Codificación visual de severidad del nivel de batería
+La metric card de batería SHALL mostrar, junto al valor numérico, un indicador (`BatteryIcon`) que codifica por color el nivel de severidad de la carga: verde para más de 60%, naranja para 25%–60%, y rojo para menos de 25%.
+
+#### Scenario: Batería en nivel alto
+- **WHEN** `batteryLevel` es 85
+- **THEN** el indicador de batería se muestra en verde ("alto")
+
+#### Scenario: Batería en nivel medio
+- **WHEN** `batteryLevel` es 40
+- **THEN** el indicador de batería se muestra en naranja ("medio")
+
+#### Scenario: Batería en nivel bajo
+- **WHEN** `batteryLevel` es 15
+- **THEN** el indicador de batería se muestra en rojo ("bajo")
+
 ### Requirement: Log de historial con datos paginados reales
 El StationLogPanel SHALL consumir `GET /api/stations/{id}/readings?page=N&search=X` en lugar de generar lecturas aleatorias. La tabla SHALL actualizarse automáticamente cada 30 segundos. El botón "Pausar" SHALL detener el polling automático. El StationLogPanel SHALL ser independiente de la estación activa seleccionada en el dashboard y SHALL continuar usando su propio ID de estación configurado. Cuando el auto-refresh falla, SHALL emitir un toast con mensaje amigable en lugar de fallar silenciosamente. La carga inicial fallida SHALL mostrar `InlineError` dentro del panel.
 
