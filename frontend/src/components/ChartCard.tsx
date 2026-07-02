@@ -275,7 +275,7 @@ export function ChartCard({
   }
 
   const currentData = period === "1H" ? data : period === "7D" ? daily7 : period === "30D" ? daily30 : daily365;
-  const isEmpty = !loading && !error && currentData.length === 0;
+  const isEmpty = !loading && !error && currentData.length === 0 && period !== "1H";
 
   return (
     <article className={`chart-card ${tone}`}>
