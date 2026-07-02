@@ -1,22 +1,26 @@
 import { ChartCard } from "./ChartCard";
 import { metricChartConfig } from "../data/MetricChartConfig";
 import type { MetricKey, WeatherPoint, DailySummary } from "../data/WeatherSeries";
-import { useHourlyMetric, useDailyMetric } from "../api/hooks";
-import type { HourlyPoint, DailySummaryApi } from "../api/types";
+import { useRecentMetric, useDailyMetric } from "../api/hooks";
+import type { RecentMetricPoint, DailySummaryApi } from "../api/types";
 
 const METRIC_ORDER: MetricKey[] = ["temperature", "humidity", "windSpeed", "precipitation"];
 
-function toWeatherPoints(points: HourlyPoint[], metricKey: MetricKey): WeatherPoint[] {
-  const fmt = (h: number) => `${(h % 24).toString().padStart(2, "0")}:00`;
-  return points.map((p) => ({
-    hour: p.hour,
-    label: fmt(p.hour),
-    temperature: 0,
-    humidity: 0,
-    windSpeed: 0,
-    precipitation: 0,
-    [metricKey]: p.value,
-  }));
+function toWeatherPoints(points: RecentMetricPoint[], metricKey: MetricKey): WeatherPoint[] {
+  return points.map((p, i) => {
+    const d = new Date(p.timestamp);
+    const hh = d.getHours().toString().padStart(2, "0");
+    const mm = d.getMinutes().toString().padStart(2, "0");
+    return {
+      hour: i,
+      label: `${hh}:${mm}`,
+      temperature: 0,
+      humidity: 0,
+      windSpeed: 0,
+      precipitation: 0,
+      [metricKey]: p.value,
+    };
+  });
 }
 
 function toDailySummaries(summaries: DailySummaryApi[]): DailySummary[] {
@@ -30,15 +34,15 @@ function toDailySummaries(summaries: DailySummaryApi[]): DailySummary[] {
 function MetricChart({ metricKey, stationId }: { metricKey: MetricKey; stationId: string }) {
   const config = metricChartConfig[metricKey];
 
-  const hourly = useHourlyMetric(stationId, metricKey);
+  const recent = useRecentMetric(stationId, metricKey);
   const daily7 = useDailyMetric(stationId, metricKey, 7);
   const daily30 = useDailyMetric(stationId, metricKey, 30);
   const daily365 = useDailyMetric(stationId, metricKey, 365);
 
-  const loading = hourly.loading || daily7.loading || daily30.loading || daily365.loading;
-  const error = hourly.error ?? daily7.error ?? daily30.error ?? daily365.error ?? null;
+  const loading = recent.loading || daily7.loading || daily30.loading || daily365.loading;
+  const error = recent.error ?? daily7.error ?? daily30.error ?? daily365.error ?? null;
 
-  const data = hourly.data ? toWeatherPoints(hourly.data.points, metricKey) : [];
+  const data = recent.data ? toWeatherPoints(recent.data.points, metricKey) : [];
   const d7 = daily7.data ? toDailySummaries(daily7.data.summaries) : [];
   const d30 = daily30.data ? toDailySummaries(daily30.data.summaries) : [];
   const d365 = daily365.data ? toDailySummaries(daily365.data.summaries) : [];
