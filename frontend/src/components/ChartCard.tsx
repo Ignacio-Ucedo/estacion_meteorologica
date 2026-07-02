@@ -1,4 +1,4 @@
-import { JSX, useMemo, useState } from "react";
+import { JSX, useEffect, useMemo, useState } from "react";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -134,6 +134,9 @@ export function ChartCard({
     period === "1D"  ? idealDomain1D  :
     period === "7D"  ? idealDomain7D  :
     period === "30D" ? idealDomain30D : idealDomain1Y;
+
+  const [aDomMin, aDomMax] = activeIdealDomain;
+  useEffect(() => { setRange([aDomMin, aDomMax]); }, [aDomMin, aDomMax]);
 
   function changePeriod(p: Period) {
     const d =
