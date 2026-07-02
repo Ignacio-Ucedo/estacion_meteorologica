@@ -10,12 +10,12 @@ type SelectedMetricChartProps = {
 };
 
 function toWeatherPoints(points: RecentMetricPoint[], metricKey: MetricKey): WeatherPoint[] {
-  return points.map((p, i) => {
+  return points.map((p) => {
     const d = new Date(p.timestamp);
     const hh = d.getHours().toString().padStart(2, "0");
     const mm = d.getMinutes().toString().padStart(2, "0");
     return {
-      hour: i,
+      hour: Math.floor(d.getTime() / 60_000),
       label: `${hh}:${mm}`,
       temperature: 0,
       humidity: 0,

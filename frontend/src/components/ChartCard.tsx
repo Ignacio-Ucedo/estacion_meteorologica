@@ -235,9 +235,17 @@ export function ChartCard({
     if (period === "30D") return bandChart(daily30,  xAxis30D(), false);
     if (period === "1Y")  return bandChart(daily365, xAxis1Y(),  false);
 
-    const xInterval = data.length <= 1 ? 0 : Math.ceil((data.length - 1) / 5);
+    const nowMin = Math.floor(Date.now() / 60_000);
+    const startMin = data.length > 0 ? data[0].hour : nowMin - 60;
+    const xTicks1H = Array.from({ length: 7 }, (_, i) =>
+      Math.round(startMin + (i * (nowMin - startMin)) / 6)
+    );
     const xAxis1H = (
-      <XAxis dataKey="label" type="category" interval={xInterval}
+      <XAxis dataKey="hour" type="number" domain={[startMin, nowMin]} ticks={xTicks1H}
+        tickFormatter={(min: number) => {
+          const d = new Date(min * 60_000);
+          return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+        }}
         stroke="#45464d" tick={{ fill: "#c6c6cd", fontSize: 11 }} />
     );
 
