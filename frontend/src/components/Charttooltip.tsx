@@ -12,8 +12,19 @@ export function ChartTooltip({ active, payload, label, unit, valueLabel }: Chart
   if (!active || !payload || payload.length === 0) return null;
 
   const value = payload[0]?.value;
-  const formattedLabel =
-    typeof label === "number" ? `${label.toString().padStart(2, "0")}:00` : label;
+  let formattedLabel: string;
+  if (typeof label === "number") {
+    if (label > 23) {
+      // minutes since epoch (1H chart)
+      const d = new Date(label * 60_000);
+      formattedLabel = `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+    } else {
+      // hour-of-day 0-23 (1D chart)
+      formattedLabel = `${label.toString().padStart(2, "0")}:00`;
+    }
+  } else {
+    formattedLabel = label ?? "";
+  }
 
   return (
     <div className="chart-tooltip">
