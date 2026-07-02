@@ -249,6 +249,8 @@ export function ChartCard({
         stroke="#45464d" tick={{ fill: "#c6c6cd", fontSize: 11 }} />
     );
 
+    const gridV = <CartesianGrid strokeDasharray="3 3" stroke="#2a2b2e" />;
+
     // Recharts skips axis tick rendering when data=[] even with explicit domain/ticks.
     // Phantom points with NaN values force axes to render without drawing any series.
     const chartData1H = data.length > 0 ? data : xTicks1H.map((min) => ({
@@ -257,7 +259,7 @@ export function ChartCard({
 
     if (kind === "line") return (
       <LineChart data={chartData1H} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-        {grid}{xAxis1H}{yAxis}
+        {gridV}{xAxis1H}{yAxis}
         <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ stroke: "#45464d" }} />
         <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2.5} dot={false}
           activeDot={{ r: 4, fill: color, stroke: "#131315", strokeWidth: 2 }} isAnimationActive={false} />
@@ -272,7 +274,7 @@ export function ChartCard({
             <stop offset="100%" stopColor={color} stopOpacity={0.03} />
           </linearGradient>
         </defs>
-        {grid}{xAxis1H}{yAxis}
+        {gridV}{xAxis1H}{yAxis}
         <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ stroke: "#45464d" }} />
         <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2.5}
           fill={`url(#${gradientId})`} isAnimationActive={false} />
@@ -281,7 +283,7 @@ export function ChartCard({
 
     return (
       <BarChart data={chartData1H} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-        {grid}{xAxis1H}{yAxis}
+        {gridV}{xAxis1H}{yAxis}
         <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
         <Bar dataKey={dataKey} fill={color} radius={[3, 3, 0, 0]} isAnimationActive={false} />
       </BarChart>
