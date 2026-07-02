@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -20,6 +21,7 @@ from app.schemas import (
     StationPage,
     StationResponse,
 )
+from app.config import get_settings
 from app.services.metrics import METRICS, daily_summaries, get_metric, get_recent_metric, hourly_points, utc_now
 from app.services.stations import (
     create_station,
@@ -31,6 +33,16 @@ from app.services.stations import (
 
 router = APIRouter()
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
+
+
+def effective_status(last_ts: datetime | None, threshold_seconds: int) -> str:
+    if last_ts is None:
+        return "offline"
+    if last_ts.tzinfo is None:
+        last_ts = last_ts.replace(tzinfo=UTC)
+    if datetime.now(UTC) - last_ts > timedelta(seconds=threshold_seconds):
+        return "offline"
+    return "online"
 PageQuery = Annotated[int, Query(ge=1)]
 DaysQuery = Annotated[int, Query()]
 
@@ -60,6 +72,7 @@ async def get_stations(
     page: PageQuery = 1,
     search: str | None = None,
 ) -> StationPage:
+    threshold = get_settings().station_offline_threshold_seconds
     total, rows = await list_stations(session, page, search)
     return StationPage(
         total=total,
@@ -69,10 +82,10 @@ async def get_stations(
                 id=s.id,
                 name=s.name,
                 location=s.location,
-                status=s.status,
+                status=effective_status(last_ts, threshold),
                 batteryLevel=battery,
             )
-            for s, battery in rows
+            for s, battery, last_ts in rows
         ],
     )
 
@@ -99,11 +112,12 @@ async def get_station_detail(
             precipitation=reading.precipitation,
             batteryLevel=reading.battery_level,
         )
+    threshold = get_settings().station_offline_threshold_seconds
     return StationDetail(
         id=station.id,
         name=station.name,
         location=station.location,
-        status=station.status,
+        status=effective_status(last_updated_at, threshold),
         batteryLevel=battery_level,
         lastUpdatedAt=last_updated_at,
         current=current,

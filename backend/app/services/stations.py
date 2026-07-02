@@ -35,7 +35,8 @@ async def create_station(session: AsyncSession, payload: StationCreate) -> Stati
 
 async def list_stations(
     session: AsyncSession, page: int, search: str | None = None
-) -> tuple[int, list[tuple[Station, float | None]]]:
+) -> tuple[int, list[tuple[Station, float | None, "datetime | None"]]]:
+    from datetime import datetime  # noqa: PLC0415
     latest_battery = (
         select(Reading.battery_level)
         .where(Reading.station_id == Station.id)
@@ -43,7 +44,17 @@ async def list_stations(
         .limit(1)
         .scalar_subquery()
     )
-    query = select(Station, latest_battery.label("battery_level")).order_by(Station.name.asc())
+    latest_ts = (
+        select(Reading.timestamp)
+        .where(Reading.station_id == Station.id)
+        .order_by(Reading.timestamp.desc())
+        .limit(1)
+        .scalar_subquery()
+    )
+    query = (
+        select(Station, latest_battery.label("battery_level"), latest_ts.label("last_ts"))
+        .order_by(Station.name.asc())
+    )
     if search:
         query = query.where(func.lower(Station.name).contains(search.lower()))
     total = await session.scalar(select(func.count()).select_from(query.subquery()))
