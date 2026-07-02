@@ -130,7 +130,7 @@ export function ChartCard({
     period === "30D" ? idealDomain30D : idealDomain1Y;
 
   function changePeriod(p: Period) {
-    const d = p === "1D" ? idealDomain1D : p === "7D" ? idealDomain7D : p === "30D" ? idealDomain30D : idealDomain1Y;
+    const d = p === "1H" ? idealDomain1D : p === "7D" ? idealDomain7D : p === "30D" ? idealDomain30D : idealDomain1Y;
     setPeriod(p);
     setRange(d);
   }
