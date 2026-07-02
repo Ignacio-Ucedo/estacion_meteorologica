@@ -30,4 +30,4 @@ El mock que originalmente iba a servir de puente (`add-battery-level-frontend`) 
 
 ## 5. Documentación
 
-- [ ] 5.1 Actualizar `openspec/specs/backend-API/spec.md` (vía sync) una vez archivado este change
+- [x] 5.1 Actualizar `openspec/specs/backend-API/spec.md` (vía sync) una vez archivado este change

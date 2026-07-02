@@ -49,6 +49,8 @@ wind_speed: float
 wind_direction: str
 
 precipitation: float
+
+battery_level: float
 ```
 
 ---
@@ -127,7 +129,8 @@ Obtiene estaciones registradas con soporte de paginación y búsqueda por nombre
       "id": "alpha",
       "name": "Alpha Base Station",
       "location": "Mendoza, Argentina",
-      "status": "online"
+      "status": "online",
+      "batteryLevel": 62
     }
   ]
 }
@@ -140,6 +143,7 @@ Obtiene estaciones registradas con soporte de paginación y búsqueda por nombre
 * El filtro `search` es case-insensitive y compara contra el nombre de la estación.
 * Si `page < 1`, la API responde con 422 Unprocessable Entity.
 * Si `page` excede el total de páginas disponibles, `data` devuelve `[]` con `total` correcto y sin error 4xx.
+* `batteryLevel` es el porcentaje de batería (0-100) de la lectura más reciente de esa estación; es `null` únicamente cuando la estación no tiene ninguna lectura registrada.
 
 ### Scenarios
 
@@ -202,16 +206,23 @@ id: string
   "name": "Alpha Base Station",
   "location": "Mendoza, Argentina",
   "status": "online",
+  "batteryLevel": 62,
   "lastUpdatedAt": "2026-06-26T14:32:00-03:00",
   "current": {
     "temperature": 24.8,
     "humidity": 61,
     "windSpeed": 18.4,
     "windDirection": "NE",
-    "precipitation": 12.6
+    "precipitation": 12.6,
+    "batteryLevel": 62
   }
 }
 ```
+
+### Reglas de negocio
+
+* `current.batteryLevel` es el porcentaje de batería (0-100) de la última lectura; nunca es `null` cuando `current` existe (default `0` si no fue registrado explícitamente).
+* `batteryLevel` a nivel raíz refleja el mismo valor que `current.batteryLevel`; es `null` únicamente cuando la estación no tiene ninguna lectura (es decir, cuando `current` también es `null`).
 
 ### Errores
 
@@ -262,7 +273,8 @@ id: string
       "temperature": 24.8,
       "humidity": 61,
       "windSpeed": 18.4,
-      "precipitation": 0.0
+      "precipitation": 0.0,
+      "batteryLevel": 62
     }
   ]
 }
@@ -273,6 +285,7 @@ id: string
 * Tamaño de página fijo: 7 registros.
 * Orden descendente por timestamp.
 * El filtro search es case-insensitive.
+* `batteryLevel` siempre es un número (0-100); `0` si no fue registrado explícitamente para esa lectura.
 
 ### Errores
 
