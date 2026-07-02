@@ -98,3 +98,12 @@ async def paginated_readings(
     )
     return int(total or 0), list(result.all())
 
+
+async def delete_station_readings(session: AsyncSession, station_id: str) -> int:
+    from sqlalchemy import delete  # noqa: PLC0415
+    result = await session.execute(
+        delete(Reading).where(Reading.station_id == station_id)
+    )
+    await session.commit()
+    return result.rowcount or 0
+

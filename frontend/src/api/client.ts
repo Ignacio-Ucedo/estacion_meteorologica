@@ -58,3 +58,7 @@ export function getRecentMetric(
 ): Promise<RecentMetricResponse> {
   return apiFetch(`/stations/${id}/metrics/${metric}/recent?minutes=${minutes}`);
 }
+
+export function deleteStationReadings(id: string): Promise<{ deleted: number }> {
+  return apiFetch(`/stations/${id}/readings`, { method: "DELETE" });
+}

@@ -4,6 +4,7 @@ import { useStations } from "../api/hooks";
 import { InlineError } from "./InlineError";
 import { Skeleton } from "./Skeleton";
 import type { StationResponse } from "../api/types";
+import { deleteStationReadings } from "../api/client";
 
 type StationStatus = "online" | "offline" | "degraded";
 
@@ -55,9 +56,67 @@ function StatusBadge({ status }: { status: StationStatus }) {
   );
 }
 
+type DeleteState = "idle" | "confirming" | "deleting" | "done" | "error";
+
+function DeleteConfirmDialog({
+  station,
+  onCancel,
+  onDeleted,
+}: {
+  station: StationResponse;
+  onCancel: () => void;
+  onDeleted: (count: number) => void;
+}) {
+  const [state, setState] = useState<"confirming" | "deleting" | "error">("confirming");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  async function handleDelete() {
+    setState("deleting");
+    try {
+      const res = await deleteStationReadings(station.id);
+      onDeleted(res.deleted);
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : "Error desconocido");
+      setState("error");
+    }
+  }
+
+  return (
+    <div className="smp-confirm-overlay" role="dialog" aria-modal="true">
+      <div className="smp-confirm-box">
+        <p className="smp-confirm-title">Borrar registros</p>
+        <p className="smp-confirm-body">
+          ¿Eliminar <strong>todos los registros</strong> de <em>{station.name}</em>?
+          Esta acción no se puede deshacer.
+        </p>
+        {state === "error" && <p className="smp-confirm-error">{errorMsg}</p>}
+        <div className="smp-confirm-actions">
+          <button className="smp-confirm-cancel" onClick={onCancel} disabled={state === "deleting"}>
+            Cancelar
+          </button>
+          <button className="smp-confirm-delete" onClick={handleDelete} disabled={state === "deleting"}>
+            {state === "deleting" ? "Borrando…" : "Borrar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StationCard({ station }: { station: StationResponse }) {
+  const [deleteState, setDeleteState] = useState<DeleteState>("idle");
+  const [deletedCount, setDeletedCount] = useState(0);
+
   return (
     <article className={`smp-card smp-card--${station.status}`}>
+      {deleteState === "confirming" || deleteState === "deleting" || deleteState === "error" ? (
+        <DeleteConfirmDialog
+          station={station}
+          onCancel={() => setDeleteState("idle")}
+          onDeleted={(n) => { setDeletedCount(n); setDeleteState("done"); }}
+        />
+      ) : null}
+
       <header className="smp-card-header">
         <div className="smp-card-name-wrap">
           <h3 className="smp-card-name">{station.name}</h3>
@@ -84,6 +143,18 @@ function StationCard({ station }: { station: StationResponse }) {
           <span className="smp-metric-label">Conexión</span>
           <span className="smp-metric-value">—</span>
         </div>
+      </div>
+
+      <div className="smp-divider" />
+
+      <div className="smp-card-actions">
+        {deleteState === "done" ? (
+          <span className="smp-delete-done">{deletedCount} registros eliminados</span>
+        ) : (
+          <button className="smp-delete-btn" onClick={() => setDeleteState("confirming")}>
+            Borrar registros
+          </button>
+        )}
       </div>
     </article>
   );
