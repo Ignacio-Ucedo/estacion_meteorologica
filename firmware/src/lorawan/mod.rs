@@ -1,20 +1,13 @@
 //! Stack LoRaWAN minimal para Class A, EU433, OTAA.
 //!
-//! Implementa:
-//! - JoinRequest / JoinAccept (OTAA)
-//! - Uplink no confirmado (UnconfirmedDataUp)
-//! - Crypto: AES-CMAC (MIC), AES-ECB (JoinAccept + session keys), AES-CTR (FRMPayload)
-//!
-//! No implementa (fuera del scope del prototipo):
-//! - ADR (Adaptive Data Rate)
-//! - Downlinks / ACK confirmados
-//! - Class B / Class C
-//! - Frame counter persistente en NVS (se reinicia en cada power cycle)
-//! - Channel hopping (single-channel fijo: 433.175 MHz SF7BW125)
+//! Los módulos crypto/frame/session viven en weather-core (Rust puro, compilable en host).
+//! Este módulo agrega las operaciones radio-específicas (Sx1278 + ESP-IDF).
 
-pub mod crypto;
-pub mod frame;
-pub mod session;
+// Re-exportar desde weather-core para que los bins puedan usar
+// `weather_firmware::lorawan::{crypto, frame, session}` sin cambios.
+pub use weather_core::lorawan::crypto;
+pub use weather_core::lorawan::frame;
+pub use weather_core::lorawan::session;
 
 use anyhow::{bail, Result};
 use log::{error, info, warn};
@@ -29,26 +22,19 @@ use crypto::{
 use frame::{build_join_request, parse_join_accept, build_mac_payload, build_uplink, MHDR_JOIN_ACCEPT};
 
 const FPORT_WEATHER: u8 = 2;
-/// Tiempo máximo de espera del JoinAccept (ventana RX1 de EU433: ~1 s + margen)
 const JOIN_ACCEPT_TIMEOUT_MS: u32 = 6_000;
-/// Backoff inicial entre reintentos de join
 const JOIN_RETRY_BASE_MS: u32 = 10_000;
-/// Máximo de retries antes de resetear el contador
 const JOIN_MAX_RETRIES: u32 = 5;
 
-/// Realiza el join OTAA con backoff exponencial.
-/// Retorna la sesión si tiene éxito.
 pub fn otaa_join(
     radio: &mut Sx1278,
     dev_eui: &DevEui,
     app_eui: &AppEui,
     app_key: &AppKey,
 ) -> Result<LorawanSession> {
-    // DevNonce: simple counter; para mayor seguridad usar NVS persistente
     let dev_nonce: u16 =
         (unsafe { esp_idf_svc::sys::esp_timer_get_time() } as u64 / 1000 & 0xFFFF) as u16;
 
-    // AppEUI y DevEUI en wire son LSB first
     let mut app_eui_le = *app_eui;
     app_eui_le.reverse();
     let mut dev_eui_le = *dev_eui;
@@ -64,13 +50,11 @@ pub fn otaa_join(
 
         radio.transmit(&join_req)?;
 
-        // Esperar JoinAccept en ventana RX1
         let mut buf = [0u8; 64];
         match radio.receive_with_timeout(&mut buf, JOIN_ACCEPT_TIMEOUT_MS) {
             Ok(Some(n)) => {
                 let raw = &mut buf[..n];
                 if raw[0] == MHDR_JOIN_ACCEPT && n >= 17 {
-                    // Descifrar body (bytes 1..)
                     let body = &mut raw[1..];
                     decrypt_join_accept(app_key, body);
 
@@ -102,8 +86,6 @@ pub fn otaa_join(
     bail!("lorawan_join_failed after {} attempts", JOIN_MAX_RETRIES)
 }
 
-/// Transmite un uplink no confirmado con el FRMPayload dado.
-/// Modifica `frm_payload` in-place (cifrado).
 pub fn send_uplink(
     radio: &mut Sx1278,
     session: &mut LorawanSession,
@@ -111,10 +93,8 @@ pub fn send_uplink(
 ) -> Result<()> {
     let fcnt = session.next_fcnt();
 
-    // Cifrar FRMPayload in-place
     encrypt_frm_payload(&session.app_skey, &session.dev_addr, fcnt, frm_payload);
 
-    // MIC cubre MHDR | FHDR | FPort | FRMPayload (spec LoRaWAN 1.0.2 §4.4)
     let mac_payload = build_mac_payload(&session.dev_addr, fcnt, FPORT_WEATHER, frm_payload);
     let mic = uplink_mic(&session.nwk_skey, &session.dev_addr, fcnt, &mac_payload);
     let frame = build_uplink(&session.dev_addr, fcnt, FPORT_WEATHER, frm_payload, &mic);

@@ -35,6 +35,7 @@ heapless = "0.8"
 esp-idf-hal = "0.46"
 esp-idf-svc = "0.52"
 embedded-svc = "0.29"
+weather-core = { path = "../weather-core" }
 
 # LoRaWAN EU433: crypto primitives para OTAA y uplinks Class A
 aes = { version = "0.8", default-features = false }
