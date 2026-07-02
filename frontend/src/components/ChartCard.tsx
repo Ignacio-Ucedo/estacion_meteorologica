@@ -20,7 +20,7 @@ import type { WeatherPoint } from "../data/WeatherSeries";
 import type { DailySummary, MetricKey } from "../data/WeatherSeries";
 
 export type ChartKind = "line" | "area" | "bar";
-type Period = "1H" | "7D" | "30D" | "1Y";
+type Period = "1H" | "1D" | "7D" | "30D" | "1Y";
 
 type ChartCardProps = {
   title: string;
@@ -28,6 +28,7 @@ type ChartCardProps = {
   tone: "warm" | "cool" | "wind" | "rain";
   kind: ChartKind;
   data: WeatherPoint[];
+  hourly: WeatherPoint[];
   dataKey: keyof WeatherPoint;
   metricKey: MetricKey;
   daily7: DailySummary[];
@@ -43,9 +44,10 @@ type ChartCardProps = {
   error?: string | null;
 };
 
+const X_TICKS_1D = [0, 4, 8, 12, 16, 20, 24];
 const X_TICKS_7D = [0, 1, 2, 3, 4, 5, 6];
 const X_TICKS_30D = [0, 3, 6, 9, 12, 15, 18, 21, 24, 27];
-const PERIODS: Period[] = ["1H", "7D", "30D", "1Y"];
+const PERIODS: Period[] = ["1H", "1D", "7D", "30D", "1Y"];
 
 const CHART_SKELETON_BAR_HEIGHTS = [40, 65, 30, 80, 50, 70, 35];
 
@@ -77,7 +79,8 @@ function idealFrom1D(
   domainMin: number, domainMax: number, tickStep: number,
 ): [number, number] {
   if (data.length === 0) return [domainMin, domainMax];
-  const values = data.map((d) => d[dataKey] as number);
+  const values = data.map((d) => d[dataKey] as number).filter((v) => !isNaN(v));
+  if (values.length === 0) return [domainMin, domainMax];
   const rawMin = Math.min(...values);
   const rawMax = Math.max(...values);
   const min = Math.max(domainMin, Math.floor(rawMin / tickStep) * tickStep);
@@ -102,6 +105,7 @@ export function ChartCard({
   tone,
   kind,
   data,
+  hourly,
   dataKey,
   daily7,
   daily30,
@@ -117,31 +121,39 @@ export function ChartCard({
 }: ChartCardProps) {
   const [period, setPeriod] = useState<Period>("1H");
 
-  const idealDomain1D  = useMemo(() => idealFrom1D(data, dataKey, domainMin, domainMax, tickStep), [data, dataKey, domainMin, domainMax, tickStep]);
+  const idealDomain1H  = useMemo(() => idealFrom1D(data,   dataKey, domainMin, domainMax, tickStep), [data,   dataKey, domainMin, domainMax, tickStep]);
+  const idealDomain1D  = useMemo(() => idealFrom1D(hourly, dataKey, domainMin, domainMax, tickStep), [hourly, dataKey, domainMin, domainMax, tickStep]);
   const idealDomain7D  = useMemo(() => idealFromDaily(daily7,   domainMin, domainMax, tickStep), [daily7,   domainMin, domainMax, tickStep]);
   const idealDomain30D = useMemo(() => idealFromDaily(daily30,  domainMin, domainMax, tickStep), [daily30,  domainMin, domainMax, tickStep]);
   const idealDomain1Y  = useMemo(() => idealFromDaily(daily365, domainMin, domainMax, tickStep), [daily365, domainMin, domainMax, tickStep]);
 
-  const [range, setRange] = useState<[number, number]>(idealDomain1D);
+  const [range, setRange] = useState<[number, number]>(idealDomain1H);
 
   const activeIdealDomain =
-    period === "1H"  ? idealDomain1D  :
+    period === "1H"  ? idealDomain1H  :
+    period === "1D"  ? idealDomain1D  :
     period === "7D"  ? idealDomain7D  :
     period === "30D" ? idealDomain30D : idealDomain1Y;
 
   function changePeriod(p: Period) {
-    const d = p === "1H" ? idealDomain1D : p === "7D" ? idealDomain7D : p === "30D" ? idealDomain30D : idealDomain1Y;
+    const d =
+      p === "1H"  ? idealDomain1H  :
+      p === "1D"  ? idealDomain1D  :
+      p === "7D"  ? idealDomain7D  :
+      p === "30D" ? idealDomain30D : idealDomain1Y;
     setPeriod(p);
     setRange(d);
   }
 
   const extremes = useMemo(() => {
-    if (period === "1H") {
-      if (data.length === 0) return { max: 0, maxWhen: "—", min: 0, minWhen: "—" };
+    if (period === "1H" || period === "1D") {
+      const src = period === "1H" ? data : hourly;
+      if (src.length === 0) return { max: 0, maxWhen: "—", min: 0, minWhen: "—" };
       let maxVal = -Infinity, maxHour = 0;
       let minVal = Infinity, minHour = 0;
-      for (const pt of data) {
+      for (const pt of src) {
         const v = pt[dataKey] as number;
+        if (isNaN(v)) continue;
         if (v > maxVal) { maxVal = v; maxHour = pt.hour; }
         if (v < minVal) { minVal = v; minHour = pt.hour; }
       }
@@ -158,7 +170,7 @@ export function ChartCard({
     }
     const labelOf = (s: DailySummary) => period === "7D" ? s.dayLabel : s.dateLabel;
     return { max: maxVal, maxWhen: labelOf(src[maxIdx]), min: minVal, minWhen: labelOf(src[minIdx]) };
-  }, [period, data, dataKey, daily7, daily30, daily365]);
+  }, [period, data, hourly, dataKey, daily7, daily30, daily365]);
 
   const yTicks = useMemo(() => {
     const ticks: number[] = [];
@@ -235,6 +247,43 @@ export function ChartCard({
     if (period === "30D") return bandChart(daily30,  xAxis30D(), false);
     if (period === "1Y")  return bandChart(daily365, xAxis1Y(),  false);
 
+    if (period === "1D") {
+      const xAxis1D = (
+        <XAxis dataKey="hour" type="number" domain={[0, 24]} ticks={X_TICKS_1D}
+          tickFormatter={(h: number) => `${h.toString().padStart(2, "0")}:00`}
+          stroke="#45464d" tick={{ fill: "#c6c6cd", fontSize: 11 }} />
+      );
+      if (kind === "line") return (
+        <LineChart data={hourly} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+          {grid}{xAxis1D}{yAxis}
+          <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ stroke: "#45464d" }} />
+          <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2.5} dot={false}
+            activeDot={{ r: 4, fill: color, stroke: "#131315", strokeWidth: 2 }} isAnimationActive={false} connectNulls={false} />
+        </LineChart>
+      );
+      if (kind === "area") return (
+        <AreaChart data={hourly} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={0.45} />
+              <stop offset="100%" stopColor={color} stopOpacity={0.03} />
+            </linearGradient>
+          </defs>
+          {grid}{xAxis1D}{yAxis}
+          <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ stroke: "#45464d" }} />
+          <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2.5}
+            fill={`url(#${gradientId})`} isAnimationActive={false} connectNulls={false} />
+        </AreaChart>
+      );
+      return (
+        <BarChart data={hourly} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+          {grid}{xAxis1D}{yAxis}
+          <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+          <Bar dataKey={dataKey} fill={color} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+        </BarChart>
+      );
+    }
+
     const nowMin = Math.floor(Date.now() / 60_000);
     const startMin = data.length > 0 ? data[0].hour : nowMin - 60;
     const xTicks1H = Array.from({ length: 7 }, (_, i) =>
@@ -290,8 +339,12 @@ export function ChartCard({
     );
   }
 
-  const currentData = period === "1H" ? data : period === "7D" ? daily7 : period === "30D" ? daily30 : daily365;
-  const isEmpty = !loading && !error && currentData.length === 0 && period !== "1H";
+  const currentData =
+    period === "1H"  ? data :
+    period === "1D"  ? hourly :
+    period === "7D"  ? daily7 :
+    period === "30D" ? daily30 : daily365;
+  const isEmpty = !loading && !error && currentData.length === 0 && period !== "1H" && period !== "1D";
 
   return (
     <article className={`chart-card ${tone}`}>
@@ -303,6 +356,7 @@ export function ChartCard({
           </div>
           <p className="chart-card-subtitle">
             {period === "1H"  ? "Última hora" :
+             period === "1D"  ? "Últimas 24 horas" :
              period === "7D"  ? "Últimos 7 días" :
              period === "30D" ? "Últimos 30 días" :
              "Últimos 12 meses"}
