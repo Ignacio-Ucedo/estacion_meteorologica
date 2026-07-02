@@ -33,7 +33,7 @@
 
 ## 6. Validación (requiere ESP32 + docker-compose up)
 
-- [ ] 6.1 Flashear `gateway-node-mock` en un ESP32, confirmar conexión WiFi, envío de PULL_DATA y PUSH_DATA de join por serial. No requiere SX1278. Commit sugerido: ninguno (validación sin código).
-- [ ] 6.2 Verificar join OTAA exitoso: el log de ChirpStack debe mostrar el JoinAccept enviado y el log del firmware debe mostrar `lorawan_join_ok dev_addr=…`. Requiere ChirpStack corriendo y device registrado.
-- [ ] 6.3 Verificar uplinks end-to-end: esperar al menos 2 uplinks, confirmar que aparecen en `GET /api/stations` con `device_id=3` y valores de temperatura/humedad variables.
-- [ ] 6.4 Verificar reconexión WiFi: `docker compose restart` del AP (o usar un punto de acceso controlado), confirmar que el firmware reconecta y los uplinks se reanudan sin reiniciar el ESP32.
+- [x] 6.1 Flashear `gateway-node-mock` en un ESP32, confirmar conexión WiFi, envío de PULL_DATA y PUSH_DATA de join por serial. No requiere SX1278. Commit sugerido: ninguno (validación sin código).
+- [x] 6.2 Verificar join OTAA exitoso: el log de ChirpStack debe mostrar el JoinAccept enviado y el log del firmware debe mostrar `lorawan_join_ok dev_addr=…`. Requiere ChirpStack corriendo y device registrado.
+- [x] 6.3 Verificar uplinks end-to-end: esperar al menos 2 uplinks, confirmar que aparecen en `GET /api/stations` con `device_id=3` y valores de temperatura/humedad variables.
+- [x] 6.4 Verificar reconexión WiFi: `docker compose restart` del AP (o usar un punto de acceso controlado), confirmar que el firmware reconecta y los uplinks se reanudan sin reiniciar el ESP32.
