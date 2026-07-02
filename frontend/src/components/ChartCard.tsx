@@ -262,7 +262,8 @@ export function ChartCard({
         <LineChart data={hourly} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
           {gridV}{xAxis1D}{yAxis}
           <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ stroke: "#45464d" }} />
-          <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2.5} dot={false}
+          <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2.5}
+            dot={{ r: 3, fill: color, stroke: "#131315", strokeWidth: 1.5 }}
             activeDot={{ r: 4, fill: color, stroke: "#131315", strokeWidth: 2 }} isAnimationActive={false} connectNulls={false} />
         </LineChart>
       );
@@ -277,6 +278,7 @@ export function ChartCard({
           {gridV}{xAxis1D}{yAxis}
           <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ stroke: "#45464d" }} />
           <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2.5}
+            dot={{ r: 3, fill: color, stroke: "#131315", strokeWidth: 1.5 }}
             fill={`url(#${gradientId})`} isAnimationActive={false} connectNulls={false} />
         </AreaChart>
       );

@@ -23,16 +23,21 @@ function toWeatherPoints(points: RecentMetricPoint[], metricKey: MetricKey): Wea
   });
 }
 
+const UTC_OFFSET_H = -new Date().getTimezoneOffset() / 60;
+
 function hourlyToWeatherPoints(points: HourlyPoint[], metricKey: MetricKey): WeatherPoint[] {
-  return points.map((p) => ({
-    hour: p.hour,
-    label: `${p.hour.toString().padStart(2, "0")}:00`,
-    temperature: 0,
-    humidity: 0,
-    windSpeed: 0,
-    precipitation: 0,
-    [metricKey]: p.value ?? NaN,
-  }));
+  return points.map((p) => {
+    const localHour = ((p.hour + UTC_OFFSET_H) % 24 + 24) % 24;
+    return {
+      hour: localHour,
+      label: `${localHour.toString().padStart(2, "0")}:00`,
+      temperature: 0,
+      humidity: 0,
+      windSpeed: 0,
+      precipitation: 0,
+      [metricKey]: p.value ?? NaN,
+    };
+  });
 }
 
 function toDailySummaries(summaries: DailySummaryApi[]): DailySummary[] {
