@@ -19,7 +19,7 @@ pub type AppSKey = [u8; 16];
 pub type DevAddr = [u8; 4]; // little-endian en el wire
 
 fn aes_cmac_full(key: &[u8; 16], data: &[u8]) -> [u8; 16] {
-    let mut mac = <Cmac<Aes128>>::new_from_slice(key).unwrap();
+    let mut mac = <Cmac<Aes128> as KeyInit>::new_from_slice(key).unwrap();
     mac.update(data);
     mac.finalize().into_bytes().into()
 }
@@ -117,7 +117,7 @@ pub fn uplink_mic(nwk_skey: &NwkSKey, dev_addr: &DevAddr, fcnt: u32, frm: &[u8])
     // b0[14] = 0x00
     b0[15] = frm.len() as u8;
 
-    let mut mac = <Cmac<Aes128>>::new_from_slice(nwk_skey).unwrap();
+    let mut mac = <Cmac<Aes128> as KeyInit>::new_from_slice(nwk_skey).unwrap();
     mac.update(&b0);
     mac.update(frm);
     let full = mac.finalize().into_bytes();

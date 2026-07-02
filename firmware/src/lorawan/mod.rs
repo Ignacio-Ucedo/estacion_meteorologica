@@ -26,7 +26,7 @@ use crypto::{
     derive_session_keys, uplink_mic, encrypt_frm_payload,
     DevEui, AppEui, AppKey,
 };
-use frame::{build_join_request, parse_join_accept, build_uplink, MHDR_JOIN_ACCEPT};
+use frame::{build_join_request, parse_join_accept, build_mac_payload, build_uplink, MHDR_JOIN_ACCEPT};
 
 const FPORT_WEATHER: u8 = 2;
 /// Tiempo máximo de espera del JoinAccept (ventana RX1 de EU433: ~1 s + margen)
@@ -45,7 +45,8 @@ pub fn otaa_join(
     app_key: &AppKey,
 ) -> Result<LorawanSession> {
     // DevNonce: simple counter; para mayor seguridad usar NVS persistente
-    let dev_nonce: u16 = (esp_idf_hal::delay::FreeRtos::now_ms() & 0xFFFF) as u16;
+    let dev_nonce: u16 =
+        (unsafe { esp_idf_svc::sys::esp_timer_get_time() } as u64 / 1000 & 0xFFFF) as u16;
 
     // AppEUI y DevEUI en wire son LSB first
     let mut app_eui_le = *app_eui;
@@ -113,8 +114,9 @@ pub fn send_uplink(
     // Cifrar FRMPayload in-place
     encrypt_frm_payload(&session.app_skey, &session.dev_addr, fcnt, frm_payload);
 
-    // Construir trama completa (MHDR + FHDR + FPort + payload cifrado)
-    let mic = uplink_mic(&session.nwk_skey, &session.dev_addr, fcnt, frm_payload);
+    // MIC cubre MHDR | FHDR | FPort | FRMPayload (spec LoRaWAN 1.0.2 §4.4)
+    let mac_payload = build_mac_payload(&session.dev_addr, fcnt, FPORT_WEATHER, frm_payload);
+    let mic = uplink_mic(&session.nwk_skey, &session.dev_addr, fcnt, &mac_payload);
     let frame = build_uplink(&session.dev_addr, fcnt, FPORT_WEATHER, frm_payload, &mic);
 
     info!("lorawan_uplink fcnt={} payload_len={}", fcnt, frm_payload.len());

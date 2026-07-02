@@ -63,8 +63,26 @@ pub fn parse_join_accept(frame: &[u8]) -> Option<JoinAcceptFields> {
     })
 }
 
-/// Construye la trama de uplink (MHDR + FHDR + FPort + FRMPayload cifrado + MIC).
-/// Retorna un Vec con hasta ~30 bytes (14 bytes payload + overhead).
+/// Construye el MAC payload del uplink SIN MIC: MHDR | FHDR | FPort | FRMPayload.
+/// Este es el mensaje sobre el que se calcula el MIC según LoRaWAN 1.0.2 §4.4.
+pub fn build_mac_payload(
+    dev_addr: &DevAddr,
+    fcnt: u32,
+    fport: u8,
+    frm_payload_encrypted: &[u8],
+) -> heapless::Vec<u8, 64> {
+    let mut frame: heapless::Vec<u8, 64> = heapless::Vec::new();
+    frame.push(MHDR_UNCONFIRMED_DATA_UP).ok();
+    frame.extend_from_slice(dev_addr).ok();
+    frame.push(0x00).ok(); // FCtrl: sin ADR, sin ACK, sin FPending, FOptsLen=0
+    frame.push((fcnt & 0xFF) as u8).ok();
+    frame.push(((fcnt >> 8) & 0xFF) as u8).ok();
+    frame.push(fport).ok();
+    frame.extend_from_slice(frm_payload_encrypted).ok();
+    frame
+}
+
+/// Construye la trama de uplink completa (MAC payload + MIC).
 pub fn build_uplink(
     dev_addr: &DevAddr,
     fcnt: u32,
@@ -72,25 +90,7 @@ pub fn build_uplink(
     frm_payload_encrypted: &[u8],
     mic: &[u8; 4],
 ) -> heapless::Vec<u8, 64> {
-    let mut frame: heapless::Vec<u8, 64> = heapless::Vec::new();
-
-    // MHDR
-    frame.push(MHDR_UNCONFIRMED_DATA_UP).ok();
-
-    // FHDR: DevAddr (LE, 4 bytes) | FCtrl (1) | FCnt (LE u16, 2 bytes) | FOpts (0 bytes)
-    frame.extend_from_slice(dev_addr).ok();
-    frame.push(0x00).ok(); // FCtrl: sin ADR, sin ACK, sin FPending, FOptsLen=0
-    frame.push((fcnt & 0xFF) as u8).ok();
-    frame.push(((fcnt >> 8) & 0xFF) as u8).ok();
-
-    // FPort
-    frame.push(fport).ok();
-
-    // FRMPayload (ya cifrado)
-    frame.extend_from_slice(frm_payload_encrypted).ok();
-
-    // MIC
+    let mut frame = build_mac_payload(dev_addr, fcnt, fport, frm_payload_encrypted);
     frame.extend_from_slice(mic).ok();
-
     frame
 }

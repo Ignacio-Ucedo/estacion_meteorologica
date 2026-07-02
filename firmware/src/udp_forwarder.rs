@@ -3,11 +3,15 @@
 //! Compartido entre `gateway-node` (reenvía paquetes LoRa reales) y
 //! `gateway-node-mock` (inyecta frames sintéticos directamente en ChirpStack).
 
-use std::net::UdpSocket;
+use std::{
+    net::UdpSocket,
+    sync::atomic::{AtomicU16, Ordering},
+};
 
 use base64::Engine as _;
-use esp_idf_hal::delay::FreeRtos;
 use log::warn;
+
+static TOKEN: AtomicU16 = AtomicU16::new(1);
 
 const PROTOCOL_VERSION: u8 = 2;
 const PKT_PUSH_DATA: u8 = 0x00;
@@ -27,10 +31,10 @@ pub fn eui_to_hex(eui: &[u8; 8]) -> String {
         .join(":")
 }
 
-/// Token pseudo-aleatorio de 2 bytes basado en el timestamp del sistema.
+/// Token de 2 bytes con contador monotónico (evita colisiones entre llamadas consecutivas).
 pub fn random_token() -> [u8; 2] {
-    let t = FreeRtos::now_ms();
-    [(t & 0xFF) as u8, ((t >> 8) & 0xFF) as u8]
+    let t = TOKEN.fetch_add(1, Ordering::Relaxed);
+    [t as u8, (t >> 8) as u8]
 }
 
 /// Construye el JSON RXPK para un paquete recibido (o sintetizado).

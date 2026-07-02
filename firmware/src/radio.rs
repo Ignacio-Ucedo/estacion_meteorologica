@@ -81,14 +81,14 @@ pub struct RadioMetadata {
 
 pub struct Sx1278 {
     spi: SpiDeviceDriver<'static, SpiDriver<'static>>,
-    reset: PinDriver<'static, esp_idf_hal::gpio::AnyOutputPin, Output>,
+    reset: PinDriver<'static, Output>,
 }
 
 impl Sx1278 {
     /// Inicializa el SX1278: reset → verificar versión → configurar LoRa EU433.
     pub fn new(
         spi: SpiDeviceDriver<'static, SpiDriver<'static>>,
-        mut reset: PinDriver<'static, esp_idf_hal::gpio::AnyOutputPin, Output>,
+        mut reset: PinDriver<'static, Output>,
     ) -> Result<Self> {
         // Reset hardware
         reset.set_low().context("reset low")?;

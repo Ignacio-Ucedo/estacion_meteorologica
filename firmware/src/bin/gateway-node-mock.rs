@@ -39,7 +39,7 @@ const WIFI_SSID: &str = env!("WIFI_SSID");
 const WIFI_PASS: &str = env!("WIFI_PASS");
 const CHIRPSTACK_GW_BRIDGE_HOST: &str = env!("CHIRPSTACK_HOST");
 const CHIRPSTACK_GW_BRIDGE_PORT: u16 = 1700;
-const SEND_INTERVAL_MS: u32 = 10 * 60 * 1_000;
+const SEND_INTERVAL_MS: u32 = 30_000; // 30s para testing; producción: 10 * 60 * 1_000
 
 const DEVICE_ID: u8 = 3;
 const FPORT_WEATHER: u8 = 2;
@@ -173,7 +173,7 @@ fn main() -> anyhow::Result<()> {
         let frame = build_lorawan_frame(&mut session, payload_bytes);
 
         // Inject as synthetic RXPK
-        let tmst_us = FreeRtos::now_ms() as u64 * 1000;
+        let tmst_us = unsafe { esp_idf_svc::sys::esp_timer_get_time() } as u64;
         let rxpk_json = build_rxpk_json(&frame, -75, 9.5, tmst_us);
         send_push_data(&sock, &gateway_eui, &rxpk_json, &target_addr);
         rxfw += 1;
@@ -200,7 +200,9 @@ fn main() -> anyhow::Result<()> {
 fn build_lorawan_frame(session: &mut LorawanSession, mut payload: [u8; 14]) -> Vec<u8> {
     let fcnt = session.next_fcnt();
     crypto::encrypt_frm_payload(&session.app_skey, &session.dev_addr, fcnt, &mut payload);
-    let mic = crypto::uplink_mic(&session.nwk_skey, &session.dev_addr, fcnt, &payload);
+    // MIC cubre MHDR | FHDR | FPort | FRMPayload, no solo el FRMPayload (LoRaWAN 1.0.2 §4.4)
+    let mac_payload = frame::build_mac_payload(&session.dev_addr, fcnt, FPORT_WEATHER, &payload);
+    let mic = crypto::uplink_mic(&session.nwk_skey, &session.dev_addr, fcnt, &mac_payload);
     let frm = frame::build_uplink(&session.dev_addr, fcnt, FPORT_WEATHER, &payload, &mic);
     frm.to_vec()
 }
@@ -216,7 +218,7 @@ fn join_via_udp(
     use anyhow::Context as _;
     use base64::Engine as _;
 
-    let dev_nonce = (FreeRtos::now_ms() & 0xFFFF) as u16;
+    let dev_nonce = (unsafe { esp_idf_svc::sys::esp_timer_get_time() } as u64 / 1000 & 0xFFFF) as u16;
 
     // Wire order for MIC computation is LSB-first; NVS stores MSB-first
     let mut app_eui_le = keys.app_eui;
@@ -234,7 +236,7 @@ fn join_via_udp(
         send_pull_data(sock, gateway_eui, target_addr);
         FreeRtos::delay_ms(200);
 
-        let tmst_us = FreeRtos::now_ms() as u64 * 1000;
+        let tmst_us = unsafe { esp_idf_svc::sys::esp_timer_get_time() } as u64;
         let rxpk_json = build_rxpk_json(&join_req, -75, 9.5, tmst_us);
         send_push_data(sock, gateway_eui, &rxpk_json, target_addr);
         info!("lorawan_join attempt={} dev_nonce={:#06x}", attempt, dev_nonce);
@@ -346,6 +348,17 @@ fn connect_wifi(wifi: &mut BlockingWifi<EspWifi<'static>>) -> anyhow::Result<()>
         ..Default::default()
     }))?;
     wifi.start()?;
+
+    // Scan para diagnóstico: confirmar que el SSID es visible
+    let (scan_results, _) = wifi.wifi_mut().scan_n::<10>()?;
+    info!("wifi_scan found {} APs", scan_results.len());
+    for ap in &scan_results {
+        if ap.ssid.as_str() == WIFI_SSID {
+            info!("wifi_target_found ssid={} channel={} rssi={} auth={:?}",
+                ap.ssid, ap.channel, ap.signal_strength, ap.auth_method);
+        }
+    }
+
     wifi.connect()?;
     wifi.wait_netif_up()?;
     info!("wifi_connected ip={:?}", wifi.wifi().sta_netif().get_ip_info()?.ip);
