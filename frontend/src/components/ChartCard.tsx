@@ -317,7 +317,7 @@ export function ChartCard({
       <LineChart data={chartData1H} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
         {gridV}{xAxis1H}{yAxis}
         <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ stroke: "#45464d" }} />
-        <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2.5} dot={false}
+        <Line type="basis" dataKey={dataKey} stroke={color} strokeWidth={2.5} dot={false}
           activeDot={{ r: 4, fill: color, stroke: "#131315", strokeWidth: 2 }} isAnimationActive={false} />
       </LineChart>
     );
@@ -332,7 +332,7 @@ export function ChartCard({
         </defs>
         {gridV}{xAxis1H}{yAxis}
         <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ stroke: "#45464d" }} />
-        <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2.5}
+        <Area type="basis" dataKey={dataKey} stroke={color} strokeWidth={2.5}
           fill={`url(#${gradientId})`} isAnimationActive={false} />
       </AreaChart>
     );
