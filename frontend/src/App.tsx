@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Topbar } from "./components/Topbar";
 import { StationPanel } from "./components/StationPanel";
 import { MetricCard } from "./components/MetricCard";
-import { BatteryBar } from "./components/BatteryBar";
+import { BatteryIcon } from "./components/BatteryIcon";
 import { GraficasPanel } from "./components/Graficaspanel";
 import { StationLogPanel } from "./components/Stationlogpanel";
 import { StationManagementPanel } from "./components/StationManagmentPanel";
@@ -108,6 +109,7 @@ function App() {
     detail: string;
     tone: string;
     metricKey?: MetricKey;
+    indicator?: ReactNode;
   }> = [
     {
       label: "Temperatura",
@@ -148,6 +150,14 @@ function App() {
       tone: "rain",
       metricKey: "precipitation",
     },
+    {
+      label: "Batería",
+      value: fmt(current?.batteryLevel, 0),
+      unit: "%",
+      detail: "Nivel de carga de la estación",
+      tone: "battery",
+      indicator: <BatteryIcon value={current?.batteryLevel ?? null} />,
+    },
   ];
 
   const renderPanel = () => {
@@ -175,14 +185,6 @@ function App() {
                   onSelect={metricKey ? () => setSelectedMetricKey(metricKey) : undefined}
                 />
               ))}
-              <article className="metric-card battery">
-                <div className="metric-header">
-                  <span>Batería</span>
-                  <span className="metric-signal" aria-hidden="true" />
-                </div>
-                <BatteryBar value={current?.batteryLevel ?? null} />
-                <p>Nivel de carga de la estación</p>
-              </article>
             </section>
             <SelectedMetricChart metricKey={selectedMetricKey} stationId={selectedStationId} />
           </>
