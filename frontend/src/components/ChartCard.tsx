@@ -288,9 +288,11 @@ export function ChartCard({
 
     const nowMin = Math.floor(Date.now() / 60_000);
     const startMin = data.length > 0 ? data[0].hour : nowMin - 60;
-    const xTicks1H = Array.from({ length: 7 }, (_, i) =>
-      Math.round(startMin + (i * (nowMin - startMin)) / 6)
-    );
+    const rangeMin = Math.max(1, nowMin - startMin);
+    const niceSteps = [1, 2, 5, 10, 15, 20, 30, 60];
+    const step = niceSteps.find((s) => s >= rangeMin / 6) ?? 60;
+    const xTicks1H: number[] = [];
+    for (let t = Math.ceil(startMin / step) * step; t <= nowMin; t += step) xTicks1H.push(t);
     const xAxis1H = (
       <XAxis dataKey="hour" type="number" domain={[startMin, nowMin]} ticks={xTicks1H}
         tickFormatter={(min: number) => {
