@@ -4,6 +4,13 @@ target = "xtensa-esp32-espidf"
 [target.xtensa-esp32-espidf]
 linker = "ldproxy"
 
+[unstable]
+build-std = ["std", "panic_abort"]
+
 [env]
 MCU = "esp32"
 ESP_IDF_VERSION = "v5.2.2"
+# Definir en variable de entorno o en un .cargo/config.local.toml ignorado por git:
+# WIFI_SSID = "TuSSID"
+# WIFI_PASS = "TuPassword"
+# CHIRPSTACK_HOST = "IP-del-host"
