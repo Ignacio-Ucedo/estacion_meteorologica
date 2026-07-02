@@ -56,6 +56,18 @@ export type HourlyMetricResponse = {
   points: HourlyPoint[];
 };
 
+export type RecentMetricPoint = {
+  timestamp: string;
+  value: number;
+};
+
+export type RecentMetricResponse = {
+  metric: string;
+  unit: string;
+  minutes: number;
+  points: RecentMetricPoint[];
+};
+
 export type DailySummaryApi = {
   date: string;
   dayLabel: string;

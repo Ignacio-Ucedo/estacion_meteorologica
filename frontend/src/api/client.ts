@@ -2,6 +2,7 @@ import { BASE_URL } from "./config";
 import type {
   DailyMetricResponse,
   HourlyMetricResponse,
+  RecentMetricResponse,
   ReadingPage,
   StationDetail,
   StationPage,
@@ -48,4 +49,12 @@ export function getDailyMetric(
   days: number,
 ): Promise<DailyMetricResponse> {
   return apiFetch(`/stations/${id}/metrics/${metric}/daily?days=${days}`);
+}
+
+export function getRecentMetric(
+  id: string,
+  metric: string,
+  minutes = 60,
+): Promise<RecentMetricResponse> {
+  return apiFetch(`/stations/${id}/metrics/${metric}/recent?minutes=${minutes}`);
 }

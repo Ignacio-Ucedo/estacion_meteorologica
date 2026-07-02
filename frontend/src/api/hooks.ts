@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   getDailyMetric,
   getHourlyMetric,
+  getRecentMetric,
   getReadings,
   getStation,
   listStations,
@@ -9,6 +10,7 @@ import {
 import type {
   DailyMetricResponse,
   HourlyMetricResponse,
+  RecentMetricResponse,
   ReadingPage,
   StationDetail,
   StationPage,
@@ -76,6 +78,14 @@ export function useHourlyMetric(
   metric: string,
 ): FetchState<HourlyMetricResponse> {
   return useFetch(() => getHourlyMetric(id, metric), [id, metric]);
+}
+
+export function useRecentMetric(
+  id: string,
+  metric: string,
+  minutes = 60,
+): FetchState<RecentMetricResponse> {
+  return useFetch(() => getRecentMetric(id, metric, minutes), [id, metric, minutes]);
 }
 
 export function useDailyMetric(
