@@ -11,14 +11,16 @@ from app.schemas import (
     DailySummary,
     HourlyMetricResponse,
     HourlyPoint,
+    MetricPoint,
     ReadingPage,
     ReadingResponse,
+    RecentMetricResponse,
     StationCreate,
     StationDetail,
     StationPage,
     StationResponse,
 )
-from app.services.metrics import METRICS, daily_summaries, get_metric, hourly_points, utc_now
+from app.services.metrics import METRICS, daily_summaries, get_metric, get_recent_metric, hourly_points, utc_now
 from app.services.stations import (
     create_station,
     get_station,
@@ -152,6 +154,28 @@ async def get_hourly_metric(
         unit=config.unit,
         date=utc_now().date(),
         points=[HourlyPoint(**point) for point in points],
+    )
+
+
+@router.get("/stations/{station_id}/metrics/{metric}/recent", response_model=RecentMetricResponse)
+async def get_recent_metric_endpoint(
+    station_id: str,
+    metric: str,
+    session: SessionDep,
+    minutes: Annotated[int, Query(ge=1, le=1440)] = 60,
+) -> RecentMetricResponse:
+    config = get_metric(metric)
+    if config is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid metric")
+    station = await get_station(session, station_id)
+    if station is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Station not found")
+    points = await get_recent_metric(session, station_id, metric, minutes)
+    return RecentMetricResponse(
+        metric=metric,
+        unit=config.unit,
+        minutes=minutes,
+        points=[MetricPoint(**p) for p in points],
     )
 
 
