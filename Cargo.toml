@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "weather-core",
+    "operator-app/src-tauri",
 ]
 resolver = "2"
