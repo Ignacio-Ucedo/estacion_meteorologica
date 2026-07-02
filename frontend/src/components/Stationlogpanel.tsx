@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useReadings } from "../api/hooks";
 import { getReadings } from "../api/client";
-import { STATION_ID } from "../api/config";
+import { getPersistedStationId } from "../api/config";
 import { formatTimestamp } from "../data/Stationlog";
 import { InlineError } from "./InlineError";
 import { Skeleton } from "./Skeleton";
@@ -37,7 +37,7 @@ export function StationLogPanel() {
   const [searchInput, setSearchInput] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
 
-  const { data, loading, error, refresh } = useReadings(STATION_ID, page, activeSearch);
+  const { data, loading, error, refresh } = useReadings(getPersistedStationId(), page, activeSearch);
   const { addToast } = useToast();
 
   // bgData holds the result of the most recent successful background poll.
@@ -58,7 +58,7 @@ export function StationLogPanel() {
   useEffect(() => {
     if (paused) return;
     const interval = window.setInterval(() => {
-      getReadings(STATION_ID, page, activeSearch || undefined)
+      getReadings(getPersistedStationId(), page, activeSearch || undefined)
         .then((result) => setBgData(result))
         .catch(() => {
           if (hasDataRef.current) {
