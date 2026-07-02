@@ -46,6 +46,8 @@ function useFetch<T>(fetcher: () => Promise<T>, deps: unknown[]): FetchState<T> 
 }
 
 const STATION_POLL_MS = 30_000;
+const RECENT_POLL_MS = 30_000;
+const HOURLY_POLL_MS = 60_000;
 
 export function useStation(id: string): FetchState<StationDetail> & { refresh: () => void } {
   const [tick, setTick] = useState(0);
@@ -85,7 +87,12 @@ export function useHourlyMetric(
   id: string,
   metric: string,
 ): FetchState<HourlyMetricResponse> {
-  return useFetch(() => getHourlyMetric(id, metric), [id, metric]);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setTick((t) => t + 1), HOURLY_POLL_MS);
+    return () => window.clearInterval(intervalId);
+  }, []);
+  return useFetch(() => getHourlyMetric(id, metric), [id, metric, tick]);
 }
 
 export function useRecentMetric(
@@ -93,7 +100,12 @@ export function useRecentMetric(
   metric: string,
   minutes = 60,
 ): FetchState<RecentMetricResponse> {
-  return useFetch(() => getRecentMetric(id, metric, minutes), [id, metric, minutes]);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setTick((t) => t + 1), RECENT_POLL_MS);
+    return () => window.clearInterval(intervalId);
+  }, []);
+  return useFetch(() => getRecentMetric(id, metric, minutes), [id, metric, minutes, tick]);
 }
 
 export function useDailyMetric(
