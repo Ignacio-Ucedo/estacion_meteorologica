@@ -65,6 +65,10 @@ export function useStation(id: string): FetchState<StationDetail> & { refresh: (
 export function useStations(page: number, search: string): FetchState<StationPage> & { refresh: () => void } {
   const [tick, setTick] = useState(0);
   const refresh = useCallback(() => setTick((t) => t + 1), []);
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setTick((t) => t + 1), STATION_POLL_MS);
+    return () => window.clearInterval(intervalId);
+  }, []);
   const state = useFetch(() => listStations(page, search || undefined), [page, search, tick]);
   return { ...state, refresh };
 }
