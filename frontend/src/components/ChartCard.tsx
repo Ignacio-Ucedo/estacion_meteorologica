@@ -247,6 +247,8 @@ export function ChartCard({
     if (period === "30D") return bandChart(daily30,  xAxis30D(), false);
     if (period === "1Y")  return bandChart(daily365, xAxis1Y(),  false);
 
+    const gridV = <CartesianGrid strokeDasharray="3 3" stroke="#2a2b2e" />;
+
     if (period === "1D") {
       const xAxis1D = (
         <XAxis dataKey="hour" type="number" domain={[0, 24]} ticks={X_TICKS_1D}
@@ -255,7 +257,7 @@ export function ChartCard({
       );
       if (kind === "line") return (
         <LineChart data={hourly} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-          {grid}{xAxis1D}{yAxis}
+          {gridV}{xAxis1D}{yAxis}
           <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ stroke: "#45464d" }} />
           <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2.5} dot={false}
             activeDot={{ r: 4, fill: color, stroke: "#131315", strokeWidth: 2 }} isAnimationActive={false} connectNulls={false} />
@@ -269,7 +271,7 @@ export function ChartCard({
               <stop offset="100%" stopColor={color} stopOpacity={0.03} />
             </linearGradient>
           </defs>
-          {grid}{xAxis1D}{yAxis}
+          {gridV}{xAxis1D}{yAxis}
           <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ stroke: "#45464d" }} />
           <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2.5}
             fill={`url(#${gradientId})`} isAnimationActive={false} connectNulls={false} />
@@ -277,7 +279,7 @@ export function ChartCard({
       );
       return (
         <BarChart data={hourly} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-          {grid}{xAxis1D}{yAxis}
+          {gridV}{xAxis1D}{yAxis}
           <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
           <Bar dataKey={dataKey} fill={color} radius={[3, 3, 0, 0]} isAnimationActive={false} />
         </BarChart>
@@ -297,8 +299,6 @@ export function ChartCard({
         }}
         stroke="#45464d" tick={{ fill: "#c6c6cd", fontSize: 11 }} />
     );
-
-    const gridV = <CartesianGrid strokeDasharray="3 3" stroke="#2a2b2e" />;
 
     // Recharts skips axis tick rendering when data=[] even with explicit domain/ticks.
     // Phantom points with NaN values force axes to render without drawing any series.
