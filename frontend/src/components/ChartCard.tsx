@@ -249,8 +249,14 @@ export function ChartCard({
         stroke="#45464d" tick={{ fill: "#c6c6cd", fontSize: 11 }} />
     );
 
+    // Recharts skips axis tick rendering when data=[] even with explicit domain/ticks.
+    // Phantom points with NaN values force axes to render without drawing any series.
+    const chartData1H = data.length > 0 ? data : xTicks1H.map((min) => ({
+      hour: min, label: "", temperature: NaN, humidity: NaN, windSpeed: NaN, precipitation: NaN,
+    }));
+
     if (kind === "line") return (
-      <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+      <LineChart data={chartData1H} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
         {grid}{xAxis1H}{yAxis}
         <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ stroke: "#45464d" }} />
         <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2.5} dot={false}
@@ -259,7 +265,7 @@ export function ChartCard({
     );
 
     if (kind === "area") return (
-      <AreaChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+      <AreaChart data={chartData1H} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity={0.45} />
@@ -274,7 +280,7 @@ export function ChartCard({
     );
 
     return (
-      <BarChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+      <BarChart data={chartData1H} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
         {grid}{xAxis1H}{yAxis}
         <Tooltip content={<ChartTooltip unit={unit} valueLabel={title} />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
         <Bar dataKey={dataKey} fill={color} radius={[3, 3, 0, 0]} isAnimationActive={false} />
