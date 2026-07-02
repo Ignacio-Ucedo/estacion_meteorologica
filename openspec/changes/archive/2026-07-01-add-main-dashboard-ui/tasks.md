@@ -19,4 +19,4 @@
 
 - [x] 4.1 Aplicar paleta oscura, bordes, estados activos y tipografias alineadas al frame Figma `Dashboard Principal`. Commit sugerido `feat(frontend): aplicar estilos del dashboard principal`.
 - [x] 4.2 Verificar que no se rendericen graficas ni componentes de historial dentro del dashboard principal. Commit sugerido `test(frontend): verificar ausencia de graficas en dashboard principal`.
-- [ ] 4.3 Verificar visualmente en viewport desktop que textos, cards y sidebar no se superpongan ni generen overflow inesperado. Commit sugerido `test(frontend): validar vista desktop del dashboard principal`.
+- [x] 4.3 Verificar visualmente en viewport desktop que textos, cards y sidebar no se superpongan ni generen overflow inesperado. Commit sugerido `test(frontend): validar vista desktop del dashboard principal`.

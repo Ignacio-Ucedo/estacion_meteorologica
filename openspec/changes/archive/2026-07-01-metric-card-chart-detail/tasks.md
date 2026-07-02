@@ -2,7 +2,7 @@
 
 - [x] 1.1 Crear `frontend/src/data/MetricChartConfig.ts` con un mapa por `metricKey` (`temperature`, `humidity`, `windSpeed`, `precipitation`) que contenga `title`, `tone`, `kind`, `dataKey`, `unit`, `color`, `domainMin`, `domainMax`, `axisStep`, `tickStep`, replicando los valores actuales de `Graficaspanel.tsx`.
 - [x] 1.2 Refactorizar `frontend/src/components/Graficaspanel.tsx` para iterar `MetricChartConfig` en vez de declarar los 4 `<ChartCard>` a mano, pasando `data={weatherSeries}` y `daily7/30/365` desde `dailySeries[metricKey]`.
-- [ ] 1.3 Verificar visualmente que la pestaña "Gráficas" se ve idéntica antes y después del refactor (mismos colores, dominios y periodos). **Pendiente: requiere verificación manual del usuario, no hay acceso a navegador en este entorno.**
+- [x] 1.3 Verificar visualmente que la pestaña "Gráficas" se ve idéntica antes y después del refactor (mismos colores, dominios y periodos). Verificado manualmente por el usuario en navegador.
 
 ## 2. Vincular metric cards con su metricKey
 
@@ -18,5 +18,5 @@
 
 ## 4. Verificación
 
-- [ ] 4.1 Probar manualmente en navegador: el dashboard muestra un gráfico por defecto al cargar, clickear cada metric card con histórico actualiza el gráfico in place y resalta la card activa, y los toggles de periodo (1D/7D/30D/1Y) funcionan dentro del panel. **Pendiente: requiere verificación manual del usuario, no hay acceso a navegador en este entorno.**
+- [x] 4.1 Probar manualmente en navegador: el dashboard muestra un gráfico por defecto al cargar, clickear cada metric card con histórico actualiza el gráfico in place y resalta la card activa, y los toggles de periodo (1D/7D/30D/1Y) funcionan dentro del panel. Verificado manualmente por el usuario en navegador.
 - [x] 4.2 Confirmar que no se introdujeron llamadas duplicadas a datos ni nuevos componentes de gráfico fuera de `ChartCard` (se reutiliza `ChartCard` desde `SelectedMetricChart` y `GraficasPanel`, ambos consumen `metricChartConfig`/`weatherSeries`/`dailySeries`).

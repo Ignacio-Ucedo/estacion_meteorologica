@@ -78,7 +78,7 @@ function StationCard({ station }: { station: StationResponse }) {
         </div>
         <div className="smp-metric-row">
           <span className="smp-metric-label">Batería</span>
-          <BatteryBar value={null} />
+          <BatteryBar value={station.batteryLevel} />
         </div>
         <div className="smp-metric-row">
           <span className="smp-metric-label">Conexión</span>

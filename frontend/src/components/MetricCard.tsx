@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Skeleton } from "./Skeleton";
 
 type MetricCardProps = {
@@ -6,12 +7,13 @@ type MetricCardProps = {
   unit: string;
   detail: string;
   tone: string;
+  indicator?: ReactNode;
   onSelect?: () => void;
   active?: boolean;
   loading?: boolean;
 };
 
-export function MetricCard({ label, value, unit, detail, tone, onSelect, active, loading = false }: MetricCardProps) {
+export function MetricCard({ label, value, unit, detail, tone, indicator, onSelect, active, loading = false }: MetricCardProps) {
   const selectable = Boolean(onSelect);
 
   return (
@@ -42,6 +44,7 @@ export function MetricCard({ label, value, unit, detail, tone, onSelect, active,
           <>
             <span>{value}</span>
             {unit && <small>{unit}</small>}
+            {indicator}
           </>
         )}
       </div>

@@ -1,12 +1,8 @@
-# loading-skeleton/spec.md
+# loading-skeleton Specification
 
-# Especificación: Loading Skeletons
+## Purpose
 
-## Overview
-
-Componente `Skeleton` reutilizable y su aplicación en todas las superficies del dashboard para reemplazar textos "Cargando…" por siluetas animadas que respetan la forma del contenido final.
-
----
+Estados de carga del dashboard basados en skeleton screens animados: un componente `Skeleton` reutilizable reemplaza los textos "Cargando…" en paneles, metric cards, gráficos y listas paginadas del frontend.
 
 ## Requirements
 

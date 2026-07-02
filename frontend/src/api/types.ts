@@ -3,6 +3,7 @@ export type StationResponse = {
   name: string;
   location: string;
   status: "online" | "offline" | "degraded";
+  batteryLevel: number | null;
 };
 
 export type StationPage = {
@@ -17,6 +18,7 @@ export type CurrentReading = {
   windSpeed: number;
   windDirection: string;
   precipitation: number;
+  batteryLevel: number;
 };
 
 export type StationDetail = StationResponse & {
@@ -33,6 +35,7 @@ export type ReadingResponse = {
   humidity: number;
   windSpeed: number;
   precipitation: number;
+  batteryLevel: number;
 };
 
 export type ReadingPage = {
