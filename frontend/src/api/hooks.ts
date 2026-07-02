@@ -45,10 +45,18 @@ function useFetch<T>(fetcher: () => Promise<T>, deps: unknown[]): FetchState<T> 
   return state;
 }
 
+const STATION_POLL_MS = 30_000;
+
 export function useStation(id: string): FetchState<StationDetail> & { refresh: () => void } {
   const [tick, setTick] = useState(0);
   const refresh = useCallback(() => setTick((t) => t + 1), []);
   const state = useFetch(() => getStation(id), [id, tick]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setTick((t) => t + 1), STATION_POLL_MS);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
   return { ...state, refresh };
 }
 
