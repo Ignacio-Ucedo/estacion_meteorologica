@@ -86,3 +86,6 @@ arquitectura-gateway-backend.txt
 firmware/nvs_mock.csv
 firmware/nvs_mock.bin
 firmware/.cargo/config.local.toml
+
+# Scripts de infra en desarrollo, no listos para versionar
+infra/chirpstack-provision.py
