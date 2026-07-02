@@ -81,3 +81,8 @@ firmware/Cargo.lock
 # Archivos locales de prueba/informe (no forman parte del repo)
 prueba-gateway-node-mock.md
 arquitectura-gateway-backend.txt
+
+# Claves NVS y configuración local con credenciales (nunca versionar)
+firmware/nvs_mock.csv
+firmware/nvs_mock.bin
+firmware/.cargo/config.local.toml
