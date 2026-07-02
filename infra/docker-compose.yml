@@ -30,6 +30,7 @@ services:
   # El ESP32 single-channel packet forwarder apunta a este puesto UDP 1700
   chirpstack-gateway-bridge:
     image: chirpstack/chirpstack-gateway-bridge:4
+    command: -c /etc/chirpstack-gateway-bridge/chirpstack-gateway-bridge.toml
     restart: unless-stopped
     ports:
       - "1700:1700/udp"
