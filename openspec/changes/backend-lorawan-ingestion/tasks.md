@@ -8,7 +8,7 @@
 
 ## 2. Configuración
 
-- [ ] 2.1 Documentar las variables de entorno requeridas (`CHIRPSTACK_MQTT_BROKER`, `CHIRPSTACK_APP_ID`, `INFLUXDB_URL`, `INFLUXDB_TOKEN`, `INFLUXDB_ORG`, `INFLUXDB_BUCKET`) en `backend/README.md` con valores de ejemplo para el entorno local. Requiere coordinación con el responsable de infra para confirmar los valores del docker-compose. Commit sugerido: `docs(backend): documentar variables de entorno del backend`.
+- [x] 2.1 Documentar las variables de entorno requeridas (`CHIRPSTACK_MQTT_BROKER`, `CHIRPSTACK_APP_ID`, `INFLUXDB_URL`, `INFLUXDB_TOKEN`, `INFLUXDB_ORG`, `INFLUXDB_BUCKET`) en `backend/README.md` con valores de ejemplo para el entorno local. Requiere coordinación con el responsable de infra para confirmar los valores del docker-compose. Commit sugerido: `docs(backend): documentar variables de entorno del backend`.
 
 ## 3. Validación
 
