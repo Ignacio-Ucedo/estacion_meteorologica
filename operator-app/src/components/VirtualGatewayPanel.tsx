@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import GatewayLog, { LogEntry } from "./GatewayLog";
-import { fetchUsers, createStation, getBackendUrl, BACKEND_URL_KEY, BACKEND_PRESETS, BackendUser } from "../api/backend";
+import { fetchUsers, createStation, claimStation, getBackendUrl, BACKEND_URL_KEY, BACKEND_PRESETS, BackendUser } from "../api/backend";
 
 interface GatewayConfig {
   dev_eui: string;
@@ -115,13 +115,17 @@ export default function VirtualGatewayPanel() {
 
   async function handleStart() {
     try {
-      const devEuiSlug = config.dev_eui.replace(/[:\- ]/g, "").toLowerCase();
+      const devEuiClean = config.dev_eui.replace(/[:\- ]/g, "").toLowerCase();
+      const short = devEuiClean.slice(0, 8);
+      const stationId = `dev-${short}`;
+      // Intenta crear; si ya existe (409) la reclaima para este usuario
       await createStation({
-        name: `Gateway Virtual ${selectedUser?.username ?? devEuiSlug}`,
+        name: `Auto ${short}`,
         location: "Virtual",
         status: "online",
         user_id: selectedUserId || null,
       });
+      await claimStation(stationId, selectedUserId);
       await invoke("start_gateway", { config });
     } catch (e) {
       setLogs((prev) => [

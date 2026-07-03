@@ -107,6 +107,19 @@ async def get_stations(
     )
 
 
+@router.patch("/stations/{station_id}/owner", response_model=StationResponse)
+async def patch_station_owner(
+    station_id: str, body: dict, session: SessionDep
+) -> StationResponse:
+    station = await get_station(session, station_id)
+    if station is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Station not found")
+    station.user_id = body.get("user_id")
+    await session.commit()
+    await session.refresh(station)
+    return StationResponse.model_validate(station, from_attributes=True)
+
+
 @router.get("/stations/{station_id}", response_model=StationDetail)
 async def get_station_detail(
     station_id: str, session: SessionDep

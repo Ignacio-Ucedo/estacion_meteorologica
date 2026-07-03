@@ -42,3 +42,12 @@ export async function createStation(payload: StationPayload): Promise<void> {
     throw new Error(`POST /stations: ${res.status}`);
   }
 }
+
+export async function claimStation(stationId: string, userId: string): Promise<void> {
+  const res = await fetch(`${getBackendUrl()}/api/stations/${stationId}/owner`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId }),
+  });
+  if (!res.ok) throw new Error(`PATCH /stations/${stationId}/owner: ${res.status}`);
+}
