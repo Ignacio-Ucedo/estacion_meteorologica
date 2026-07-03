@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import GatewayLog, { LogEntry } from "./GatewayLog";
@@ -31,6 +31,90 @@ const STATUS_COLOR: Record<GatewayStatus, string> = {
 function isHex(s: string, len: number): boolean {
   return /^[0-9a-fA-F]+$/.test(s.replace(/[:\- ]/g, "")) &&
     s.replace(/[:\- ]/g, "").length === len * 2;
+}
+
+function UserSelect({
+  users,
+  value,
+  onChange,
+  disabled,
+}: {
+  users: BackendUser[];
+  value: string;
+  onChange: (id: string) => void;
+  disabled: boolean;
+}) {
+  const selected = users.find((u) => u.id === value);
+  const [query, setQuery] = useState(selected?.username ?? "");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Keep input text in sync when selection changes externally (e.g. on load)
+  useEffect(() => {
+    if (selected) setQuery(selected.username);
+  }, [selected?.username]);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery(selected?.username ?? "");
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open, selected?.username]);
+
+  const filtered = query.trim()
+    ? users.filter((u) => u.username.toLowerCase().includes(query.toLowerCase()))
+    : users;
+
+  function handleSelect(u: BackendUser) {
+    onChange(u.id);
+    setQuery(u.username);
+    setOpen(false);
+  }
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <input
+        className="field-input"
+        style={{ width: "100%" }}
+        placeholder="Buscar usuario…"
+        value={query}
+        disabled={disabled}
+        onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+      />
+      {open && filtered.length > 0 && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 10,
+          background: "#1a1d2e", border: "1px solid #2d3148", borderRadius: "6px",
+          overflow: "hidden", maxHeight: "160px", overflowY: "auto",
+        }}>
+          {filtered.map((u) => (
+            <button
+              key={u.id}
+              type="button"
+              style={{
+                display: "block", width: "100%", textAlign: "left",
+                padding: "8px 10px", background: u.id === value ? "#2d3148" : "transparent",
+                color: u.id === value ? "#60a5fa" : "#e2e8f0",
+                border: "none", cursor: "pointer", fontSize: "13px", fontFamily: "monospace",
+              }}
+              onMouseEnter={(e) => { if (u.id !== value) (e.currentTarget as HTMLButtonElement).style.background = "#232638"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = u.id === value ? "#2d3148" : "transparent"; }}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => handleSelect(u)}
+            >
+              {u.username}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function VirtualGatewayPanel() {
@@ -101,8 +185,6 @@ export default function VirtualGatewayPanel() {
 
   const isRunning = status === "running" || status === "connecting";
 
-  const selectedUser = users.find((u) => u.id === selectedUserId) ?? null;
-
   const configValid =
     isHex(config.dev_eui, 8) &&
     (config.app_eui === "" || isHex(config.app_eui, 8)) &&
@@ -168,27 +250,13 @@ export default function VirtualGatewayPanel() {
         <div className="config-section">
           <div className="field-row">
             <label className="field-label">Usuario</label>
-            <select
-              className="field-input"
-              key={users.map((u) => u.id).join(",")}
+            <UserSelect
+              users={users}
               value={selectedUserId}
-              onChange={(e) => setSelectedUserId(e.target.value)}
+              onChange={setSelectedUserId}
               disabled={isRunning}
-            >
-              <option value="">— seleccionar usuario —</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>{u.username}</option>
-              ))}
-            </select>
+            />
           </div>
-          {selectedUser && (
-            <div className="field-row">
-              <label className="field-label" />
-              <span style={{ fontSize: "0.8rem", color: "#22c55e" }}>
-                ✓ {selectedUser.username}
-              </span>
-            </div>
-          )}
 
           <div className="divider" />
 

@@ -36,6 +36,7 @@ export function StationLogPanel() {
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
+  const [clearState, setClearState] = useState<"idle" | "confirming" | "clearing">("idle");
 
   const { data, loading, error, refresh } = useReadings(getPersistedStationId(), page, activeSearch);
   const { addToast } = useToast();
@@ -80,16 +81,17 @@ export function StationLogPanel() {
     setPage(1);
   }
 
-  async function handleClearReadings() {
-    const stationId = getPersistedStationId();
-    if (!confirm("¿Eliminar todas las lecturas de esta estación? Esta acción no se puede deshacer.")) return;
+  async function handleClearConfirm() {
+    setClearState("clearing");
     try {
-      await deleteStationReadings(stationId);
+      await deleteStationReadings(getPersistedStationId());
       setBgData(null);
       setPage(1);
       refresh();
     } catch {
       addToast("No se pudieron eliminar las lecturas.");
+    } finally {
+      setClearState("idle");
     }
   }
 
@@ -127,7 +129,7 @@ export function StationLogPanel() {
             Historial de telemetría — actualización cada 30 segundos.
           </span>
         </div>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
           <button
             className="log-pause-btn"
             type="button"
@@ -136,14 +138,39 @@ export function StationLogPanel() {
           >
             {paused ? "Reanudar" : "Pausar"}
           </button>
-          <button
-            className="log-pause-btn"
-            type="button"
-            style={{ color: "#ef4444", borderColor: "#6b2c2c" }}
-            onClick={handleClearReadings}
-          >
-            Limpiar lecturas
-          </button>
+          {clearState === "idle" && (
+            <button
+              className="log-pause-btn"
+              type="button"
+              style={{ color: "#ef4444", borderColor: "#6b2c2c" }}
+              onClick={() => setClearState("confirming")}
+            >
+              Limpiar lecturas
+            </button>
+          )}
+          {clearState === "confirming" && (
+            <>
+              <span style={{ fontSize: "12px", color: "#94a3b8" }}>¿Eliminar todas?</span>
+              <button
+                className="log-pause-btn"
+                type="button"
+                style={{ color: "#ef4444", borderColor: "#6b2c2c" }}
+                onClick={handleClearConfirm}
+              >
+                Confirmar
+              </button>
+              <button
+                className="log-pause-btn"
+                type="button"
+                onClick={() => setClearState("idle")}
+              >
+                Cancelar
+              </button>
+            </>
+          )}
+          {clearState === "clearing" && (
+            <span style={{ fontSize: "12px", color: "#94a3b8" }}>Eliminando…</span>
+          )}
         </div>
       </div>
 
