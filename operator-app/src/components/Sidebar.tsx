@@ -7,9 +7,9 @@ interface SidebarItem {
 }
 
 const ITEMS: SidebarItem[] = [
-  { id: "gateway", label: "Gateway Virtual", icon: "📡" },
-  { id: "users", label: "Usuarios", icon: "👤" },
   { id: "settings", label: "Configuración", icon: "⚙️" },
+  { id: "users", label: "Usuarios", icon: "👤" },
+  { id: "gateway", label: "Gateway Virtual", icon: "📡" },
 ];
 
 interface SidebarProps {
