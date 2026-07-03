@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import GatewayLog, { LogEntry } from "./GatewayLog";
-import { fetchUsers, claimStation, getBackendUrl, BackendUser } from "../api/backend";
+import { fetchUsers, claimStation, BackendUser } from "../api/backend";
 
 interface GatewayConfig {
   dev_eui: string;

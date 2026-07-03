@@ -1,17 +1,21 @@
 import { BACKEND_PRESETS } from "../api/backend";
-
-type Section = "gateway" | "users" | "settings";
+import type { Section } from "../App";
 
 interface SidebarItem {
   id: Section;
   label: string;
   icon: string;
+  comingSoon?: boolean;
 }
 
 const ITEMS: SidebarItem[] = [
   { id: "settings", label: "Configuración", icon: "⚙️" },
   { id: "users", label: "Usuarios", icon: "👤" },
   { id: "gateway", label: "Gateway Virtual", icon: "📡" },
+  { id: "flash-gateway-mock", label: "Flash Gateway Mock", icon: "💾", comingSoon: true },
+  { id: "flash-gateway-real", label: "Flash Gateway Real", icon: "💾", comingSoon: true },
+  { id: "flash-node-mock", label: "Flash Node Mock", icon: "💾", comingSoon: true },
+  { id: "flash-node-real", label: "Flash Node Real", icon: "💾", comingSoon: true },
 ];
 
 interface SidebarProps {
@@ -34,11 +38,26 @@ export default function Sidebar({ activeSection, onNavigate, backendUrl }: Sideb
         {ITEMS.map((item) => (
           <li key={item.id}>
             <button
-              className={`sidebar-item ${activeSection === item.id ? "active" : ""}`}
+              className={`sidebar-item ${activeSection === item.id ? "active" : ""} ${item.comingSoon ? "coming-soon" : ""}`}
               onClick={() => onNavigate(item.id)}
             >
               <span className="sidebar-icon">{item.icon}</span>
               <span className="sidebar-label">{item.label}</span>
+              {item.comingSoon && (
+                <span style={{
+                  fontSize: "9px",
+                  padding: "1px 5px",
+                  borderRadius: "3px",
+                  background: "#1e293b",
+                  color: "#475569",
+                  border: "1px solid #334155",
+                  marginLeft: "auto",
+                  flexShrink: 0,
+                  fontFamily: "monospace",
+                }}>
+                  WIP
+                </span>
+              )}
             </button>
           </li>
         ))}
