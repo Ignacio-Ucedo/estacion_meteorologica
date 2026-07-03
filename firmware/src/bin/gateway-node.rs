@@ -89,7 +89,7 @@ fn main() -> anyhow::Result<()> {
     let mut last_pull = Instant::now();
     let mut buf = [0u8; 256];
 
-    send_pull_data(&sock, &gateway_eui, &target_addr);
+    let _ = send_pull_data(&sock, &gateway_eui, &target_addr);
 
     loop {
         if !wifi.is_connected()? {
@@ -106,7 +106,7 @@ fn main() -> anyhow::Result<()> {
             Ok(Some(n)) => {
                 rxnb += 1;
                 let raw = &buf[..n];
-                let tmst_us = FreeRtos::now_ms() as u64 * 1000;
+                let tmst_us = FreeRtos::now_ms().wrapping_mul(1000);
 
                 info!(
                     "lora_rx n={} hex={}",
@@ -117,7 +117,7 @@ fn main() -> anyhow::Result<()> {
                 rxok += 1;
 
                 let json = build_rxpk_json(raw, -100, 7.0, tmst_us);
-                send_push_data(&sock, &gateway_eui, &json, &target_addr);
+                let _ = send_push_data(&sock, &gateway_eui, &json, &target_addr);
                 rxfw += 1;
                 info!("lora_rx_forwarded tmst={}", tmst_us);
             }
@@ -127,13 +127,13 @@ fn main() -> anyhow::Result<()> {
 
         if last_stat.elapsed() >= Duration::from_secs(STAT_INTERVAL_S) {
             let stat_json = build_stat_json(rxnb, rxok, rxfw);
-            send_push_data(&sock, &gateway_eui, &stat_json, &target_addr);
+            let _ = send_push_data(&sock, &gateway_eui, &stat_json, &target_addr);
             info!("stat_sent rxnb={} rxok={} rxfw={}", rxnb, rxok, rxfw);
             last_stat = Instant::now();
         }
 
         if last_pull.elapsed() >= Duration::from_secs(10) {
-            send_pull_data(&sock, &gateway_eui, &target_addr);
+            let _ = send_pull_data(&sock, &gateway_eui, &target_addr);
             last_pull = Instant::now();
         }
     }

@@ -84,7 +84,7 @@ fn main() -> anyhow::Result<()> {
 
     // Send PULL_DATA early so ChirpStack GW Bridge records our UDP endpoint.
     // The JoinAccept (and all downlinks) will be delivered as PULL_RESP to this address.
-    send_pull_data(&sock, &gateway_eui, &target_addr);
+    let _ = send_pull_data(&sock, &gateway_eui, &target_addr);
 
     // Restore session from NVS or perform OTAA join
     let mut session = match nvs::load_lorawan_session() {
@@ -115,17 +115,17 @@ fn main() -> anyhow::Result<()> {
                 continue;
             }
             info!("wifi_reconnected_ok");
-            send_pull_data(&sock, &gateway_eui, &target_addr);
+            let _ = send_pull_data(&sock, &gateway_eui, &target_addr);
         }
 
         // Keepalive
         if last_pull.elapsed() >= Duration::from_secs(10) {
-            send_pull_data(&sock, &gateway_eui, &target_addr);
+            let _ = send_pull_data(&sock, &gateway_eui, &target_addr);
             last_pull = Instant::now();
         }
         if last_stat.elapsed() >= Duration::from_secs(30) {
             let stat_json = build_stat_json(rxfw, rxfw, rxfw);
-            send_push_data(&sock, &gateway_eui, &stat_json, &target_addr);
+            let _ = send_push_data(&sock, &gateway_eui, &stat_json, &target_addr);
             info!("stat_sent rxfw={}", rxfw);
             last_stat = Instant::now();
         }
@@ -173,9 +173,9 @@ fn main() -> anyhow::Result<()> {
         let frame = build_lorawan_frame(&mut session, payload_bytes);
 
         // Inject as synthetic RXPK
-        let tmst_us = unsafe { esp_idf_svc::sys::esp_timer_get_time() } as u64;
+        let tmst_us = unsafe { esp_idf_svc::sys::esp_timer_get_time() } as u32;
         let rxpk_json = build_rxpk_json(&frame, -75, 9.5, tmst_us);
-        send_push_data(&sock, &gateway_eui, &rxpk_json, &target_addr);
+        let _ = send_push_data(&sock, &gateway_eui, &rxpk_json, &target_addr);
         rxfw += 1;
         info!("uplink_sent seq={} fcnt={} frame_len={}", seq, session.fcnt_up, frame.len());
 
@@ -233,12 +233,12 @@ fn join_via_udp(
 
     for attempt in 1u32..=5 {
         // Re-register our UDP endpoint before each attempt
-        send_pull_data(sock, gateway_eui, target_addr);
+        let _ = send_pull_data(sock, gateway_eui, target_addr);
         FreeRtos::delay_ms(200);
 
-        let tmst_us = unsafe { esp_idf_svc::sys::esp_timer_get_time() } as u64;
+        let tmst_us = unsafe { esp_idf_svc::sys::esp_timer_get_time() } as u32;
         let rxpk_json = build_rxpk_json(&join_req, -75, 9.5, tmst_us);
-        send_push_data(sock, gateway_eui, &rxpk_json, target_addr);
+        let _ = send_push_data(sock, gateway_eui, &rxpk_json, target_addr);
         info!("lorawan_join attempt={} dev_nonce={:#06x}", attempt, dev_nonce);
 
         // Poll for PULL_RESP (JoinAccept) with a 7s window (LoRaWAN RX1+RX2 + margin)
@@ -300,7 +300,7 @@ fn join_via_udp(
                                             nwk_skey,
                                             app_skey,
                                         );
-                                        send_tx_ack(sock, gateway_eui, &token, target_addr);
+                                        let _ = send_tx_ack(sock, gateway_eui, &token, target_addr);
                                         info!(
                                             "lorawan_join_ok dev_addr={:02X?} attempt={}",
                                             session.dev_addr, attempt

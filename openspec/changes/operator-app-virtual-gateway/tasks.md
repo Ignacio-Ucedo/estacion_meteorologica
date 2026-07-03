@@ -9,7 +9,7 @@
 
 - [x] 2.1 Inicializar el proyecto Tauri en `operator-app/` con `create-tauri-app` (React + TypeScript + Vite). Configurar `tauri.conf.json`: nombre `Operator App`, identificador `com.estacion.operator`. Commit sugerido: `feat(operator-app): scaffold inicial Tauri + React`.
 - [x] 2.2 Implementar `Sidebar.tsx` con ítem "Gateway Virtual" activo y estructura extensible para futuros ítems (Flash ESP32, Setup ChirpStack). Aplicar estilos mínimos. Commit incluido en 2.1.
-- [ ] 2.3 Verificar que `tauri dev` levanta la app en Linux con la barra lateral visible y el panel principal vacío. No requiere hardware. **BLOQUEADO: requiere `sudo pacman -S webkit2gtk-4.1` en el sistema.**
+- [x] 2.3 Verificar que `tauri dev` levanta la app en Linux con la barra lateral visible y el panel principal vacío. No requiere hardware. **BLOQUEADO: requiere `sudo pacman -S webkit2gtk-4.1` en el sistema.**
 
 ## 3. Backend Rust — Integración de `weather-core` y estado compartido
 
@@ -27,7 +27,7 @@
 
 ## 5. Validación end-to-end
 
-- [ ] 5.1 Con `docker compose up -d` (ChirpStack + backend corriendo) y el device con las OTAA keys del `nvs_mock.csv` registrado en ChirpStack: iniciar el gateway virtual desde la app, verificar que el log muestra JoinAccept y uplinks sucesivos. No requiere hardware.
-- [ ] 5.2 Verificar en el dashboard React que los gráficos muestran datos con `device_id=3` y valores de temperatura/humedad que varían entre uplinks. No requiere hardware.
-- [ ] 5.3 Verificar que al detener el gateway y volverlo a iniciar, se realiza un nuevo OTAA join exitoso (la sesión anterior en ChirpStack se reemplaza correctamente). No requiere hardware.
-- [ ] 5.4 Verificar que un integrante del grupo sin ESP32 puede ejecutar `tauri dev` y ver datos reales en el dashboard siguiendo solo los pasos: `docker compose up -d`, cargar nvs_mock.csv en la app, clic en Iniciar. No requiere hardware.
+- [x] 5.1 Con `docker compose up -d` (ChirpStack + backend corriendo) y el device con las OTAA keys del `nvs_mock.csv` registrado en ChirpStack: iniciar el gateway virtual desde la app, verificar que el log muestra JoinAccept y uplinks sucesivos. No requiere hardware.
+- [x] 5.2 Verificar en el dashboard React que los gráficos muestran datos con `device_id=3` y valores de temperatura/humedad que varían entre uplinks. No requiere hardware.
+- [x] 5.3 Verificar que al detener el gateway y volverlo a iniciar, se realiza un nuevo OTAA join exitoso (la sesión anterior en ChirpStack se reemplaza correctamente). No requiere hardware.
+- [x] 5.4 Verificar que un integrante del grupo sin ESP32 puede ejecutar `tauri dev` y ver datos reales en el dashboard siguiendo solo los pasos: `docker compose up -d`, cargar nvs_mock.csv en la app, clic en Iniciar. No requiere hardware.

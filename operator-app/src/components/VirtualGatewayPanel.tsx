@@ -39,21 +39,22 @@ export default function VirtualGatewayPanel() {
       if (saved) {
         const parsed = JSON.parse(saved);
         // OTAA keys are not persisted for security — only host and interval
-        return { dev_eui: "", app_eui: "", app_key: "", host: parsed.host ?? "localhost:1700", interval_secs: parsed.interval_secs ?? 30 };
+        return { dev_eui: "", app_eui: "", app_key: "", host: parsed.host ?? "127.0.0.1:1700", interval_secs: parsed.interval_secs ?? 30 };
       }
     } catch {}
-    return { dev_eui: "", app_eui: "", app_key: "", host: "localhost:1700", interval_secs: 30 };
+    return { dev_eui: "", app_eui: "", app_key: "", host: "127.0.0.1:1700", interval_secs: 30 };
   });
   const [status, setStatus] = useState<GatewayStatus>("stopped");
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const listenersRef = useRef<(() => void)[]>([]);
-
   // Persist host + interval (not OTAA keys)
   useEffect(() => {
     localStorage.setItem("gateway_config", JSON.stringify({ host: config.host, interval_secs: config.interval_secs }));
   }, [config.host, config.interval_secs]);
 
   useEffect(() => {
+    let cancelled = false;
+    const unlisten: (() => void)[] = [];
+
     const setupListeners = async () => {
       const unsubLog = await listen<{ level: string; msg: string; ts: string }>(
         "gateway_log",
@@ -67,11 +68,18 @@ export default function VirtualGatewayPanel() {
       const unsubStatus = await listen<string>("gateway_status", (e) => {
         setStatus(e.payload as GatewayStatus);
       });
-      listenersRef.current = [unsubLog, unsubStatus];
+      if (cancelled) {
+        unsubLog();
+        unsubStatus();
+        return;
+      }
+      unlisten.push(unsubLog, unsubStatus);
     };
+
     setupListeners();
     return () => {
-      listenersRef.current.forEach((u) => u());
+      cancelled = true;
+      unlisten.forEach((u) => u());
     };
   }, []);
 

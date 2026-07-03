@@ -26,11 +26,11 @@ const DEVICE_ID: u8 = 3;
 const FPORT_WEATHER: u8 = 2;
 const GATEWAY_EUI: [u8; 8] = [0xAA, 0xBB, 0xCC, 0xFF, 0xFE, 0xDD, 0xEE, 0xFF];
 
-fn now_us() -> u64 {
-    SystemTime::now()
+fn now_us() -> u32 {
+    (SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
-        .as_micros() as u64
+        .as_micros() as u64 & 0xFFFF_FFFF) as u32
 }
 
 fn emit_log(app: &AppHandle, level: &str, msg: &str) {
@@ -82,16 +82,28 @@ async fn run_gateway_inner(
     let app_eui: [u8; 8] = app_eui_bytes.try_into().unwrap();
     let app_key: [u8; 16] = app_key_bytes.try_into().unwrap();
 
-    let sock = UdpSocket::bind("0.0.0.0:0").map_err(|e| format!("bind UDP: {e}"))?;
+    // Resolve host to determine address family before binding
+    use std::net::ToSocketAddrs;
+    let target_addr = config.host.to_socket_addrs()
+        .map_err(|e| format!("No se pudo resolver '{}': {e}", config.host))?
+        .next()
+        .ok_or_else(|| format!("No se encontró dirección para '{}'", config.host))?;
+
+    let bind_addr = if target_addr.is_ipv6() { "[::]:0" } else { "0.0.0.0:0" };
+    let sock = UdpSocket::bind(bind_addr).map_err(|e| format!("bind UDP: {e}"))?;
     sock.set_read_timeout(Some(Duration::from_secs(1))).ok();
 
+    let host_resolved = target_addr.to_string();
+
     emit_log(app, "INFO", &format!("PULL_DATA → {}", config.host));
-    send_pull_data(&sock, &GATEWAY_EUI, &config.host);
+    if let Err(e) = send_pull_data(&sock, &GATEWAY_EUI, &host_resolved) {
+        return Err(format!("No se pudo enviar PULL_DATA: {e}"));
+    }
 
     let _ = app.emit("gateway_status", "connecting");
 
     emit_log(app, "INFO", "Iniciando OTAA join...");
-    let mut session = join_otaa(app, &sock, &GATEWAY_EUI, &dev_eui, &app_eui, &app_key, &config.host, token).await?;
+    let mut session = join_otaa(app, &sock, &GATEWAY_EUI, &dev_eui, &app_eui, &app_key, &host_resolved, token).await?;
 
     let _ = app.emit("gateway_status", "running");
     emit_log(app, "INFO", &format!("Sesión establecida dev_addr={:02X?}", session.dev_addr));
@@ -111,14 +123,18 @@ async fn run_gateway_inner(
 
         // Keepalive PULL_DATA cada 30 s
         if last_pull.elapsed() >= Duration::from_secs(30) {
-            send_pull_data(&sock, &GATEWAY_EUI, &config.host);
+            if let Err(e) = send_pull_data(&sock, &GATEWAY_EUI, &host_resolved) {
+                emit_log(app, "WARN", &format!("PULL_DATA falló: {e}"));
+            }
             last_pull = Instant::now();
         }
 
         // Stat cada 60 s
         if last_stat.elapsed() >= Duration::from_secs(60) {
             let stat = build_stat_json(rxfw, rxfw, rxfw);
-            send_push_data(&sock, &GATEWAY_EUI, &stat, &config.host);
+            if let Err(e) = send_push_data(&sock, &GATEWAY_EUI, &stat, &host_resolved) {
+                emit_log(app, "WARN", &format!("STAT falló: {e}"));
+            }
             last_stat = Instant::now();
         }
 
@@ -127,7 +143,7 @@ async fn run_gateway_inner(
         while let Ok(n) = sock.recv(&mut buf) {
             if n >= 4 && buf[3] == PKT_PULL_RESP {
                 let token_bytes = [buf[1], buf[2]];
-                send_tx_ack(&sock, &GATEWAY_EUI, &token_bytes, &config.host);
+                let _ = send_tx_ack(&sock, &GATEWAY_EUI, &token_bytes, &host_resolved);
             }
         }
 
@@ -160,7 +176,9 @@ async fn run_gateway_inner(
         let uplink_frame = frame::build_uplink(&session.dev_addr, fcnt, FPORT_WEATHER, &payload, &mic);
 
         let rxpk = build_rxpk_json(&uplink_frame, -80, 7.0, now_us());
-        send_push_data(&sock, &GATEWAY_EUI, &rxpk, &config.host);
+        if let Err(e) = send_push_data(&sock, &GATEWAY_EUI, &rxpk, &host_resolved) {
+            emit_log(app, "WARN", &format!("uplink UDP falló: {e}"));
+        }
         rxfw += 1;
 
         emit_log(
@@ -212,11 +230,15 @@ async fn join_otaa(
             return Err("cancelado durante join".into());
         }
 
-        send_pull_data(sock, gateway_eui, host);
+        if let Err(e) = send_pull_data(sock, gateway_eui, host) {
+            return Err(format!("PULL_DATA falló (attempt {attempt}): {e}"));
+        }
         tokio::time::sleep(Duration::from_millis(200)).await;
 
         let rxpk = build_rxpk_json(&join_req, -75, 9.5, now_us());
-        send_push_data(sock, gateway_eui, &rxpk, host);
+        if let Err(e) = send_push_data(sock, gateway_eui, &rxpk, host) {
+            return Err(format!("PUSH_DATA JoinRequest falló (attempt {attempt}): {e}"));
+        }
         emit_log(app, "INFO", &format!("JoinRequest enviado attempt={attempt} dev_nonce={dev_nonce:#06x}"));
 
         let deadline = Instant::now() + Duration::from_secs(10);
@@ -257,7 +279,7 @@ async fn join_otaa(
                                         app_key, fields.app_nonce, fields.net_id, dev_nonce,
                                     );
                                     let session = LorawanSession::new(fields.dev_addr, nwk_skey, app_skey);
-                                    send_tx_ack(sock, gateway_eui, &token_bytes, host);
+                                    let _ = send_tx_ack(sock, gateway_eui, &token_bytes, host);
                                     emit_log(app, "INFO", &format!("JoinAccept ok dev_addr={:02X?}", session.dev_addr));
                                     return Ok(session);
                                 }

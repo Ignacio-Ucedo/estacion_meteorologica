@@ -68,17 +68,17 @@ pub fn load_nvs_csv(path: String) -> Result<GatewayConfig, String> {
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        let parts: Vec<&str> = line.splitn(3, ',').collect();
-        if parts.len() < 3 {
+        let parts: Vec<&str> = line.splitn(4, ',').collect();
+        if parts.len() < 4 {
             continue;
         }
         let key = parts[0].trim();
-        let value = parts[2].trim().trim_matches('"');
+        let value = parts[3].trim().trim_matches('"');
 
         match key {
-            "lorawan_dev_eui" => config.dev_eui = value.to_string(),
-            "lorawan_app_eui" => config.app_eui = value.to_string(),
-            "lorawan_app_key" => config.app_key = value.to_string(),
+            "dev_eui" | "lorawan_dev_eui" => config.dev_eui = value.to_string(),
+            "app_eui" | "lorawan_app_eui" => config.app_eui = value.to_string(),
+            "app_key" | "lorawan_app_key" => config.app_key = value.to_string(),
             _ => {}
         }
     }

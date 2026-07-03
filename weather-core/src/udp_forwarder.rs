@@ -9,7 +9,6 @@ use std::{
 };
 
 use base64::Engine as _;
-use log::warn;
 
 static TOKEN: AtomicU16 = AtomicU16::new(1);
 
@@ -39,7 +38,7 @@ pub fn random_token() -> [u8; 2] {
 
 /// Construye el JSON RXPK para un paquete recibido (o sintetizado).
 /// `raw`: bytes del frame LoRaWAN (MHDR…MIC).
-pub fn build_rxpk_json(raw: &[u8], rssi: i16, snr: f32, tmst_us: u64) -> String {
+pub fn build_rxpk_json(raw: &[u8], rssi: i16, snr: f32, tmst_us: u32) -> String {
     let data_b64 = base64::engine::general_purpose::STANDARD.encode(raw);
     format!(
         r#"{{"rxpk":[{{"tmst":{tmst},"freq":433.175,"chan":0,"rfch":0,"stat":1,"modu":"LORA","datr":"SF7BW125","codr":"4/5","rssi":{rssi},"lsnr":{snr:.1},"size":{size},"data":"{data}"}}]}}"#,
@@ -67,7 +66,7 @@ pub fn send_push_data(
     gateway_eui: &[u8; 8],
     json: &str,
     target_addr: &str,
-) {
+) -> Result<(), String> {
     let token = random_token();
     let mut pkt = Vec::with_capacity(12 + json.len());
     pkt.push(PROTOCOL_VERSION);
@@ -75,13 +74,11 @@ pub fn send_push_data(
     pkt.push(PKT_PUSH_DATA);
     pkt.extend_from_slice(gateway_eui);
     pkt.extend_from_slice(json.as_bytes());
-    if let Err(e) = sock.send_to(&pkt, target_addr) {
-        warn!("udp_push_error={:?}", e);
-    }
+    sock.send_to(&pkt, target_addr).map(|_| ()).map_err(|e| format!("udp_push_error: {e}"))
 }
 
 /// Envía PULL_DATA para mantener la sesión UDP activa con ChirpStack.
-pub fn send_pull_data(sock: &UdpSocket, gateway_eui: &[u8; 8], target_addr: &str) {
+pub fn send_pull_data(sock: &UdpSocket, gateway_eui: &[u8; 8], target_addr: &str) -> Result<(), String> {
     let token = random_token();
     let mut pkt = [0u8; 12];
     pkt[0] = PROTOCOL_VERSION;
@@ -89,9 +86,7 @@ pub fn send_pull_data(sock: &UdpSocket, gateway_eui: &[u8; 8], target_addr: &str
     pkt[2] = token[1];
     pkt[3] = PKT_PULL_DATA;
     pkt[4..12].copy_from_slice(gateway_eui);
-    if let Err(e) = sock.send_to(&pkt, target_addr) {
-        warn!("udp_pull_error={:?}", e);
-    }
+    sock.send_to(&pkt, target_addr).map(|_| ()).map_err(|e| format!("udp_pull_error: {e}"))
 }
 
 /// Envía TX_ACK al Gateway Bridge en respuesta a un PULL_RESP recibido.
@@ -100,14 +95,12 @@ pub fn send_tx_ack(
     gateway_eui: &[u8; 8],
     token: &[u8; 2],
     target_addr: &str,
-) {
+) -> Result<(), String> {
     let mut pkt = [0u8; 12];
     pkt[0] = PROTOCOL_VERSION;
     pkt[1] = token[0];
     pkt[2] = token[1];
     pkt[3] = PKT_TX_ACK;
     pkt[4..12].copy_from_slice(gateway_eui);
-    if let Err(e) = sock.send_to(&pkt, target_addr) {
-        warn!("udp_tx_ack_error={:?}", e);
-    }
+    sock.send_to(&pkt, target_addr).map(|_| ()).map_err(|e| format!("udp_tx_ack_error: {e}"))
 }

@@ -1,5 +1,21 @@
 # Setup del entorno LoRaWAN EU433
 
+## 0. Flujo rápido sin ESP32 (Operator App)
+
+Si no tenés hardware disponible, podés validar el pipeline completo con la app de escritorio:
+
+```bash
+cd infra && docker compose up -d          # levantar ChirpStack + backend
+cd operator-app && npm install && cargo tauri dev  # abrir la app
+```
+
+En la app: **Cargar desde nvs_mock.csv** (archivo en `firmware/nvs_mock.csv`) → **▶ Iniciar**.
+El dispositivo con `device_id=3` aparece en ChirpStack y los datos llegan al dashboard.
+
+Ver `operator-app/README.md` para prerequisitos del sistema.
+
+---
+
 ## 1. Levantar el stack
 
 ```bash
