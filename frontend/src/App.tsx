@@ -15,6 +15,7 @@ import { ToastProvider } from "./components/ToastProvider";
 import { useStation } from "./api/hooks";
 import { listStations } from "./api/client";
 import { getPersistedStationId, persistStationId } from "./api/config";
+import { useAuth } from "./auth/AuthContext";
 import type { MetricKey } from "./data/WeatherSeries";
 
 const navItems = [
@@ -52,6 +53,7 @@ function fmt(value: number | undefined | null, decimals = 1): string {
 }
 
 function App() {
+  const { token } = useAuth();
   const [activeId, setActiveId] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedMetricKey, setSelectedMetricKey] = useState<MetricKey>("temperature");
@@ -60,11 +62,12 @@ function App() {
 
   const { data: station, loading, error, refresh: refreshStation } = useStation(selectedStationId);
 
-  // Fallback: si la estación persistida ya no existe (404), auto-seleccionar la primera disponible
+  // Auto-seleccionar primera estación cuando no hay ID (login nuevo o estación eliminada/robada)
   const fallbackAttempted = useRef(false);
   useEffect(() => {
-    if (!error || fallbackAttempted.current) return;
-    if (!error.includes("404")) return;
+    const noId = !selectedStationId;
+    const got404 = !!error && error.includes("404");
+    if ((!noId && !got404) || fallbackAttempted.current) return;
     fallbackAttempted.current = true;
     listStations(1).then((page) => {
       if (page.data.length > 0) {
@@ -75,13 +78,13 @@ function App() {
         persistStationId("");
         setSelectedStationId("");
       }
-    }).catch(() => {/* sin estaciones disponibles, el banner de error existente se muestra */});
-  }, [error]);
+    }).catch(() => {});
+  }, [selectedStationId, error]);
 
-  // Reiniciar el flag de fallback cuando cambia la estación exitosamente
+  // Reiniciar el flag de fallback cuando cambia la estación o el usuario
   useEffect(() => {
-    if (station) fallbackAttempted.current = false;
-  }, [station?.id]);
+    fallbackAttempted.current = false;
+  }, [station?.id, token]);
 
   function handleSelectStation(id: string) {
     persistStationId(id);
