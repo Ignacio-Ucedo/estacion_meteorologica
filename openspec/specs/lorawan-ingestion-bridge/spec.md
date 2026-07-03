@@ -4,34 +4,39 @@
 
 ## Overview
 
-Módulo del backend que suscribe al broker MQTT de ChirpStack, parsea los uplinks LoRaWAN, aplica el field mapping al modelo `Reading` de PostgreSQL, y auto-provisiona `Station` para dispositivos nuevos.
+Módulo del backend que recibe uplinks LoRaWAN vía webhook HTTP desde ChirpStack, parsea el payload binario, aplica el field mapping al modelo `Reading` de PostgreSQL, y auto-provisiona `Station` para dispositivos nuevos.
 
 ---
 
 ## Requirements
 
-### Requirement: Subscriber MQTT integrado en el backend principal
+### Requirement: Webhook HTTP como mecanismo de ingesta de uplinks
 
-El backend FastAPI (`app/main.py`) SHALL iniciar un subscriber paho-mqtt en el evento `startup` y detenerlo en el evento `shutdown`. El subscriber SHALL suscribirse al topic `application/{CHIRPSTACK_APP_ID}/device/+/event/up` con reconexión automática (backoff 1–30 s). Si `CHIRPSTACK_APP_ID` no está configurado, el subscriber SHALL no iniciarse y el REST API SHALL continuar funcionando normalmente.
+El backend FastAPI SHALL exponer el endpoint `POST /integrations/chirpstack/uplink` que recibe eventos de uplink LoRaWAN desde la integración HTTP nativa de ChirpStack. El endpoint SHALL procesar el payload JSON con la misma lógica de parseo, field mapping y auto-provisión de Station que el subscriber MQTT anterior. El backend SHALL arrancar sin necesidad de configurar variables de entorno MQTT; si no llegan webhooks, el REST API SHALL continuar funcionando normalmente.
 
-#### Scenario: Backend arranca con CHIRPSTACK_APP_ID configurado
+#### Scenario: Uplink válido recibido por webhook genera Reading en PostgreSQL
 
-- **WHEN** el backend inicia con `CHIRPSTACK_APP_ID` definido en el entorno
-- **THEN** el log incluye `mqtt_startup broker=... topic=application/{appId}/device/+/event/up` y el subscriber queda activo
+- **WHEN** ChirpStack hace `POST /integrations/chirpstack/uplink` con un evento JSON de uplink con payload CRC válido
+- **THEN** el backend persiste un `Reading` en PostgreSQL con los campos convertidos correctamente y retorna `200 OK`
 
-#### Scenario: Backend arranca sin CHIRPSTACK_APP_ID
+#### Scenario: Backend arranca sin configuración MQTT
 
-- **WHEN** el backend inicia sin `CHIRPSTACK_APP_ID` en el entorno
-- **THEN** el log incluye un warning indicando que MQTT no fue iniciado, y el REST API responde normalmente en `/api/health`
+- **WHEN** el backend inicia sin variables `CHIRPSTACK_MQTT_BROKER` ni `CHIRPSTACK_APP_ID` en el entorno
+- **THEN** el backend arranca sin warnings MQTT y el REST API responde normalmente en `/api/health`
 
-#### Scenario: Reconexión ante caída del broker
+#### Scenario: Payload con CRC inválido es descartado
 
-- **WHEN** el broker Mosquitto se detiene y se reinicia mientras el backend corre
-- **THEN** el subscriber se reconecta sin reiniciar uvicorn, y los uplinks posteriores se procesan correctamente
+- **WHEN** ChirpStack envía un webhook con payload cuyo CRC-8/MAXIM no coincide
+- **THEN** el endpoint retorna `422 Unprocessable Entity`, el log incluye `payload_invalid` con el hex del payload, y no se persiste ningún `Reading`
+
+#### Scenario: Uplink sin campo `data` es ignorado
+
+- **WHEN** el webhook llega sin campo `data` o con `data` vacío
+- **THEN** el endpoint retorna `422 Unprocessable Entity` y el log incluye `uplink_no_data`
 
 ### Requirement: Field mapping de payload LoRaWAN a Reading de PostgreSQL
 
-Por cada uplink MQTT válido, el backend SHALL parsear el payload binario de 14 bytes y persistir un `Reading` en PostgreSQL aplicando el siguiente mapping:
+Por cada webhook de uplink válido, el backend SHALL parsear el payload binario de 14 bytes y persistir un `Reading` en PostgreSQL aplicando el siguiente mapping:
 
 | Campo payload (LoRaWAN) | Campo `Reading` (PostgreSQL) | Conversión |
 |---|---|---|
@@ -45,18 +50,13 @@ El `timestamp` del `Reading` SHALL ser el campo `time` del evento ChirpStack (IS
 
 #### Scenario: Uplink válido genera Reading en PostgreSQL
 
-- **WHEN** el gateway-mock publica un uplink con payload CRC válido
+- **WHEN** ChirpStack envía un webhook con payload CRC válido
 - **THEN** aparece un nuevo `Reading` en PostgreSQL con `temperature`, `humidity`, `wind_speed` y `precipitation` convertidos correctamente, y el log incluye `reading_persisted dev_eui=... seq=...`
 
 #### Scenario: Constantes configurables via entorno
 
 - **WHEN** el backend inicia con `SENSOR_K_WIND=1.0` y `SENSOR_K_RAIN=0.5` en el entorno
 - **THEN** los valores de `wind_speed` y `precipitation` de los uplinks subsiguientes reflejan las nuevas constantes
-
-#### Scenario: Payload con CRC inválido es descartado
-
-- **WHEN** se publica un mensaje MQTT con un payload cuyo CRC-8/MAXIM no coincide
-- **THEN** el log incluye `payload_invalid` con el hex del payload, no se persiste ningún `Reading`, y el subscriber continúa procesando el siguiente mensaje
 
 #### Scenario: Campo time ausente en el evento ChirpStack
 
@@ -86,7 +86,7 @@ Si la Station ya existe, SHALL usarse la existente sin modificarla. La operació
 
 ### Requirement: Calibration constants configurables por variable de entorno
 
-El backend SHALL leer `SENSOR_K_WIND` y `SENSOR_K_RAIN` desde variables de entorno al iniciar. Los defaults SHALL ser `0.5` (m/s/pulso) y `0.2794` (mm/pulso) respectivamente. Los valores SHALL documentarse en `backend/README.md` como provisionales, pendientes de calibración con hardware real.
+El backend SHALL leer `SENSOR_K_WIND` y `SENSOR_K_RAIN` desde variables de entorno al iniciar. Los defaults SHALL ser `0.5` (m/s/pulso) y `0.2794` (mm/pulso) respectivamente.
 
 #### Scenario: Defaults aplicados sin variables de entorno
 
@@ -95,14 +95,9 @@ El backend SHALL leer `SENSOR_K_WIND` y `SENSOR_K_RAIN` desde variables de entor
 
 ### Requirement: Servicio backend en docker-compose
 
-El `infra/docker-compose.yml` SHALL incluir un servicio `backend` que construye la imagen desde `../backend`, expone el puerto `8000`, y depende de `mosquitto` y `postgres`. El servicio `gateway-mock` SHALL incluirse bajo el perfil `mock` para uso opcional sin modificar el stack por defecto.
+El `infra/docker-compose.yml` SHALL incluir un servicio `backend` que construye la imagen desde `../backend`, expone el puerto `8000`, y depende de `postgres`. El servicio no requiere dependencia de `mosquitto`.
 
 #### Scenario: Stack completo levanta con un solo comando
 
 - **WHEN** se ejecuta `docker compose up -d` en `infra/`
-- **THEN** los servicios `chirpstack`, `mosquitto`, `postgres`, `redis`, `influxdb` y `backend` inician correctamente
-
-#### Scenario: gateway-mock se levanta solo con perfil mock
-
-- **WHEN** se ejecuta `docker compose --profile mock up -d`
-- **THEN** el servicio `gateway-mock` inicia y publica uplinks al broker Mosquitto del stack
+- **THEN** los servicios `chirpstack`, `postgres`, `redis`, `influxdb` y `backend` inician correctamente
