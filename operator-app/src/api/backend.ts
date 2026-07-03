@@ -28,7 +28,7 @@ export interface StationPayload {
 }
 
 export async function createStation(payload: StationPayload): Promise<void> {
-  const res = await fetch(`${getBackendUrl()}/stations`, {
+  const res = await fetch(`${getBackendUrl()}/api/stations`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

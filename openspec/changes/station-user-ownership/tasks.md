@@ -25,7 +25,7 @@
 
 ## 4. Rebuild y verificación
 
-- [ ] 4.1 Rebuild del backend Docker (`docker compose build backend && docker compose up -d backend`) y verificar que la migración corre sin errores en los logs
+- [x] 4.1 Rebuild del backend Docker (`docker compose build backend && docker compose up -d backend`) y verificar que la migración corre sin errores en los logs
   - `chore(backend): rebuild con migración station_user_ownership`
-- [ ] 4.2 Smoke test: registrar un usuario, iniciar gateway virtual desde la operator-app seleccionando ese usuario, verificar que la estación aparece en el dashboard web de ese usuario y no en el de otro
+- [x] 4.2 Smoke test: registrar un usuario, iniciar gateway virtual desde la operator-app seleccionando ese usuario, verificar que la estación aparece en el dashboard web de ese usuario y no en el de otro
   - `test(integration): verificar ownership end-to-end`
