@@ -1,6 +1,6 @@
 import { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
-import { BASE_URL } from "../api/config";
+import { BASE_URL, persistStationId } from "../api/config";
 
 const TOKEN_KEY = "weatheros_token";
 const USERNAME_KEY = "weatheros_username";
@@ -37,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { access_token } = await res.json();
     localStorage.setItem(TOKEN_KEY, access_token);
     localStorage.setItem(USERNAME_KEY, username);
+    persistStationId("");
     setState({ token: access_token, username });
   }
 
@@ -56,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function logout(): void {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USERNAME_KEY);
+    persistStationId("");
     setState({ token: null, username: null });
   }
 
