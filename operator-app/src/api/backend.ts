@@ -1,10 +1,15 @@
 export const BACKEND_URL_KEY = "backend_url";
 
+export const BACKEND_PRESETS = [
+  { label: "Producción", url: "https://estacion-meteorologica-nnsz.onrender.com" },
+  { label: "Local", url: "http://localhost:8000" },
+] as const;
+
 export function getBackendUrl(): string {
   try {
-    return localStorage.getItem(BACKEND_URL_KEY) ?? "http://localhost:8000";
+    return localStorage.getItem(BACKEND_URL_KEY) ?? BACKEND_PRESETS[0].url;
   } catch {
-    return "http://localhost:8000";
+    return BACKEND_PRESETS[0].url;
   }
 }
 
