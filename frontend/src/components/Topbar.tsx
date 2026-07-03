@@ -1,3 +1,5 @@
+import { useAuth } from "../auth/AuthContext";
+
 type TopbarProps = {
   onMenuOpen: () => void;
   stationName: string;
@@ -5,6 +7,9 @@ type TopbarProps = {
 };
 
 export function Topbar({ onMenuOpen, stationName, onSwitchStation }: TopbarProps) {
+  const { username, logout } = useAuth();
+  const initials = username ? username.slice(0, 2).toUpperCase() : "?";
+
   return (
     <header className="topbar">
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -38,9 +43,19 @@ export function Topbar({ onMenuOpen, stationName, onSwitchStation }: TopbarProps
         <button className="icon-button" type="button" aria-label="Notificaciones">
           <span className="icon-bell" aria-hidden="true" />
         </button>
-        <div className="avatar" aria-label="Usuario">
-          JA
+        <div className="avatar" aria-label={username ?? "Usuario"} title={username ?? ""}>
+          {initials}
         </div>
+        <button
+          className="icon-button"
+          type="button"
+          aria-label="Cerrar sesión"
+          title="Cerrar sesión"
+          onClick={logout}
+          style={{ fontSize: "1rem" }}
+        >
+          ⏻
+        </button>
       </div>
     </header>
   );
