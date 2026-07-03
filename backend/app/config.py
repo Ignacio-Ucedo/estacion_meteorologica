@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     sensor_k_wind: float = 0.5
     sensor_k_rain: float = 0.2794
 
+    jwt_secret: str = "changeme-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 60 * 24 * 7  # 1 week
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore"

@@ -2,9 +2,45 @@ from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 StationStatus = Literal["online", "offline", "degraded"]
+
+
+# ─── Auth ────────────────────────────────────────────────────────────────────
+
+
+class RegisterRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=80)
+    password: str | None = None
+
+    @field_validator("username")
+    @classmethod
+    def username_no_spaces(cls, v: str) -> str:
+        if " " in v:
+            raise ValueError("El username no puede contener espacios")
+        return v
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class UserResponse(BaseModel):
+    id: str
+    username: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ─── Station / Reading ────────────────────────────────────────────────────────
 
 
 class ApiModel(BaseModel):
