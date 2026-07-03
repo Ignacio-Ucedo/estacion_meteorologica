@@ -1,6 +1,6 @@
 # WeatherOS Backend
 
-FastAPI backend para la estación meteorológica. Recibe uplinks LoRaWAN via MQTT, los persiste en PostgreSQL y expone una REST API con historial y métricas.
+FastAPI backend para la estación meteorológica. Recibe uplinks LoRaWAN via webhook HTTP de ChirpStack, los persiste en PostgreSQL y expone una REST API con historial y métricas.
 
 ## Variables de entorno
 
@@ -9,8 +9,6 @@ FastAPI backend para la estación meteorológica. Recibe uplinks LoRaWAN via MQT
 | `DATABASE_URL` | *(requerido)* | URL async SQLAlchemy. Ej: `postgresql+asyncpg://weatheros:weatheros@localhost:5432/weatheros` |
 | `APP_NAME` | `WeatherOS Backend` | Título en los docs FastAPI |
 | `ENVIRONMENT` | `development` | Label de entorno |
-| `CHIRPSTACK_MQTT_BROKER` | `localhost:1883` | host:port del broker Mosquitto |
-| `CHIRPSTACK_APP_ID` | `""` | Application ID de ChirpStack. Si está vacío, el subscriber MQTT no inicia |
 | `SENSOR_K_WIND` | `0.5` | m/s por pulso de anemómetro (**provisional** — calibrar con hardware real) |
 | `SENSOR_K_RAIN` | `0.2794` | mm por pulso de pluviómetro (**provisional** — resolución típica de cuchara Davis) |
 
@@ -21,7 +19,7 @@ cd backend
 python -m venv .venv
 . .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env          # ajustar DATABASE_URL y CHIRPSTACK_APP_ID
+cp .env.example .env          # ajustar DATABASE_URL
 alembic upgrade head
 uvicorn app.main:app --reload
 pytest
@@ -47,7 +45,6 @@ docker compose --profile mock up -d
 Variables de entorno de compose configurables via archivo `.env` en `infra/`:
 
 ```env
-CHIRPSTACK_APP_ID=1
 GATEWAY_MOCK_DEV_EUI=0000000000000002
 GATEWAY_MOCK_INTERVAL_SECONDS=10
 SENSOR_K_WIND=0.5
@@ -70,12 +67,13 @@ curl http://localhost:8000/api/stations
 
 ## Ingesta LoRaWAN
 
-El backend se suscribe al topic MQTT `application/{APP_ID}/device/+/event/up` y procesa cada uplink:
+El backend expone `POST /integrations/chirpstack/uplink` que recibe el webhook HTTP nativo de ChirpStack. Configurar en el panel de ChirpStack: **Applications → Integrations → HTTP → Event endpoint URL** apuntando a `https://<backend-url>/integrations/chirpstack/uplink`.
 
-1. Deserializa el JSON del evento ChirpStack
-2. Decodifica el campo `data` (base64 → 14 bytes)
-3. Valida CRC-8/MAXIM sobre los primeros 13 bytes
-4. Aplica field mapping al modelo `Reading` en PostgreSQL
-5. Auto-crea la `Station` si el `devEUI` es nuevo
+Por cada uplink el endpoint:
 
-Uplinks con CRC inválido se descartan con log de error. Errores de DB se loguean y el subscriber continúa.
+1. Decodifica el campo `data` (base64 → 14 bytes)
+2. Valida CRC-8/MAXIM sobre los primeros 13 bytes
+3. Aplica field mapping al modelo `Reading` en PostgreSQL
+4. Auto-crea la `Station` si el `devEUI` es nuevo
+
+Uplinks con CRC inválido o sin campo `data` retornan `422`. No se necesita exponer el puerto MQTT (1883) — solo UDP 1700 para los gateways y HTTPS para el webhook.

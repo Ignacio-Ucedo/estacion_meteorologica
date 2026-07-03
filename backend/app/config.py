@@ -7,9 +7,6 @@ class Settings(BaseSettings):
     environment: str = "development"
     database_url: str
 
-    chirpstack_mqtt_broker: str = "localhost:1883"
-    chirpstack_app_id: str = ""
-
     # Seconds without a reading before a station is considered offline
     station_offline_threshold_seconds: int = 300
 
