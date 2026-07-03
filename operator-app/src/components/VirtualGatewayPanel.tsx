@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import GatewayLog, { LogEntry } from "./GatewayLog";
-import { fetchUsers, createStation, BackendUser } from "../api/backend";
+import { fetchUsers, createStation, getBackendUrl, BACKEND_URL_KEY, BackendUser } from "../api/backend";
 
 interface GatewayConfig {
   dev_eui: string;
@@ -51,16 +51,20 @@ export default function VirtualGatewayPanel() {
   const [selectedUserId, setSelectedUserId] = useState<string>(() =>
     localStorage.getItem("gateway_selected_user_id") ?? ""
   );
+  const [backendUrl, setBackendUrl] = useState<string>(getBackendUrl);
+
   // Persist host + interval (not OTAA keys)
   useEffect(() => {
     localStorage.setItem("gateway_config", JSON.stringify({ host: config.host, interval_secs: config.interval_secs }));
   }, [config.host, config.interval_secs]);
 
   useEffect(() => {
+    localStorage.setItem(BACKEND_URL_KEY, backendUrl);
+    setUsers([]);
     fetchUsers()
       .then(setUsers)
       .catch(() => {});
-  }, []);
+  }, [backendUrl]);
 
   useEffect(() => {
     localStorage.setItem("gateway_selected_user_id", selectedUserId);
@@ -160,6 +164,18 @@ export default function VirtualGatewayPanel() {
 
       <div className="panel-body">
         <div className="config-section">
+          <div className="field-row">
+            <label className="field-label">Backend URL</label>
+            <input
+              className="field-input"
+              value={backendUrl}
+              onChange={(e) => setBackendUrl(e.target.value.trim())}
+              placeholder="http://localhost:8000"
+            />
+          </div>
+
+          <div className="divider" />
+
           <div className="field-row">
             <label className="field-label">Usuario</label>
             <select

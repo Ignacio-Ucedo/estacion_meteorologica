@@ -1,4 +1,4 @@
-const BACKEND_URL_KEY = "backend_url";
+export const BACKEND_URL_KEY = "backend_url";
 
 export function getBackendUrl(): string {
   try {
