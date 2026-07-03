@@ -18,14 +18,18 @@ import type {
 
 type FetchState<T> = { data: T | null; loading: boolean; error: string | null };
 
-function useFetch<T>(fetcher: () => Promise<T>, deps: unknown[]): FetchState<T> {
+function useFetch<T>(fetcher: () => Promise<T>, deps: unknown[], skip = false): FetchState<T> {
   const [state, setState] = useState<FetchState<T>>({
     data: null,
-    loading: true,
+    loading: !skip,
     error: null,
   });
 
   useEffect(() => {
+    if (skip) {
+      setState({ data: null, loading: false, error: null });
+      return;
+    }
     let cancelled = false;
     setState({ data: null, loading: true, error: null });
     fetcher().then(
@@ -40,7 +44,7 @@ function useFetch<T>(fetcher: () => Promise<T>, deps: unknown[]): FetchState<T> 
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, [...deps, skip]);
 
   return state;
 }
@@ -52,7 +56,7 @@ const HOURLY_POLL_MS = 60_000;
 export function useStation(id: string): FetchState<StationDetail> & { refresh: () => void } {
   const [tick, setTick] = useState(0);
   const refresh = useCallback(() => setTick((t) => t + 1), []);
-  const state = useFetch(() => getStation(id), [id, tick]);
+  const state = useFetch(() => getStation(id), [id, tick], !id);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => setTick((t) => t + 1), STATION_POLL_MS);
@@ -83,6 +87,7 @@ export function useReadings(
   const state = useFetch(
     () => getReadings(id, page, search || undefined),
     [id, page, search, tick],
+    !id,
   );
   return { ...state, refresh };
 }
@@ -96,7 +101,7 @@ export function useHourlyMetric(
     const intervalId = window.setInterval(() => setTick((t) => t + 1), HOURLY_POLL_MS);
     return () => window.clearInterval(intervalId);
   }, []);
-  return useFetch(() => getHourlyMetric(id, metric), [id, metric, tick]);
+  return useFetch(() => getHourlyMetric(id, metric), [id, metric, tick], !id);
 }
 
 export function useRecentMetric(
@@ -109,7 +114,7 @@ export function useRecentMetric(
     const intervalId = window.setInterval(() => setTick((t) => t + 1), RECENT_POLL_MS);
     return () => window.clearInterval(intervalId);
   }, []);
-  return useFetch(() => getRecentMetric(id, metric, minutes), [id, metric, minutes, tick]);
+  return useFetch(() => getRecentMetric(id, metric, minutes), [id, metric, minutes, tick], !id);
 }
 
 export function useDailyMetric(
@@ -117,5 +122,5 @@ export function useDailyMetric(
   metric: string,
   days: number,
 ): FetchState<DailyMetricResponse> {
-  return useFetch(() => getDailyMetric(id, metric, days), [id, metric, days]);
+  return useFetch(() => getDailyMetric(id, metric, days), [id, metric, days], !id);
 }
