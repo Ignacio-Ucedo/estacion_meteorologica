@@ -149,10 +149,13 @@ async def patch_station_owner(
 
 @router.get("/stations/{station_id}", response_model=StationDetail)
 async def get_station_detail(
-    station_id: str, session: SessionDep
+    request: Request, station_id: str, session: SessionDep
 ) -> StationDetail:
     station = await get_station(session, station_id)
     if station is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Station not found")
+    user_id = _user_id_from_request(request)
+    if user_id and station.user_id and station.user_id != user_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Station not found")
     reading = await latest_reading(session, station_id)
     current = None
