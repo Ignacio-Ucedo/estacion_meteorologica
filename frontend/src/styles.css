@@ -211,7 +211,12 @@ h1 {
 }
 
 .icon-button {
-  cursor: default;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background: #2a2a2d;
+  border-color: #606070;
 }
 
 .avatar {

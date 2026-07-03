@@ -51,3 +51,8 @@ export async function claimStation(stationId: string, userId: string): Promise<v
   });
   if (!res.ok) throw new Error(`PATCH /stations/${stationId}/owner: ${res.status}`);
 }
+
+export async function deleteUser(userId: string): Promise<void> {
+  const res = await fetch(`${getBackendUrl()}/auth/users/${userId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`DELETE /auth/users/${userId}: ${res.status}`);
+}

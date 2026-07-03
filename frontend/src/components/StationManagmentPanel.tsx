@@ -4,7 +4,7 @@ import { useStations } from "../api/hooks";
 import { InlineError } from "./InlineError";
 import { Skeleton } from "./Skeleton";
 import type { StationResponse } from "../api/types";
-import { deleteStationReadings } from "../api/client";
+import { deleteStationReadings, deleteStation } from "../api/client";
 
 type StationStatus = "online" | "offline" | "degraded";
 
@@ -103,9 +103,22 @@ function DeleteConfirmDialog({
   );
 }
 
-function StationCard({ station }: { station: StationResponse }) {
+function StationCard({ station, onDeleted }: { station: StationResponse; onDeleted: () => void }) {
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [deletedCount, setDeletedCount] = useState(0);
+  const [deletingStation, setDeletingStation] = useState(false);
+
+  async function handleDeleteStation() {
+    if (!confirm(`¿Eliminar la estación "${station.name}" y todos sus registros? Esta acción no se puede deshacer.`)) return;
+    setDeletingStation(true);
+    try {
+      await deleteStation(station.id);
+      onDeleted();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Error al eliminar");
+      setDeletingStation(false);
+    }
+  }
 
   return (
     <article className={`smp-card smp-card--${station.status}`}>
@@ -155,6 +168,14 @@ function StationCard({ station }: { station: StationResponse }) {
             Borrar registros
           </button>
         )}
+        <button
+          className="smp-delete-btn"
+          style={{ color: "#ef4444", borderColor: "#ef4444" }}
+          onClick={handleDeleteStation}
+          disabled={deletingStation}
+        >
+          {deletingStation ? "Eliminando…" : "Eliminar estación"}
+        </button>
       </div>
     </article>
   );
@@ -263,7 +284,7 @@ export function StationManagementPanel() {
         <>
           <div className="smp-grid">
             {pageStations.map((s) => (
-              <StationCard key={s.id} station={s} />
+              <StationCard key={s.id} station={s} onDeleted={refresh} />
             ))}
           </div>
           <Pagination page={page} totalPages={totalPages} total={total} onChange={setPage} />

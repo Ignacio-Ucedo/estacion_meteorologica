@@ -26,6 +26,7 @@ from app.config import get_settings
 from app.services.metrics import METRICS, daily_summaries, get_metric, get_recent_metric, hourly_points, utc_now
 from app.services.stations import (
     create_station,
+    delete_station,
     delete_station_readings,
     get_station,
     latest_reading,
@@ -180,6 +181,13 @@ async def get_readings(
         for reading, station_name in rows
     ]
     return ReadingPage(total=total, page=page, data=data)
+
+
+@router.delete("/stations/{station_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_station_endpoint(station_id: str, session: SessionDep) -> None:
+    deleted = await delete_station(session, station_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Station not found")
 
 
 @router.delete("/stations/{station_id}/readings", status_code=status.HTTP_200_OK)

@@ -110,3 +110,14 @@ async def delete_station_readings(session: AsyncSession, station_id: str) -> int
     await session.commit()
     return result.rowcount or 0
 
+
+async def delete_station(session: AsyncSession, station_id: str) -> bool:
+    from sqlalchemy import delete  # noqa: PLC0415
+    await session.execute(delete(Reading).where(Reading.station_id == station_id))
+    station = await session.get(Station, station_id)
+    if station is None:
+        return False
+    await session.delete(station)
+    await session.commit()
+    return True
+

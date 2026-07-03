@@ -53,3 +53,12 @@ async def me(current_user: Annotated[User, Depends(get_current_user)]) -> UserRe
 async def list_users(session: SessionDep) -> list[UserResponse]:
     rows = await session.execute(select(User).order_by(User.created_at))
     return [UserResponse.model_validate(u) for u in rows.scalars()]
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["admin"])
+async def delete_user(user_id: str, session: SessionDep) -> None:
+    user = await session.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    await session.delete(user)
+    await session.commit()

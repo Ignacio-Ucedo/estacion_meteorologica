@@ -67,3 +67,7 @@ export function getRecentMetric(
 export function deleteStationReadings(id: string): Promise<{ deleted: number }> {
   return apiFetch(`/stations/${id}/readings`, { method: "DELETE" });
 }
+
+export function deleteStation(id: string): Promise<void> {
+  return apiFetch(`/stations/${id}`, { method: "DELETE" });
+}
