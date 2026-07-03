@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -62,3 +63,31 @@ async def delete_user(user_id: str, session: SessionDep) -> None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     await session.delete(user)
     await session.commit()
+
+
+class CleanupRequest(BaseModel):
+    username: str
+    password: str
+
+
+class CleanupResponse(BaseModel):
+    deleted: int
+
+
+@router.post("/admin/cleanup-orphan-readings", response_model=CleanupResponse, tags=["admin"])
+async def cleanup_orphan_readings(payload: CleanupRequest, session: SessionDep) -> CleanupResponse:
+    from sqlalchemy import delete, text  # noqa: PLC0415
+    from app.db.models import Reading  # noqa: PLC0415
+
+    row = await session.execute(select(User).where(User.username == payload.username))
+    user = row.scalar_one_or_none()
+    if user is None or not verify_password(payload.password, user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales inválidas")
+
+    result = await session.execute(
+        delete(Reading).where(
+            ~Reading.station_id.in_(text("SELECT id FROM stations"))
+        )
+    )
+    await session.commit()
+    return CleanupResponse(deleted=result.rowcount or 0)
