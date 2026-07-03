@@ -196,6 +196,7 @@ export default function VirtualGatewayPanel() {
             <label className="field-label">Usuario</label>
             <select
               className="field-input"
+              key={users.map((u) => u.id).join(",")}
               value={selectedUserId}
               onChange={(e) => setSelectedUserId(e.target.value)}
               disabled={isRunning}
@@ -206,6 +207,14 @@ export default function VirtualGatewayPanel() {
               ))}
             </select>
           </div>
+          {selectedUser && (
+            <div className="field-row">
+              <label className="field-label" />
+              <span style={{ fontSize: "0.8rem", color: "#22c55e" }}>
+                ✓ {selectedUser.username}
+              </span>
+            </div>
+          )}
 
           <div className="divider" />
 
