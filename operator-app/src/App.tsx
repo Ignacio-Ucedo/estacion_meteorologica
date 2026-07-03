@@ -2,9 +2,10 @@ import { useState } from "react";
 import Sidebar from "./components/Sidebar";
 import VirtualGatewayPanel from "./components/VirtualGatewayPanel";
 import UserManagementPanel from "./components/UserManagementPanel";
+import SettingsPanel from "./components/SettingsPanel";
 import "./App.css";
 
-type Section = "gateway" | "users";
+type Section = "gateway" | "users" | "settings";
 
 function App() {
   const [activeSection, setActiveSection] = useState<Section>("gateway");
@@ -15,6 +16,7 @@ function App() {
       <main className="main-panel">
         {activeSection === "gateway" && <VirtualGatewayPanel />}
         {activeSection === "users" && <UserManagementPanel />}
+        {activeSection === "settings" && <SettingsPanel />}
       </main>
     </div>
   );

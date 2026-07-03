@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import GatewayLog, { LogEntry } from "./GatewayLog";
-import { fetchUsers, createStation, claimStation, getBackendUrl, BACKEND_URL_KEY, BACKEND_PRESETS, BackendUser } from "../api/backend";
+import { fetchUsers, createStation, claimStation, getBackendUrl, BackendUser } from "../api/backend";
 
 interface GatewayConfig {
   dev_eui: string;
@@ -51,7 +51,6 @@ export default function VirtualGatewayPanel() {
   const [selectedUserId, setSelectedUserId] = useState<string>(() =>
     localStorage.getItem("gateway_selected_user_id") ?? ""
   );
-  const [backendUrl, setBackendUrl] = useState<string>(getBackendUrl);
 
   // Persist host + interval (not OTAA keys)
   useEffect(() => {
@@ -59,12 +58,10 @@ export default function VirtualGatewayPanel() {
   }, [config.host, config.interval_secs]);
 
   useEffect(() => {
-    localStorage.setItem(BACKEND_URL_KEY, backendUrl);
-    setUsers([]);
     fetchUsers()
       .then(setUsers)
       .catch((e) => console.error("fetchUsers failed:", e));
-  }, [backendUrl]);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("gateway_selected_user_id", selectedUserId);
@@ -169,34 +166,6 @@ export default function VirtualGatewayPanel() {
 
       <div className="panel-body">
         <div className="config-section">
-          <div className="field-row">
-            <label className="field-label">Backend</label>
-            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-              {BACKEND_PRESETS.map((p) => (
-                <button
-                  key={p.url}
-                  className={`btn ${backendUrl === p.url ? "btn-primary" : "btn-secondary"}`}
-                  style={{ flex: "0 0 auto", fontSize: "0.8rem", padding: "0.25rem 0.75rem" }}
-                  onClick={() => setBackendUrl(p.url)}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="field-row">
-            <label className="field-label" />
-            <input
-              className="field-input"
-              value={backendUrl}
-              onChange={(e) => setBackendUrl(e.target.value.trim())}
-              placeholder="http://localhost:8000"
-              style={{ fontSize: "0.8rem" }}
-            />
-          </div>
-
-          <div className="divider" />
-
           <div className="field-row">
             <label className="field-label">Usuario</label>
             <select
