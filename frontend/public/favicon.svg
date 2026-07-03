@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="32" fill="#0f172a"/>
+
+  <!-- Cloud body -->
+  <ellipse cx="32" cy="28" rx="14" ry="9" fill="#94a3b8"/>
+  <circle cx="22" cy="30" r="7" fill="#94a3b8"/>
+  <circle cx="40" cy="31" r="6" fill="#94a3b8"/>
+  <circle cx="30" cy="23" r="8" fill="#cbd5e1"/>
+  <ellipse cx="32" cy="30" rx="13" ry="8" fill="#cbd5e1"/>
+  <circle cx="22" cy="29" r="6" fill="#cbd5e1"/>
+  <circle cx="39" cy="30" r="5.5" fill="#cbd5e1"/>
+
+  <!-- Rain drops -->
+  <line x1="24" y1="40" x2="22" y2="47" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round"/>
+  <line x1="32" y1="40" x2="30" y2="47" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round"/>
+  <line x1="40" y1="40" x2="38" y2="47" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round"/>
+
+  <!-- Thermometer stem -->
+  <rect x="43" y="14" width="4" height="20" rx="2" fill="#f8fafc"/>
+  <!-- Thermometer bulb -->
+  <circle cx="45" cy="36" r="4" fill="#ef4444"/>
+  <!-- Mercury level -->
+  <rect x="44" y="22" width="2" height="12" rx="1" fill="#ef4444"/>
+</svg>
