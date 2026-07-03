@@ -145,6 +145,10 @@ export default function VirtualGatewayPanel() {
     fetchUsers()
       .then(setUsers)
       .catch((e) => console.error("fetchUsers failed:", e));
+    // Sync status with Rust in case of hot-reload / frontend restart
+    invoke<string>("get_gateway_status")
+      .then((s) => setStatus(s as GatewayStatus))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
