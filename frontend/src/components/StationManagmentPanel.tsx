@@ -5,6 +5,7 @@ import { InlineError } from "./InlineError";
 import { Skeleton } from "./Skeleton";
 import type { StationResponse } from "../api/types";
 import { deleteStationReadings, deleteStation } from "../api/client";
+import { getPersistedStationId, persistStationId } from "../api/config";
 
 type StationStatus = "online" | "offline" | "degraded";
 
@@ -103,20 +104,23 @@ function DeleteConfirmDialog({
   );
 }
 
+type StationDeleteState = "idle" | "confirming" | "deleting" | "error";
+
 function StationCard({ station, onDeleted }: { station: StationResponse; onDeleted: () => void }) {
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [deletedCount, setDeletedCount] = useState(0);
-  const [deletingStation, setDeletingStation] = useState(false);
+  const [stationDeleteState, setStationDeleteState] = useState<StationDeleteState>("idle");
+  const [stationDeleteError, setStationDeleteError] = useState("");
 
   async function handleDeleteStation() {
-    if (!confirm(`¿Eliminar la estación "${station.name}" y todos sus registros? Esta acción no se puede deshacer.`)) return;
-    setDeletingStation(true);
+    setStationDeleteState("deleting");
     try {
       await deleteStation(station.id);
+      if (getPersistedStationId() === station.id) persistStationId("");
       onDeleted();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Error al eliminar");
-      setDeletingStation(false);
+      setStationDeleteError(e instanceof Error ? e.message : "Error al eliminar");
+      setStationDeleteState("error");
     }
   }
 
@@ -168,14 +172,41 @@ function StationCard({ station, onDeleted }: { station: StationResponse; onDelet
             Borrar registros
           </button>
         )}
-        <button
-          className="smp-delete-btn"
-          style={{ color: "#ef4444", borderColor: "#ef4444" }}
-          onClick={handleDeleteStation}
-          disabled={deletingStation}
-        >
-          {deletingStation ? "Eliminando…" : "Eliminar estación"}
-        </button>
+        {stationDeleteState === "idle" && (
+          <button
+            className="smp-delete-btn"
+            style={{ color: "#ef4444", borderColor: "#ef4444" }}
+            onClick={() => setStationDeleteState("confirming")}
+          >
+            Eliminar estación
+          </button>
+        )}
+        {stationDeleteState === "confirming" && (
+          <>
+            <span className="smp-delete-done" style={{ color: "#94a3b8" }}>¿Eliminar?</span>
+            <button
+              className="smp-delete-btn"
+              style={{ color: "#ef4444", borderColor: "#ef4444" }}
+              onClick={handleDeleteStation}
+            >
+              Confirmar
+            </button>
+            <button className="smp-delete-btn" onClick={() => setStationDeleteState("idle")}>
+              Cancelar
+            </button>
+          </>
+        )}
+        {stationDeleteState === "deleting" && (
+          <span className="smp-delete-done" style={{ color: "#94a3b8" }}>Eliminando…</span>
+        )}
+        {stationDeleteState === "error" && (
+          <>
+            <span className="smp-delete-done" style={{ color: "#ef4444" }}>{stationDeleteError}</span>
+            <button className="smp-delete-btn" onClick={() => setStationDeleteState("idle")}>
+              Reintentar
+            </button>
+          </>
+        )}
       </div>
     </article>
   );

@@ -71,6 +71,9 @@ function App() {
         const firstId = page.data[0].id;
         persistStationId(firstId);
         setSelectedStationId(firstId);
+      } else {
+        persistStationId("");
+        setSelectedStationId("");
       }
     }).catch(() => {/* sin estaciones disponibles, el banner de error existente se muestra */});
   }, [error]);
