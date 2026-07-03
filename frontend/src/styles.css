@@ -2289,3 +2289,150 @@ h2 {
     font-size: 14px;
   }
 }
+
+/* ─── Login ────────────────────────────────────────────── */
+
+.login-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: #131315;
+  padding: 24px;
+}
+
+.login-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 380px;
+  background: #1b1b1d;
+  border: 1px solid #2e2e32;
+  border-radius: 16px;
+  padding: 40px 36px 32px;
+  gap: 0;
+}
+
+.login-logo {
+  margin-bottom: 16px;
+}
+
+.login-title {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #e4e2e4;
+  letter-spacing: -0.3px;
+}
+
+.login-subtitle {
+  margin: 0 0 28px;
+  font-size: 13px;
+  color: #8b8b96;
+  text-align: center;
+}
+
+.login-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.login-field label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #a1a1aa;
+  letter-spacing: 0.3px;
+}
+
+.login-field input {
+  background: #131315;
+  border: 1px solid #3a3a3f;
+  border-radius: 8px;
+  color: #e4e2e4;
+  font-size: 14px;
+  font-family: inherit;
+  padding: 9px 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.login-field input:focus {
+  border-color: #38bdf8;
+}
+
+.login-field input::placeholder {
+  color: #52525b;
+}
+
+.login-hint {
+  margin: 0;
+  font-size: 12px;
+  color: #71717a;
+  line-height: 1.5;
+  background: #131315;
+  border: 1px solid #2e2e32;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.login-error {
+  margin: 0;
+  font-size: 13px;
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.login-btn {
+  margin-top: 4px;
+  background: #38bdf8;
+  color: #0f172a;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.login-btn:hover:not(:disabled) {
+  background: #7dd3fc;
+}
+
+.login-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.login-switch {
+  margin-top: 20px;
+  font-size: 13px;
+  color: #71717a;
+}
+
+.login-switch button {
+  background: none;
+  border: none;
+  color: #38bdf8;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.login-switch button:hover {
+  color: #7dd3fc;
+}

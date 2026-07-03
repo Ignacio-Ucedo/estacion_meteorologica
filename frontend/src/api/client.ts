@@ -9,7 +9,12 @@ import type {
 } from "./types";
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${BASE_URL}/api${path}`, init);
+  const token = localStorage.getItem("weatheros_token");
+  const headers: Record<string, string> = {
+    ...(init?.headers as Record<string, string>),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+  const response = await fetch(`${BASE_URL}/api${path}`, { ...init, headers });
   if (!response.ok) {
     throw new Error(`API error ${response.status}: ${response.statusText}`);
   }
