@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useReadings } from "../api/hooks";
-import { getReadings } from "../api/client";
+import { getReadings, deleteStationReadings } from "../api/client";
 import { getPersistedStationId } from "../api/config";
 import { formatTimestamp } from "../data/Stationlog";
 import { InlineError } from "./InlineError";
@@ -80,6 +80,19 @@ export function StationLogPanel() {
     setPage(1);
   }
 
+  async function handleClearReadings() {
+    const stationId = getPersistedStationId();
+    if (!confirm("¿Eliminar todas las lecturas de esta estación? Esta acción no se puede deshacer.")) return;
+    try {
+      await deleteStationReadings(stationId);
+      setBgData(null);
+      setPage(1);
+      refresh();
+    } catch {
+      addToast("No se pudieron eliminar las lecturas.");
+    }
+  }
+
   function renderRow(row: ReadingResponse) {
     const ts = new Date(row.timestamp);
     return (
@@ -114,14 +127,24 @@ export function StationLogPanel() {
             Historial de telemetría — actualización cada 30 segundos.
           </span>
         </div>
-        <button
-          className="log-pause-btn"
-          type="button"
-          onClick={() => setPaused((p) => !p)}
-          aria-pressed={paused}
-        >
-          {paused ? "Reanudar" : "Pausar"}
-        </button>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <button
+            className="log-pause-btn"
+            type="button"
+            onClick={() => setPaused((p) => !p)}
+            aria-pressed={paused}
+          >
+            {paused ? "Reanudar" : "Pausar"}
+          </button>
+          <button
+            className="log-pause-btn"
+            type="button"
+            style={{ color: "#ef4444", borderColor: "#6b2c2c" }}
+            onClick={handleClearReadings}
+          >
+            Limpiar lecturas
+          </button>
+        </div>
       </div>
 
       <div className="log-search-bar">
