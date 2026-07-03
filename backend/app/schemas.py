@@ -51,6 +51,7 @@ class StationCreate(ApiModel):
     name: str = Field(min_length=1)
     location: str = Field(min_length=1)
     status: StationStatus
+    user_id: str | None = None
 
 
 class StationResponse(ApiModel):

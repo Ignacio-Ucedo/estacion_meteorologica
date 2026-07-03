@@ -47,3 +47,9 @@ async def login(payload: LoginRequest, session: SessionDep) -> TokenResponse:
 @router.get("/me", response_model=UserResponse)
 async def me(current_user: Annotated[User, Depends(get_current_user)]) -> UserResponse:
     return UserResponse.model_validate(current_user)
+
+
+@router.get("/users", response_model=list[UserResponse], tags=["admin"])
+async def list_users(session: SessionDep) -> list[UserResponse]:
+    rows = await session.execute(select(User).order_by(User.created_at))
+    return [UserResponse.model_validate(u) for u in rows.scalars()]

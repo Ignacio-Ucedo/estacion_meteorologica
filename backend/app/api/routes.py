@@ -1,7 +1,8 @@
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import jwt
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,6 +35,19 @@ from app.services.stations import (
 
 router = APIRouter()
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
+
+
+def _user_id_from_request(request: Request) -> str | None:
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return None
+    token = auth.removeprefix("Bearer ")
+    settings = get_settings()
+    try:
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        return payload.get("user_id")
+    except jwt.PyJWTError:
+        return None
 
 
 def effective_status(last_ts: datetime | None, threshold_seconds: int) -> str:
@@ -69,12 +83,14 @@ async def post_station(
 
 @router.get("/stations", response_model=StationPage)
 async def get_stations(
+    request: Request,
     session: SessionDep,
     page: PageQuery = 1,
     search: str | None = None,
 ) -> StationPage:
     threshold = get_settings().station_offline_threshold_seconds
-    total, rows = await list_stations(session, page, search)
+    user_id = _user_id_from_request(request)
+    total, rows = await list_stations(session, page, search, user_id=user_id)
     return StationPage(
         total=total,
         page=page,
