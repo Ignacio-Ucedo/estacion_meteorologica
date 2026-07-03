@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models import Station
 from app.db.session import get_session
 from app.schemas import (
     CurrentReading,
@@ -106,6 +107,31 @@ async def get_stations(
             for s, battery, last_ts in rows
         ],
     )
+
+
+@router.post("/stations/claim", response_model=StationResponse)
+async def claim_station(body: dict, session: SessionDep) -> StationResponse:
+    import re  # noqa: PLC0415
+    dev_eui = re.sub(r"[:\- ]", "", body.get("dev_eui", "")).lower()
+    short = dev_eui[:8]
+    station_id = f"dev-{short}"
+    user_id = body.get("user_id")
+
+    station = await get_station(session, station_id)
+    if station is None:
+        station = Station(
+            id=station_id,
+            name=f"Auto {short}",
+            location="Virtual",
+            status="online",
+            user_id=user_id,
+        )
+        session.add(station)
+    else:
+        station.user_id = user_id
+    await session.commit()
+    await session.refresh(station)
+    return StationResponse.model_validate(station, from_attributes=True)
 
 
 @router.patch("/stations/{station_id}/owner", response_model=StationResponse)

@@ -25,31 +25,14 @@ export async function fetchUsers(): Promise<BackendUser[]> {
   return res.json() as Promise<BackendUser[]>;
 }
 
-export interface StationPayload {
-  name: string;
-  location: string;
-  status: "online" | "offline" | "degraded";
-  user_id: string | null;
-}
 
-export async function createStation(payload: StationPayload): Promise<void> {
-  const res = await fetch(`${getBackendUrl()}/api/stations`, {
+export async function claimStation(devEui: string, userId: string): Promise<void> {
+  const res = await fetch(`${getBackendUrl()}/api/stations/claim`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ dev_eui: devEui, user_id: userId }),
   });
-  if (!res.ok && res.status !== 409) {
-    throw new Error(`POST /stations: ${res.status}`);
-  }
-}
-
-export async function claimStation(stationId: string, userId: string): Promise<void> {
-  const res = await fetch(`${getBackendUrl()}/api/stations/${stationId}/owner`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_id: userId }),
-  });
-  if (!res.ok) throw new Error(`PATCH /stations/${stationId}/owner: ${res.status}`);
+  if (!res.ok) throw new Error(`POST /stations/claim: ${res.status}`);
 }
 
 export async function deleteUser(userId: string): Promise<void> {
