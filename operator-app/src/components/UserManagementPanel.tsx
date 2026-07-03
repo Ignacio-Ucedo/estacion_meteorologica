@@ -43,13 +43,13 @@ export default function UserManagementPanel() {
         </button>
       </div>
 
-      <div className="panel-body">
-        <p style={{ fontSize: "0.8rem", color: "#8b949e", marginBottom: "1rem" }}>
+      <div className="panel-body" style={{ flexDirection: "column", alignItems: "stretch", overflow: "auto" }}>
+        <p style={{ fontSize: "0.8rem", color: "#8b949e" }}>
           Backend: {getBackendUrl()}
         </p>
 
         {error && (
-          <div style={{ color: "#ef4444", fontSize: "0.85rem", marginBottom: "1rem" }}>{error}</div>
+          <div style={{ color: "#ef4444", fontSize: "0.85rem" }}>{error}</div>
         )}
 
         {!loading && users.length === 0 && !error && (
