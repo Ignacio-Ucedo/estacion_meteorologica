@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import GatewayLog, { LogEntry } from "./GatewayLog";
+import { fetchUsers, createStation, BackendUser } from "../api/backend";
 
 interface GatewayConfig {
   dev_eui: string;
@@ -46,10 +47,24 @@ export default function VirtualGatewayPanel() {
   });
   const [status, setStatus] = useState<GatewayStatus>("stopped");
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [users, setUsers] = useState<BackendUser[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>(() =>
+    localStorage.getItem("gateway_selected_user_id") ?? ""
+  );
   // Persist host + interval (not OTAA keys)
   useEffect(() => {
     localStorage.setItem("gateway_config", JSON.stringify({ host: config.host, interval_secs: config.interval_secs }));
   }, [config.host, config.interval_secs]);
+
+  useEffect(() => {
+    fetchUsers()
+      .then(setUsers)
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("gateway_selected_user_id", selectedUserId);
+  }, [selectedUserId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,14 +100,24 @@ export default function VirtualGatewayPanel() {
 
   const isRunning = status === "running" || status === "connecting";
 
+  const selectedUser = users.find((u) => u.id === selectedUserId) ?? null;
+
   const configValid =
     isHex(config.dev_eui, 8) &&
     (config.app_eui === "" || isHex(config.app_eui, 8)) &&
     isHex(config.app_key, 16) &&
-    config.host.trim().length > 0;
+    config.host.trim().length > 0 &&
+    selectedUserId !== "";
 
   async function handleStart() {
     try {
+      const devEuiSlug = config.dev_eui.replace(/[:\- ]/g, "").toLowerCase();
+      await createStation({
+        name: `Gateway Virtual ${selectedUser?.username ?? devEuiSlug}`,
+        location: "Virtual",
+        status: "online",
+        user_id: selectedUserId || null,
+      });
       await invoke("start_gateway", { config });
     } catch (e) {
       setLogs((prev) => [
@@ -135,6 +160,23 @@ export default function VirtualGatewayPanel() {
 
       <div className="panel-body">
         <div className="config-section">
+          <div className="field-row">
+            <label className="field-label">Usuario</label>
+            <select
+              className="field-input"
+              value={selectedUserId}
+              onChange={(e) => setSelectedUserId(e.target.value)}
+              disabled={isRunning}
+            >
+              <option value="">— seleccionar usuario —</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>{u.username}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="divider" />
+
           <div className="field-row">
             <label className="field-label">DevEUI</label>
             <input
