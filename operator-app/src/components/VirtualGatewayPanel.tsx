@@ -63,7 +63,7 @@ export default function VirtualGatewayPanel() {
     setUsers([]);
     fetchUsers()
       .then(setUsers)
-      .catch(() => {});
+      .catch((e) => console.error("fetchUsers failed:", e));
   }, [backendUrl]);
 
   useEffect(() => {
