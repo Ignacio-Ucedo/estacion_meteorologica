@@ -12,6 +12,8 @@ __pycache__/
 firmware/target/
 firmware/.embuild/
 firmware/gateway-mock/target/
+target/
+Cargo.lock
 
 # TypeScript build artifacts
 *.tsbuildinfo
