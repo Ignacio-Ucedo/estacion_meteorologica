@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import GatewayLog, { LogEntry } from "./GatewayLog";
-import { fetchUsers, createStation, claimStation, deleteUser, getBackendUrl, BACKEND_URL_KEY, BACKEND_PRESETS, BackendUser } from "../api/backend";
+import { fetchUsers, createStation, claimStation, getBackendUrl, BACKEND_URL_KEY, BACKEND_PRESETS, BackendUser } from "../api/backend";
 
 interface GatewayConfig {
   dev_eui: string;
@@ -52,7 +52,6 @@ export default function VirtualGatewayPanel() {
     localStorage.getItem("gateway_selected_user_id") ?? ""
   );
   const [backendUrl, setBackendUrl] = useState<string>(getBackendUrl);
-  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   // Persist host + interval (not OTAA keys)
   useEffect(() => {
@@ -140,19 +139,6 @@ export default function VirtualGatewayPanel() {
     await invoke("stop_gateway");
   }
 
-  async function handleDeleteUser(user: BackendUser) {
-    if (!confirm(`¿Eliminar el usuario "${user.username}"? Esta acción no se puede deshacer.`)) return;
-    setDeletingUserId(user.id);
-    try {
-      await deleteUser(user.id);
-      if (selectedUserId === user.id) setSelectedUserId("");
-      setUsers((prev) => prev.filter((u) => u.id !== user.id));
-    } catch (e) {
-      alert(String(e));
-    } finally {
-      setDeletingUserId(null);
-    }
-  }
 
   async function handleLoadCsv() {
     const { open } = await import("@tauri-apps/plugin-dialog");
@@ -232,27 +218,6 @@ export default function VirtualGatewayPanel() {
               <span style={{ fontSize: "0.8rem", color: "#22c55e" }}>
                 ✓ {selectedUser.username}
               </span>
-            </div>
-          )}
-
-          {users.length > 0 && (
-            <div className="field-row" style={{ alignItems: "flex-start" }}>
-              <label className="field-label" style={{ paddingTop: "0.25rem" }}>Usuarios</label>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", flex: 1 }}>
-                {users.map((u) => (
-                  <div key={u.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
-                    <span style={{ fontSize: "0.85rem", color: "#c9d1d9" }}>{u.username}</span>
-                    <button
-                      className="btn btn-danger"
-                      style={{ fontSize: "0.75rem", padding: "0.15rem 0.6rem" }}
-                      disabled={deletingUserId === u.id}
-                      onClick={() => handleDeleteUser(u)}
-                    >
-                      {deletingUserId === u.id ? "…" : "Eliminar"}
-                    </button>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
 

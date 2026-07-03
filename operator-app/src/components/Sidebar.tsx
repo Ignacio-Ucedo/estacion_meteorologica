@@ -1,4 +1,4 @@
-type Section = "gateway";
+type Section = "gateway" | "users";
 
 interface SidebarItem {
   id: Section;
@@ -8,6 +8,7 @@ interface SidebarItem {
 
 const ITEMS: SidebarItem[] = [
   { id: "gateway", label: "Gateway Virtual", icon: "📡" },
+  { id: "users", label: "Usuarios", icon: "👤" },
 ];
 
 interface SidebarProps {
