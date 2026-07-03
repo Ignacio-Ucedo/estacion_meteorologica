@@ -4,6 +4,7 @@ mod commands;
 mod gateway;
 mod state;
 
+use commands::chirpstack::sync_chirpstack;
 use commands::gateway::{get_gateway_status, load_nvs_csv, start_gateway, stop_gateway};
 use state::AppState;
 
@@ -18,6 +19,7 @@ pub fn run() {
             stop_gateway,
             get_gateway_status,
             load_nvs_csv,
+            sync_chirpstack,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -80,6 +80,10 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 /generated/prisma
 firmware/Cargo.lock
 
+# Archivos generados (imágenes, diagramas)
+docs/*.png
+docs/*.svg
+
 # Archivos locales de prueba/informe (no forman parte del repo)
 prueba-gateway-node-mock.md
 arquitectura-gateway-backend.txt
