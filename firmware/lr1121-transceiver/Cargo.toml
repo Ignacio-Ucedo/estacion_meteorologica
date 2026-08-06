@@ -1,0 +1,19 @@
+[package]
+name = "lr1121-transceiver"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "lr1121_transceiver"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow = "1"
+log = "0.4"
+esp-idf-hal = "0.46"
+esp-idf-svc = "0.52"
+
+[build-dependencies]
+bindgen = "0.69"
+cc = "1"
+embuild = "0.33"

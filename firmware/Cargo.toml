@@ -37,9 +37,9 @@ esp-idf-svc = "0.52"
 embedded-svc = "0.29"
 weather-core = { path = "../weather-core" }
 
-# LoRaWAN EU433: crypto primitives para OTAA y uplinks Class A
-aes = { version = "0.8", default-features = false }
-cmac = "0.7"
+# LR1121 — nodo sensor (Modem-E) y gateway (transceiver)
+lr1121-modem-e   = { path = "lr1121-modem-e" }
+lr1121-transceiver = { path = "lr1121-transceiver" }
 
 # Serialización JSON para el protocolo Semtech UDP del gateway
 serde = { version = "1", features = ["derive"] }
