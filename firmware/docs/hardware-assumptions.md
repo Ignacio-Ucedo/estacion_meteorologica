@@ -33,11 +33,18 @@ These pins are placeholders for the first wiring pass and must be reviewed again
 
 ## Follow-Ups
 
-- Confirm the exact RS-FSJT-N01 output variant before designing final hardware. If it is RS485, voltage, or current-loop instead of pulse/NPN, create a separate hardware interface change.
-- Define final rain and wind calibration constants, plus the BLE calibration flow from Android.
-- Implement DHT22 GPIO driver in `sensor-node` to replace `UnwiredEnvironmentSensor`.
+- **Anemómetro (TBD):** confirmar variante de salida del anemómetro de cazoletas sin marca
+  (conector XLR/aviación 3 pines). Probable Hall open-collector NPN → pull-up a 3.3V en GPIO33.
+  Medir con multímetro antes de diseñar el esquemático. Ver `docs/hardware-questions.md`.
+- **Pluviómetro:** se comprará un tipping bucket nuevo con reed switch (mm/pulso documentado).
+  Será compatible directo con GPIO32. La constante mm/pulso definirá la calibración.
+- **DHT22:** confirmado como AM2302 (variante cableada). Implementar driver GPIO en
+  `sensor-node` para reemplazar `UnwiredEnvironmentSensor`.
 - Connect rain (GPIO 32) and wind (GPIO 33) ISRs to `PulseCounters` in `sensor-node`.
-- Add deep sleep, energy budget, battery/solar measurement, and field range validation in later changes.
+- **Alimentación:** sistema 12V (SLA 5Ah PoC / LiFePO4 4S producto). Buck 12V→3.3V +
+  divisor de tensión para ADC de batería (rango real 10000–14600 mV). Ver nota en
+  `docs/hardware-questions.md` sobre corrección del rango de `bateria_mv`.
+- Add deep sleep, energy budget, and field range validation in later changes.
 
 ## Known Prototype Limits
 
