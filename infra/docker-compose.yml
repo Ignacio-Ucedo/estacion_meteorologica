@@ -1,10 +1,11 @@
 version: "3.8"
 
-# Stack: ChirpStack v4 (EU433) + Mosquitto + InfluxDB
+# Stack: ChirpStack v4 (AU915 sub-band 2) + Mosquitto + InfluxDB
 # Uso: docker compose up -d
 # ChirpStack UI: http://localhost:8080  (admin / admin)
 # InfluxDB UI:   http://localhost:8086  (admin / adminpassword)
 # Semtech UDP Packet Forwarder: puerto 1700/UDP (ESP32 gateway → este host)
+# Band plan: AU915 sub-band 2, canal fijo 903.9 MHz SF7BW125 (LR1121 transceiver)
 
 services:
 

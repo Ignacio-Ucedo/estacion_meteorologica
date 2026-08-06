@@ -1,4 +1,4 @@
-# ChirpStack v4 — configuración para prototipo con band plan EU433
+# ChirpStack v4 — configuración para prototipo con band plan AU915 sub-band 2
 # Referencia: https://www.chirpstack.io/docs/chirpstack/configuration.html
 
 [logging]
@@ -12,9 +12,9 @@ servers = ["redis://redis/"]
 
 [network]
 net_id = "000000"
-# EU433: 433.175 – 434.665 MHz, 3 canales por defecto
-# El gateway single-channel opera en canal 0 (433.175 MHz SF7BW125)
-enabled_regions = ["eu433"]
+# AU915: 902–928 MHz (banda LoRaWAN regulatoria de Argentina).
+# PoC usa sub-band 2 (canales 8–15, canal fijo 903.9 MHz SF7BW125).
+enabled_regions = ["au915_2"]
 
 [api]
 bind = "0.0.0.0:8080"
