@@ -18,7 +18,7 @@ pub struct Measurement {
 //  5–6    hum_x100         u16 LE  %RH×100 (0–10000)
 //  7–8    lluvia_pulsos    u16 LE  pulsos acumulados
 //  9–10   viento_pulsos    u16 LE  pulsos acumulados
-// 11–12   bateria_mv       u16 LE  mV (0–4200)
+// 11–12   bateria_mv       u16 LE  mV (0–15000, sistema 12V SLA/LiFePO4)
 // 13      crc8             u8      CRC-8/MAXIM sobre bytes 0–12
 
 pub const BINARY_PAYLOAD_LEN: usize = 14;

@@ -87,7 +87,7 @@ InfluxDB  ──────────────────────► 
 | 5–6 | `hum_x100` | u16 LE | %RH × 100 | 0–10000 |
 | 7–8 | `lluvia_pulsos` | u16 LE | pulsos | 0–65535 |
 | 9–10 | `viento_pulsos` | u16 LE | pulsos | 0–65535 |
-| 11–12 | `bateria_mv` | u16 LE | mV | 0–4200 |
+| 11–12 | `bateria_mv` | u16 LE | mV | 0–15000 (sistema 12V SLA/LiFePO4; un u16 aguanta hasta 65535) |
 | 13 | `crc8` | u8 | — | CRC-8/MAXIM sobre bytes 0–12 |
 
 El FRMPayload se cifra por LoRaWAN antes de la transmisión; ChirpStack lo descifra y lo entrega al backend como bytes crudos en el campo `data` (base64) del evento MQTT.
