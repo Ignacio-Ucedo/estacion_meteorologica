@@ -105,17 +105,24 @@ the OpenSpec skills:
 ```
 DHT22 + rain-gauge/anemometer pulses
         │
-   ESP32 sensor node (Rust, esp-rs, SX1278)
-        │  LoRaWAN EU433 — 433.175 MHz SF7BW125, OTAA, uplink every 10 min
+   ESP32 sensor node (Rust, esp-idf-hal/svc)
+   └── lr1121-modem-e crate (FFI → SWDR009 C SDK)
+        │  LR1121 runs Modem-E v2.1.0 (LoRaWAN 1.0.4 certified, in-chip stack)
+        │  Band plan: AU915 sub-band 2, OTAA, uplink every 10 min
+        │  Canal fijo PoC: 903.9 MHz SF7BW125 (canal 8, sub-band 2)
         │  FRMPayload 14 bytes: device_id (u8), seq (u16 LE),
         │  temp_c*100 (i16 LE), hum*100 (u16 LE), lluvia_pulsos (u16 LE),
         │  viento_pulsos (u16 LE), bateria_mv (u16 LE), crc8
+        │  Pinout: SCK=18, MISO=19, MOSI=23, NSS=5, RST=14, BUSY=27, DIO1=26
         ▼
-   ESP32 single-channel gateway (Rust, SX1278 + WiFi)
+   ESP32 single-channel gateway (Rust, esp-idf-hal/svc + WiFi)
+   └── lr1121-transceiver crate (FFI → lr11xx_driver SWDR001 C SDK)
+        │  LR1121 in transceiver mode (factory firmware)
+        │  Listens on 903.9 MHz SF7BW125 (fixed PoC channel)
         │  [POC limitation: 1 fixed channel, not full LoRaWAN spec-compliant]
         │  Semtech UDP Packet Forwarder Protocol → ChirpStack
         ▼
-   ChirpStack v4 (Docker, self-hosted, EU433)
+   ChirpStack v4 (Docker, self-hosted, AU915 sub-band 2)
         │  Decrypts FRMPayload, verifies MIC
         │  MQTT: application/{appId}/device/{devEUI}/event/up
         ▼
@@ -127,25 +134,21 @@ DHT22 + rain-gauge/anemometer pulses
    ESP32 sensor node  ◄───── BLE ─────  Android app — calibration flow
 ```
 
-**Hardware note**: SX1278 modules (137–525 MHz) are used throughout.
-AU915 (902–928 MHz, Argentina's LoRaWAN regulatory band plan) would require
-SX1276/SX1262; this is deferred to a future change. EU433 is used for the
-prototype because it matches the available hardware.
+**Hardware note**: LR1121 modules (sub-GHz HF port: 150–960 MHz) are used
+throughout, operating in the AU915 band (902–928 MHz) — Argentina's LoRaWAN
+regulatory band plan. Breakout boards (Waveshare Core1121, Seeed Wio-LR1121)
+include U.FL/SMA connectors for external antennas.
 
-Note the **firmware spike currently in progress** (see
-`openspec/changes/spike-firmware-lora-sensors/`) deliberately diverges from
-the target design above to de-risk hardware first: it uses ESP-IDF
-(`esp-idf-hal`/`esp-idf-svc`) rather than bare-metal `esp-hal`, LoRa P2P
-(not LoRaWAN), a debug CSV payload (`id,seq,temp,hum,pres,pulsos_lluvia,
-pulsos_viento`) instead of the fixed binary payload, an MPL115A2 pressure
-sensor in addition to the DHT22, and explicitly defers deep sleep,
-battery/solar power, WiFi, the backend, BLE calibration, and field-range
-validation to later changes.
+**Dual driver approach**:
+- **Nodo sensor**: LR1121 runs **Modem-E v2.1.0** (LoRaWAN stack embedded in chip).
+  The ESP32 uses `lr1121-modem-e` crate (wraps SWDR009 via FFI).
+- **Gateway**: LR1121 in **transceiver mode** (factory firmware) for raw LoRa RX.
+  The ESP32 uses `lr1121-transceiver` crate (wraps SWDR001/lr11xx_driver via FFI).
 
-The **LoRaWAN migration** is tracked in
-`openspec/changes/migrate-lorawan-sx1278/` — it supersedes the archived
-`migrate-lorawan-sx1276` change (which assumed SX1276/AU915 hardware that
-was not acquired).
+The **LR1121/AU915 migration** is tracked in
+`openspec/changes/migrate-lr1121-au915/` — supersedes the archived
+`migrate-lorawan-sx1278` change (SX1278/EU433, lacked antenna connectors)
+and the archived `migrate-lorawan-sx1276` change (SX1276/AU915 hardware not acquired).
 
 ## Frontend (`frontend/`)
 

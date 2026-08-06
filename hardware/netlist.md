@@ -11,12 +11,17 @@ Cada **net** es una señal eléctrica: todos los pines listados bajo ella van co
 
 ## NODO SENSOR
 
+> **Radio**: módulo LR1121 con firmware Modem-E v2.1.0 (AU915, stack LoRaWAN 1.0.4 en chip).
+> Prerequisite de hardware: flashear Modem-E antes de conectar (ver tarea 1.1 y `hardware/flashing-modem-e.md`).
+> Antena recomendada: **yagi 915 MHz (≥ 9 dBi)** conectada vía pigtail U.FL → SMA.
+
 ### Componentes
 
-| Ref  | Valor / Modelo        | Descripción                                             | Estado    |
-|------|-----------------------|---------------------------------------------------------|-----------|
-| U1   | ESP32 DevKitC V1      | MCU principal, 30 pines                                 | TENEMOS   |
-| U2   | XL1278-SMT (SX1278)   | Módulo LoRa 433 MHz                                     | TENEMOS   |
+| Ref  | Valor / Modelo                        | Descripción                                             | Estado    |
+|------|---------------------------------------|---------------------------------------------------------|-----------|
+| U1   | ESP32 DevKitC V1                      | MCU principal, 30 pines                                 | TENEMOS   |
+| U2   | LR1121 breakout (Waveshare Core1121   | Módulo LoRa AU915, conector U.FL/SMA, Modem-E v2.1.0   | COMPRAR   |
+|      | o Seeed Wio-LR1121)                   | flashed como prerequisito                               |           |
 | U3   | MP1584EN o LM2596     | Buck (step-down) 12 V → 3.3 V (módulo prearmado OK para PoC) | COMPRAR |
 | J1   | Bornera 2p (2 vías)   | Conector batería 12 V (positivo arriba)                 | COMPRAR   |
 | J2   | XLR 5p macho          | Conector AM2302 (dentro de pantalla de radiación) — cable termina en hembra 5p; solo 3 pines en uso (VCC/GND/DATA), 2 NC — medir antes de cablear | TENEMOS |
@@ -35,7 +40,7 @@ Cada **net** es una señal eléctrica: todos los pines listados bajo ella van co
 | C3   | 100 nF cerámico       | Bypass 3.3 V                                            | TENEMOS   |
 | C4   | 100 nF cerámico       | Filtro RC ADC batería                                   | TENEMOS   |
 | C5   | 100 nF cerámico       | Filtro RC ADC veleta                                    | TENEMOS   |
-| ANT  | Antena SMA 433 MHz    | O dipolo 1/4λ = 17.3 cm cable rígido                   | COMPRAR   |
+| ANT  | Antena yagi 915 MHz ≥ 9 dBi | Pigtail U.FL → SMA incluido en breakout LR1121      | COMPRAR   |
 
 ---
 
@@ -122,42 +127,48 @@ Cada **net** es una señal eléctrica: todos los pines listados bajo ella van co
 | R3  | 2   | Extremo del pull-up hacia la señal |
 | U1  | GPIO4 | Cable máx ~1 m |
 
-#### `SX1278_SCK`
+#### `LR1121_SCK`
 | Ref | Pin | Nota |
 |-----|-----|------|
 | U1  | GPIO18 | SPI CLK |
 | U2  | SCK    | |
 
-#### `SX1278_MISO`
+#### `LR1121_MISO`
 | Ref | Pin | Nota |
 |-----|-----|------|
 | U1  | GPIO19 | SPI MISO |
 | U2  | MISO   | |
 
-#### `SX1278_MOSI`
+#### `LR1121_MOSI`
 | Ref | Pin | Nota |
 |-----|-----|------|
 | U1  | GPIO23 | SPI MOSI |
 | U2  | MOSI   | |
 
-#### `SX1278_NSS`
+#### `LR1121_NSS`
 | Ref | Pin | Nota |
 |-----|-----|------|
 | U1  | GPIO5  | ⚠ Strapping pin — R6 obligatorio |
 | U2  | NSS    | Chip select, activo-bajo |
 | R6  | 2      | Extremo del pull-up hacia la señal |
 
-#### `SX1278_RST`
+#### `LR1121_RST`
 | Ref | Pin | Nota |
 |-----|-----|------|
 | U1  | GPIO14 | |
-| U2  | RST    | |
+| U2  | NRESET | |
 
-#### `SX1278_DIO0`
+#### `LR1121_BUSY`
 | Ref | Pin | Nota |
 |-----|-----|------|
-| U1  | GPIO26 | TxDone / RxDone interrupt |
-| U2  | DIO0   | |
+| U1  | GPIO27 | **Nuevo respecto a SX1278** — obligatorio en LR1121 (no hay BUSY en SX1278) |
+| U2  | BUSY   | Activo-alto: indica que el chip procesa un comando SPI |
+
+#### `LR1121_DIO1`
+| Ref | Pin | Nota |
+|-----|-----|------|
+| U1  | GPIO26 | Reusa el net anterior `SX1278_DIO0` |
+| U2  | DIO1   | Pin de eventos Modem-E (JOINED, TX_DONE, etc.) |
 
 #### `LLUVIA_REED`
 | Ref | Pin | Nota |
@@ -178,37 +189,42 @@ Cada **net** es una señal eléctrica: todos los pines listados bajo ella van co
 
 ### Resumen de GPIOs usados — Nodo Sensor
 
-| GPIO | Función           | Tipo          |
-|------|-------------------|---------------|
-| 4    | DHT22 DATA        | Digital I/O   |
-| 5    | SX1278 NSS        | SPI CS (strapping pin) |
-| 14   | SX1278 RST        | Digital OUT   |
-| 18   | SX1278 SCK        | SPI CLK       |
-| 19   | SX1278 MISO       | SPI MISO      |
-| 23   | SX1278 MOSI       | SPI MOSI      |
-| 26   | SX1278 DIO0       | Digital IN    |
-| 32   | Pluviómetro reed  | Digital IN, pull-up interno |
-| 33   | Anemómetro NPN    | Digital IN    |
-| 34   | Veleta ADC        | ADC input-only (TBD, pinout desconocido) |
-| 35   | Batería ADC       | ADC input-only |
+| GPIO | Función           | Tipo          | Nota |
+|------|-------------------|---------------|------|
+| 4    | DHT22 DATA        | Digital I/O   | |
+| 5    | LR1121 NSS        | SPI CS (strapping pin) | R6 pull-up obligatorio |
+| 14   | LR1121 RESET      | Digital OUT   | |
+| 18   | LR1121 SCK        | SPI CLK       | |
+| 19   | LR1121 MISO       | SPI MISO      | |
+| 23   | LR1121 MOSI       | SPI MOSI      | |
+| 26   | LR1121 DIO1       | Digital IN    | Eventos Modem-E (JOINED, TX_DONE) |
+| 27   | LR1121 BUSY       | Digital IN    | **Nuevo** — no existía en SX1278 |
+| 32   | Pluviómetro reed  | Digital IN    | Pull-up interno |
+| 33   | Anemómetro NPN    | Digital IN    | |
+| 34   | Veleta ADC        | ADC input-only | TBD, pinout desconocido |
+| 35   | Batería ADC       | ADC input-only | |
 
-### Pins NC del SX1278
+### Pins sin conectar del LR1121 (nodo)
 
-DIO1, DIO2, DIO3, DIO4, DIO5 — sin conectar.
+DIO2, DIO3, DIO9/RFSW — sin conectar en esta rev. Validar según breakout adquirido.
 
 ---
 
 ## GATEWAY
 
-> **PoC vs target:** La PoC usa el ESP32 DevKitC V1 de 30 pines (TENEMOS, mismo que el nodo sensor) alimentado por USB desde una fuente cableada. El diseño target agrega backhauls alternativos y alimentación a batería — esos componentes se marcan FUTURO.
+> **PoC vs target:** La PoC usa el ESP32 DevKitC V1 de 30 pines (TENEMOS) alimentado por USB.
+> El diseño target agrega backhauls alternativos y alimentación a batería.
+> Radio: LR1121 en modo transceiver (firmware de fábrica, sin Modem-E).
+> Antena recomendada: **omnidireccional 915 MHz (2–5 dBi)**, conector SMA hembra.
 
 ### Componentes
 
-| Ref   | Valor / Modelo              | Descripción                                                                 | Estado   |
-|-------|-----------------------------|-----------------------------------------------------------------------------|----------|
-| U1    | ESP32 DevKitC V1 (30p)      | MCU gateway PoC — WiFi únicamente, alimentación USB                         | TENEMOS  |
-| U1-T  | ESP32-S3 DevKitC (38p)      | MCU gateway target — reemplaza U1; más GPIOs, sin conflicto ADC2/WiFi, USB-C | FUTURO  |
-| U2    | XL1278-SMT (SX1278)         | Módulo LoRa 433 MHz — RX continuo                                           | TENEMOS  |
+| Ref   | Valor / Modelo                        | Descripción                                                          | Estado   |
+|-------|---------------------------------------|----------------------------------------------------------------------|----------|
+| U1    | ESP32 DevKitC V1 (30p)               | MCU gateway PoC — WiFi, alimentación USB                             | TENEMOS  |
+| U1-T  | ESP32-S3 DevKitC (38p)               | MCU gateway target — change `gateway-esp32s3-target`                 | FUTURO   |
+| U2    | LR1121 breakout (Waveshare Core1121  | Módulo LoRa AU915 en modo transceiver — RX 903.9 MHz SF7BW125        | COMPRAR  |
+|       | o Seeed Wio-LR1121)                  | NO flashear Modem-E en el gateway (modo transceiver requerido)        |          |
 | U3    | Buck (step-down) MP1584/LM2596 | 12 V → 3.3 V para alimentación a batería                                 | FUTURO   |
 | U4    | W5500 módulo SPI            | Ethernet backhaul                                                           | FUTURO   |
 | U5    | SIM7000G breakout           | Cellular backhaul (LTE-M / NB-IoT / GPRS)                                  | FUTURO   |
@@ -219,7 +235,7 @@ DIO1, DIO2, DIO3, DIO4, DIO5 — sin conectar.
 | C6    | 100 nF cerámico             | Filtro RC ADC batería gateway                                                | FUTURO   |
 | C7    | 100 µF / 25 V electro       | Bulk entrada buck gateway                                                    | FUTURO   |
 | C8    | 100 µF / 10 V electro       | Bulk salida 3.3 V gateway                                                    | FUTURO   |
-| ANT   | Antena SMA 433 MHz          | Omnidireccional                                                              | COMPRAR  |
+| ANT   | Antena omnidireccional 915 MHz (2–5 dBi) | Conector SMA hembra                                        | COMPRAR  |
 
 ---
 
@@ -266,28 +282,28 @@ DIO1, DIO2, DIO3, DIO4, DIO5 — sin conectar.
 
 > Mismo circuito que el nodo sensor (ratio 0.248). En PoC (30-pin ESP32) NO usar con WiFi activo — conflicto ADC2.
 
-#### `SX1278_SCK`
+#### `LR1121_SCK`
 | Ref | Pin | Nota |
 |-----|-----|------|
 | U1/U1-T | GPIO18 | SPI bus compartido con W5500 *(FUTURO)* |
 | U2  | SCK    | |
 | U4  | SCK    | W5500 *(FUTURO)* |
 
-#### `SX1278_MISO`
+#### `LR1121_MISO`
 | Ref | Pin | Nota |
 |-----|-----|------|
 | U1/U1-T | GPIO19 | |
 | U2  | MISO   | |
 | U4  | MISO   | W5500 *(FUTURO)* |
 
-#### `SX1278_MOSI`
+#### `LR1121_MOSI`
 | Ref | Pin | Nota |
 |-----|-----|------|
 | U1/U1-T | GPIO23 | |
 | U2  | MOSI   | |
 | U4  | MOSI   | W5500 *(FUTURO)* |
 
-#### `SX1278_NSS`
+#### `LR1121_NSS`
 | Ref | Pin | Nota |
 |-----|-----|------|
 | U1/U1-T | GPIO5  | ⚠ Strapping pin — R6 obligatorio |
@@ -306,17 +322,23 @@ DIO1, DIO2, DIO3, DIO4, DIO5 — sin conectar.
 | U1-T | GPIO TBD | Interrupción W5500 |
 | U4   | INT      | |
 
-#### `SX1278_RST`
+#### `LR1121_RST`
 | Ref | Pin | Nota |
 |-----|-----|------|
 | U1/U1-T | GPIO14 | |
-| U2  | RST    | |
+| U2  | NRESET | |
 
-#### `SX1278_DIO0`
+#### `LR1121_BUSY`
+| Ref | Pin | Nota |
+|-----|-----|------|
+| U1/U1-T | GPIO27 | **Nuevo respecto a SX1278** — obligatorio en LR1121 |
+| U2  | BUSY   | Activo-alto |
+
+#### `LR1121_DIO1`
 | Ref | Pin | Nota |
 |-----|-----|------|
 | U1/U1-T | GPIO26 | |
-| U2  | DIO0   | |
+| U2  | DIO1   | RX_DONE interrupt (modo transceiver) |
 
 #### `SIM_TX` *(FUTURO — UART ESP32 → SIM7000G)*
 | Ref | Pin | Nota |
@@ -336,9 +358,9 @@ DIO1, DIO2, DIO3, DIO4, DIO5 — sin conectar.
 | U1-T | GPIO TBD | Control de encendido del SIM7000G (pulso >1 s) |
 | U5   | PWRKEY   | |
 
-### Pins NC del SX1278 gateway
+### Pins sin conectar del LR1121 (gateway)
 
-DIO1, DIO2, DIO3, DIO4, DIO5 — sin conectar.
+DIO2, DIO3, DIO9/RFSW — sin conectar en esta rev. Validar según breakout adquirido.
 
 ---
 
@@ -348,10 +370,12 @@ DIO1, DIO2, DIO3, DIO4, DIO5 — sin conectar.
 
 | Ítem | Especificación | Nota |
 |------|---------------|------|
+| LR1121 breakout × 2 | Waveshare Core1121 o Seeed Wio-LR1121 (conector U.FL/SMA, SPI 3.3 V) | 1 para nodo (Modem-E), 1 para gateway (transceiver) |
 | Pluviómetro | Tipping bucket con reed switch, mm/pulso documentado | No tenemos — prioritario |
 | Batería 12V (nodo) | SLA 12V nueva ≥5Ah, o LiFePO4 12V 4S ~4Ah con BMS | SLA existente posiblemente sulfatada — comprar nueva |
 | Buck (step-down) nodo | Módulo MP1584 o LM2596, 12V→3.3V, 1A mín | Para el nodo sensor |
-| Antena 433 MHz | SMA hembra, omnidireccional, ≥2 dBi | 2 unidades: nodo y gateway |
+| Antena yagi 915 MHz | ≥ 9 dBi, pigtail U.FL → SMA | Nodo sensor (prueba de rango) |
+| Antena omnidireccional 915 MHz | 2–5 dBi, SMA hembra | Gateway |
 | Bornera 2 vías paso 5 mm | Paso 5 mm, tornillo, bornes para 1.5–2.5 mm² | 2 unidades nodo (J1 batería + J3 pluviómetro) |
 | XLR hembra 3p cable-mount | Cable-mount, para extremo sensor del cable del anemómetro | Anemómetro tiene macho en base |
 | XLR hembra 5p cable-mount | Cable-mount, para extremo sensor del cable de la veleta | Veleta tiene macho en base; confirmar pinout antes de cablear |
@@ -383,6 +407,8 @@ DIO1, DIO2, DIO3, DIO4, DIO5 — sin conectar.
 ## Notas comunes
 
 1. **GPIO5 strapping pin**: sin R6 el ESP32 puede bootear en modo de descarga. Siempre poblar.
-2. **Antena antes de encender**: nunca energizar el SX1278 sin antena conectada — puede dañar el PA.
+2. **Antena antes de encender**: nunca energizar el LR1121 sin antena conectada — puede dañar el PA.
 3. **GPIO34 y GPIO35**: input-only en el ESP32 clásico. Sin pull-up ni pull-down interno disponible.
 4. **Target de build**: nodo = `xtensa-esp32-espidf`, gateway = `xtensa-esp32s3-espidf` (change futuro).
+5. **LR1121 BUSY pin obligatorio**: a diferencia del SX1278, el LR1121 requiere que el host espere que BUSY baje (activo-alto) antes de leer la respuesta de cualquier comando SPI. Ver `firmware/lr1121-modem-e/src/lib.rs` y `firmware/lr1121-transceiver/src/lib.rs`.
+6. **Prerequisite de flash (solo nodo)**: el LR1121 del nodo debe tener Modem-E v2.1.0 flashed una única vez antes de operar. El LR1121 del gateway NO debe flashearse con Modem-E.
