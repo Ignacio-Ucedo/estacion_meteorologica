@@ -1,42 +1,53 @@
 ## ADDED Requirements
 
-### Requirement: El crate lr1121-driver expone primitivas SPI para LR1121 sobre lr11xx_driver C SDK
+### Requirement: lr1121-modem-e expone comandos Modem-E al ESP32 del nodo sensor
 
-El crate `firmware/lr1121-driver` SHALL envolver el SDK C oficial de Semtech (`lr11xx_driver`) mediante bindings FFI generados con `bindgen`, y exponer una interfaz Rust segura para inicialización, transmisión y recepción LoRa con el módulo LR1121.
+El crate `firmware/lr1121-modem-e` SHALL envolver el host driver C `lr1121_modemE_driver` (SWDR009 v2.0.0, compatible con Modem-E v2.1.0) mediante bindings FFI y exponer una interfaz Rust segura para configuración LoRaWAN, join OTAA y envío de uplinks.
 
-- Unidad de frecuencia: Hz (u32), rango válido 400 000 000–960 000 000 Hz (puerto HF sub-GHz del LR1121).
-- Spreading Factor: SF5–SF12 (u8).
-- Bandwidth: 125 kHz, 250 kHz, 500 kHz.
-- Potencia de transmisión: configurable en el rango soportado por el hardware (típico −9 a +22 dBm en puerto HF).
-- El crate maneja el BUSY pin con timeout configurable antes de cada comando SPI; si el pin no baja en el timeout, retorna error.
+El ESP32 implementa las 4 funciones HAL SPI que SWDR009 requiere: `write`, `read`, `write_read` y `reset` (señal NRESET del LR1121). El crate envuelve la inicialización, la configuración de región/sub-band y el ciclo de eventos vía DIO1/IRQ.
 
-#### Scenario: Inicialización del módulo LR1121
-- **GIVEN** el ESP32 tiene el LR1121 conectado por SPI con NSS, RESET, BUSY y DIO1 configurados
-- **WHEN** se llama a `Lr1121::new(spi, pins, config)` y luego `init()`
-- **THEN** el driver ejecuta el reset hardware, espera BUSY, verifica la versión del chip por SPI y configura el modo LoRa en el puerto HF; retorna `Ok(())` si el chip responde correctamente
+#### Scenario: Configuración de región AU915 sub-band 2
+- **GIVEN** el LR1121 corre Modem-E v2.1.0 y el ESP32 tiene el crate inicializado
+- **WHEN** se llama a `set_region(AU915)` y `set_channel_mask(SubBand2)`
+- **THEN** el Modem-E configura internamente los canales 8–15 como activos y confirma la configuración; el crate retorna `Ok(())`
 
-#### Scenario: Transmisión de un buffer LoRa
-- **GIVEN** el LR1121 está inicializado en modo LoRa con frecuencia y parámetros configurados
-- **WHEN** se llama a `transmit(payload: &[u8])`
-- **THEN** el driver carga el payload en el FIFO del chip, configura TX y espera la interrupción DIO1 (TX_DONE); retorna `Ok(())` al completar o `Err` en timeout
+#### Scenario: Configuración de credenciales OTAA
+- **GIVEN** el crate está inicializado con el LR1121 en modo Modem-E
+- **WHEN** se llama a `set_dev_eui`, `set_join_eui` y `set_app_key` con los valores leídos de NVS
+- **THEN** el Modem-E almacena las credenciales internamente y confirma; el crate retorna `Ok(())`
 
-#### Scenario: Recepción continua de paquetes LoRa
-- **GIVEN** el LR1121 está inicializado en modo LoRa con frecuencia y parámetros configurados
-- **WHEN** se llama a `start_rx()` y llega un paquete
-- **THEN** el driver señaliza vía DIO1 (RX_DONE), lee el payload del FIFO y retorna `RxPacket { payload, rssi_dbm: i16, snr_db: i8 }`
+#### Scenario: Join OTAA y espera de evento
+- **GIVEN** las credenciales OTAA están configuradas y ChirpStack está disponible con AU915 sub-band 2
+- **WHEN** se llama a `join()` y el ESP32 espera el evento en DIO1/IRQ
+- **THEN** el Modem-E completa el join, activa la interrupción DIO1 con evento `JOINED`, y el crate retorna `Ok(JoinedEvent)`; en caso de fallo retorna el evento de error correspondiente para que el caller implemente el retry
+
+#### Scenario: Envío de uplink
+- **GIVEN** el Modem-E tiene sesión OTAA activa
+- **WHEN** se llama a `request_uplink(port, payload: &[u8])` con el FRMPayload de 14 bytes
+- **THEN** el Modem-E encripta y transmite el uplink, activa DIO1 con evento `TX_DONE`; el crate retorna `Ok(TxDoneEvent { status })`
 
 #### Scenario: Timeout de BUSY pin
-- **GIVEN** el LR1121 no responde (módulo sin alimentación o SPI desconectado)
-- **WHEN** el driver intenta enviar un comando SPI y espera el BUSY pin
-- **THEN** retorna `Err(Lr1121Error::BusyTimeout)` después del timeout configurado; no bloquea el firmware indefinidamente
+- **GIVEN** el LR1121 no responde (sin alimentación o SPI desconectado)
+- **WHEN** el crate intenta enviar un comando SPI y el BUSY pin no baja
+- **THEN** retorna `Err(ModemEError::BusyTimeout)` después del timeout configurado; no bloquea el firmware indefinidamente
 
 ---
 
-### Requirement: El crate implementa el trait PhyRxTx de lorawan-device para el nodo sensor
+### Requirement: lr1121-transceiver expone RX raw LoRa para el gateway
 
-El crate `lr1121-driver` SHALL implementar el trait `radio::PhyRxTx` de la crate `lorawan-device` para que el stack LoRaWAN pueda usar el LR1121 como capa física sin conocer detalles del chip.
+El crate `firmware/lr1121-transceiver` SHALL envolver el driver C `lr11xx_driver` (SWDR001) mediante bindings FFI y exponer al gateway ESP32 las primitivas de configuración y recepción LoRa en modo transceiver (sin stack LoRaWAN en el chip).
 
-#### Scenario: El stack LoRaWAN usa el LR1121 como radio
-- **GIVEN** una instancia de `lorawan_device::Device` configurada con AU915 y una instancia `Lr1121` como radio
-- **WHEN** el stack inicia el join OTAA o transmite un uplink
-- **THEN** el stack invoca los métodos de `PhyRxTx` del driver sin errores de compilación; el LR1121 ejecuta TX/RX en la frecuencia y parámetros indicados por el stack
+#### Scenario: Inicialización en modo transceiver
+- **GIVEN** el ESP32 tiene el LR1121 conectado por SPI con NSS, RESET, BUSY y DIO1 configurados
+- **WHEN** se llama a `Lr1121Transceiver::init(spi, pins, config)`
+- **THEN** el driver ejecuta reset hardware, verifica la versión del chip y confirma que el chip corre en modo transceiver (no Modem-E); retorna `Ok(())` o `Err` si el chip está en modo Modem-E
+
+#### Scenario: Configuración de recepción y escucha continua
+- **GIVEN** el LR1121 está inicializado en modo transceiver
+- **WHEN** se llama a `set_rx_config(freq_hz: 903_900_000, sf: SF7, bw: BW125)` seguido de `start_rx_continuous()`
+- **THEN** el LR1121 entra en modo RX continuo en 903.9 MHz SF7BW125 y señaliza paquetes recibidos vía DIO1
+
+#### Scenario: Lectura de paquete recibido
+- **GIVEN** el LR1121 está en RX continuo y llega un paquete LoRa
+- **WHEN** se activa DIO1 (RX_DONE) y se llama a `read_packet()`
+- **THEN** el driver retorna `RxPacket { payload: Vec<u8>, rssi_dbm: i16, snr_db: i8 }`
