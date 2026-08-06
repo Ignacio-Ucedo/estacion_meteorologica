@@ -20,33 +20,38 @@ use log::{debug, error, info, warn};
 // ---------------------------------------------------------------------------
 // FFI declarations: SWDR009 C API (lr1121_modemE_driver)
 // ---------------------------------------------------------------------------
-// Matched against lr1121_modem_lorawan.h / lr1121_modem_common.h.
+// Matched against modem_e_lorawan.h / modem_e_modem.h / modem_e_common.h.
 // Satisfied at link time by the compiled vendor library (build.rs).
 
+/// `modem_e_regions_t` — LoRaWAN regulatory regions.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Region {
-    Au915 = 0x03,
-    Eu433 = 0x0e,
-    Us915 = 0x0c,
+    Au915 = 0x04, // MODEM_E_LORAWAN_REGION_AU915
+    Eu868 = 0x01, // MODEM_E_LORAWAN_REGION_EU868
+    Us915 = 0x03, // MODEM_E_LORAWAN_REGION_US915
 }
 
-/// AU915 sub-band 2: canales upstream 8–15 (903.9–905.3 MHz 125 kHz).
-/// Máscara de grupos de 8 canales — grupo 1 (index 1) = canales 8–15.
-const AU915_SUBBAND2_MASK: u16 = 0x0002;
+/// AU915 sub-band 2: upstream channels 8–15 (903.9–905.3 MHz 125 kHz).
+/// ChMaskCntl=0 covers channels 0–15; bits 8–15 set = sub-band 2.
+/// Byte order: [low_byte (ch0-7), high_byte (ch8-15)] — LoRaWAN little-endian.
 const AU915_SUBBAND2_MASK_CNTL: u8 = 0x00;
+const AU915_SUBBAND2_MASK_BYTES: [u8; 2] = [0x00, 0xFF]; // ch8-15 enabled
 
 const FPORT_WEATHER: u8 = 2;
 
-/// Valor de retorno OK del Modem-E (lr1121_modem_response_code_t = 0x00).
+/// `modem_e_response_code_t` OK value.
 const MODEM_E_RC_OK: u8 = 0x00;
 
-/// Tipos de eventos Modem-E relevantes.
-const EVENT_JOINED: u8 = 0x06;
-const EVENT_TX_DONE: u8 = 0x07;
-const EVENT_RESET: u8 = 0x00;
+/// HAL status ERROR value (`MODEM_E_HAL_STATUS_ERROR = 3`).
+const HAL_STATUS_ERROR: u8 = 3;
 
-/// Uplink no confirmado.
+/// Event types from `modem_e_lorawan_event_type_t`.
+const EVENT_RESET: u8 = 0x00;  // MODEM_E_LORAWAN_EVENT_RESET
+const EVENT_JOINED: u8 = 0x02; // MODEM_E_LORAWAN_EVENT_JOINED
+const EVENT_TX_DONE: u8 = 0x04; // MODEM_E_LORAWAN_EVENT_TX_DONE
+
+/// `modem_e_uplink_type_t` unconfirmed.
 const UPLINK_UNCONFIRMED: u8 = 0x00;
 
 /// JOIN timeout por defecto (ms) — suficiente para retransmisiones del Modem-E.
@@ -104,12 +109,12 @@ unsafe fn wait_busy_low() -> bool {
 }
 
 // ---------------------------------------------------------------------------
-// HAL callbacks llamados por SWDR009
+// HAL callbacks requeridas por SWDR009 (modem_e_hal.h)
 // SAFETY: SWDR009 llama estas funciones desde el contexto de la tarea ESP32.
 // ---------------------------------------------------------------------------
 
 #[no_mangle]
-pub unsafe extern "C" fn lr1121_modem_hal_write(
+pub unsafe extern "C" fn modem_e_hal_write(
     _context: *const core::ffi::c_void,
     command: *const u8,
     command_length: u16,
@@ -117,7 +122,7 @@ pub unsafe extern "C" fn lr1121_modem_hal_write(
     data_length: u16,
 ) -> u8 {
     if HAL_CTX.is_null() {
-        return 1;
+        return HAL_STATUS_ERROR;
     }
     // Protocolo LR1121: NSS LOW → send opcode+params → NSS HIGH → esperar BUSY LOW.
     let ctx = &mut *HAL_CTX;
@@ -133,17 +138,17 @@ pub unsafe extern "C" fn lr1121_modem_hal_write(
     buf.extend_from_slice(payload);
 
     if ctx.spi.write(&buf).is_err() {
-        return 1;
+        return HAL_STATUS_ERROR;
     }
     if !wait_busy_low() {
-        warn!("lr1121_hal_write: busy timeout");
-        return 2; // LR1121_MODEM_HAL_STATUS_BUSY_TIMEOUT (not spec, used as sentinel)
+        warn!("modem_e_hal_write: busy timeout");
+        return HAL_STATUS_ERROR;
     }
     0
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn lr1121_modem_hal_read(
+pub unsafe extern "C" fn modem_e_hal_read(
     _context: *const core::ffi::c_void,
     command: *const u8,
     command_length: u16,
@@ -151,52 +156,70 @@ pub unsafe extern "C" fn lr1121_modem_hal_read(
     data_length: u16,
 ) -> u8 {
     if HAL_CTX.is_null() {
-        return 1;
+        return HAL_STATUS_ERROR;
     }
     let ctx = &mut *HAL_CTX;
     let cmd = core::slice::from_raw_parts(command, command_length as usize);
 
-    // Enviar comando
+    // Enviar comando, esperar BUSY LOW, leer respuesta.
     if ctx.spi.write(cmd).is_err() {
-        return 1;
+        return HAL_STATUS_ERROR;
     }
-    // Esperar BUSY LOW antes de leer la respuesta
     if !wait_busy_low() {
-        warn!("lr1121_hal_read: busy timeout after command");
-        return 2;
+        warn!("modem_e_hal_read: busy timeout after command");
+        return HAL_STATUS_ERROR;
     }
     let rx = core::slice::from_raw_parts_mut(data, data_length as usize);
     if ctx.spi.read(rx).is_err() {
-        return 1;
+        return HAL_STATUS_ERROR;
     }
     0
 }
 
+/// Solo requerido por `modem_e_system_get_status`. Escribe NOP (0x00) mientras lee.
 #[no_mangle]
-pub unsafe extern "C" fn lr1121_modem_hal_write_read(
+pub unsafe extern "C" fn modem_e_hal_write_read(
     _context: *const core::ffi::c_void,
     command: *const u8,
     data: *mut u8,
     length: u16,
 ) -> u8 {
     if HAL_CTX.is_null() {
-        return 1;
+        return HAL_STATUS_ERROR;
     }
     let ctx = &mut *HAL_CTX;
     let mut buf: Vec<u8> = core::slice::from_raw_parts(command, length as usize).to_vec();
     if ctx.spi.transfer_in_place(&mut buf).is_err() {
-        return 1;
+        return HAL_STATUS_ERROR;
     }
     core::slice::from_raw_parts_mut(data, length as usize).copy_from_slice(&buf);
     0
 }
 
+/// Solo requerido por `modem_e_bootloader_get_status`. Lee enviando NOP bytes.
 #[no_mangle]
-pub unsafe extern "C" fn lr1121_modem_hal_reset(
+pub unsafe extern "C" fn modem_e_hal_direct_read(
+    _context: *const core::ffi::c_void,
+    data: *mut u8,
+    data_length: u16,
+) -> u8 {
+    if HAL_CTX.is_null() {
+        return HAL_STATUS_ERROR;
+    }
+    let ctx = &mut *HAL_CTX;
+    let rx = core::slice::from_raw_parts_mut(data, data_length as usize);
+    if ctx.spi.read(rx).is_err() {
+        return HAL_STATUS_ERROR;
+    }
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn modem_e_hal_reset(
     _context: *const core::ffi::c_void,
 ) -> u8 {
     if HAL_CTX.is_null() {
-        return 1;
+        return HAL_STATUS_ERROR;
     }
     let ctx = &mut *HAL_CTX;
     let _ = ctx.reset.set_low();
@@ -206,73 +229,104 @@ pub unsafe extern "C" fn lr1121_modem_hal_reset(
     0
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn modem_e_hal_wakeup(
+    _context: *const core::ffi::c_void,
+) -> u8 {
+    // LR1121 wakeup: toggle NSS briefly. esp-idf-hal SPI handles NSS automatically;
+    // send a zero-length transaction to pulse NSS.
+    if HAL_CTX.is_null() {
+        return HAL_STATUS_ERROR;
+    }
+    let ctx = &mut *HAL_CTX;
+    let _ = ctx.spi.write(&[]);
+    FreeRtos::delay_ms(1);
+    0
+}
+
+// ---------------------------------------------------------------------------
+// FFI types matching SWDR009 structs
+// ---------------------------------------------------------------------------
+
+/// `modem_e_version_t` from modem_e_modem_types.h.
+#[repr(C)]
+#[derive(Default, Debug)]
+pub struct ModemEVersion {
+    pub use_case: u8,    // always 5 for Modem-E
+    pub modem_major: u8,
+    pub modem_minor: u8,
+    pub modem_patch: u8,
+    pub lbm_major: u8,
+    pub lbm_minor: u8,
+    pub lbm_patch: u8,
+}
+
+/// `modem_e_event_fields_t` from modem_e_modem_types.h.
+#[repr(C)]
+#[derive(Default, Debug)]
+pub struct ModemEEventFields {
+    pub event_type: u8,           // modem_e_lorawan_event_type_t
+    pub missed_events_count: u8,
+}
+
+/// `modem_e_channel_mask_configuration_t` from modem_e_lorawan_types.h.
+#[repr(C)]
+pub struct ModemEChannelMaskConfig {
+    pub channel_mask_control: u8,
+    pub channel_mask: [u8; 2],
+}
+
 // ---------------------------------------------------------------------------
 // extern "C" — funciones del SDK SWDR009 que llamamos desde Rust
 // ---------------------------------------------------------------------------
 
-#[repr(C)]
-#[derive(Default, Debug)]
-pub struct Lr1121ModemVersion {
-    pub bootloader: u32,
-    pub functionality: u8,
-    pub firmware: [u8; 2],
-    pub lorawan: u8,
-}
-
-#[repr(C)]
-#[derive(Default, Debug)]
-pub struct Lr1121ModemEvent {
-    pub event_type: u8,
-    pub missed_events_count: u8,
-}
-
 extern "C" {
-    fn lr1121_modem_get_version(
+    fn modem_e_get_modem_version(
         context: *const core::ffi::c_void,
-        version: *mut Lr1121ModemVersion,
+        version: *mut ModemEVersion,
+    ) -> u8; // modem_e_response_code_t
+
+    fn modem_e_set_region(
+        context: *const core::ffi::c_void,
+        region: u8, // modem_e_regions_t
     ) -> u8;
 
-    fn lr1121_modem_lorawan_set_region(
+    /// Configure channel mask. Pass 1 configuration entry for sub-band selection.
+    fn modem_e_connect_set_channel_mask(
         context: *const core::ffi::c_void,
-        region: u8,
+        channel_configuration: *const ModemEChannelMaskConfig,
+        n_channel_configurations: u8,
     ) -> u8;
 
-    // channel_mask_cntl selecciona el grupo de 8 canales a configurar;
-    // channel_mask es el bitmask de canales dentro de ese grupo.
-    fn lr1121_modem_lorawan_set_enabled_channels(
+    fn modem_e_set_otaa_dev_eui(
         context: *const core::ffi::c_void,
-        channel_mask: u16,
-        channel_mask_cntl: u8,
+        dev_eui: *const u8, // modem_e_otaa_dev_eui_t = uint8_t[8]
     ) -> u8;
 
-    fn lr1121_modem_lorawan_set_dev_eui(
+    fn modem_e_set_otaa_join_eui(
         context: *const core::ffi::c_void,
-        dev_eui: *const u8,
+        join_eui: *const u8, // modem_e_otaa_join_eui_t = uint8_t[8]
     ) -> u8;
 
-    fn lr1121_modem_lorawan_set_join_eui(
+    // AppKey in LoRaWAN 1.0.4 maps to NwkKey in Modem-E API (see modem_e_lorawan.h note).
+    fn modem_e_set_otaa_nwk_key(
         context: *const core::ffi::c_void,
-        join_eui: *const u8,
+        nwk_key: *const u8, // modem_e_otaa_nwk_key_t = uint8_t[16]
     ) -> u8;
 
-    fn lr1121_modem_lorawan_set_app_key(
-        context: *const core::ffi::c_void,
-        app_key: *const u8,
-    ) -> u8;
+    fn modem_e_join(context: *const core::ffi::c_void) -> u8;
 
-    fn lr1121_modem_lorawan_join(context: *const core::ffi::c_void) -> u8;
-
-    fn lr1121_modem_lorawan_request_uplink(
+    fn modem_e_request_tx(
         context: *const core::ffi::c_void,
-        fport: u8,
-        uplink_type: u8,
+        port: u8,
+        uplink_type: u8, // modem_e_uplink_type_t
         data: *const u8,
-        len: u8,
+        data_length: u8,
     ) -> u8;
 
-    fn lr1121_modem_get_event(
+    fn modem_e_get_event(
         context: *const core::ffi::c_void,
-        event: *mut Lr1121ModemEvent,
+        event_fields: *mut ModemEEventFields,
     ) -> u8;
 }
 
@@ -295,7 +349,7 @@ pub struct ModemE {
 }
 
 impl ModemE {
-    /// Inicializa el driver y verifica que el chip corre Modem-E (no transceiver).
+    /// Inicializa el driver y verifica que el chip corre Modem-E (use_case == 5).
     pub fn new(
         spi: SpiDeviceDriver<'static, SpiDriver<'static>>,
         busy: PinDriver<'static, esp_idf_hal::gpio::AnyInputPin, Input>,
@@ -306,20 +360,22 @@ impl ModemE {
         // SAFETY: single-threaded ESP32 firmware; pointer is valid for the duration of ModemE.
         unsafe { HAL_CTX = Box::as_ptr(&ctx) as *mut HalCtx; }
 
-        let mut version = Lr1121ModemVersion::default();
-        let rc = unsafe { lr1121_modem_get_version(HAL_CTX as *const _, &mut version) };
+        let mut version = ModemEVersion::default();
+        let rc = unsafe { modem_e_get_modem_version(HAL_CTX as *const _, &mut version) };
         if rc != MODEM_E_RC_OK {
             return Err(ModemEError::CommandFailed(rc));
         }
         info!(
-            "modem_e_ok firmware={}.{} lorawan={}",
-            version.firmware[0], version.firmware[1], version.lorawan
+            "modem_e_ok use_case={} fw={}.{}.{} lbm={}.{}.{}",
+            version.use_case,
+            version.modem_major, version.modem_minor, version.modem_patch,
+            version.lbm_major, version.lbm_minor, version.lbm_patch,
         );
 
         Ok(ModemE { dio1, _ctx: ctx })
     }
 
-    /// Configura región AU915 sub-band 2 y carga credenciales OTAA desde NVS.
+    /// Configura región AU915 sub-band 2 y carga credenciales OTAA.
     pub fn configure_au915_subband2(
         &mut self,
         dev_eui: &[u8; 8],
@@ -336,56 +392,56 @@ impl ModemE {
     }
 
     fn set_region(&mut self, region: Region) -> Result<(), ModemEError> {
-        let rc = unsafe { lr1121_modem_lorawan_set_region(HAL_CTX as *const _, region as u8) };
+        let rc = unsafe { modem_e_set_region(HAL_CTX as *const _, region as u8) };
         if rc != MODEM_E_RC_OK { return Err(ModemEError::CommandFailed(rc)); }
         Ok(())
     }
 
     fn set_channel_mask_subband2(&mut self) -> Result<(), ModemEError> {
+        let config = ModemEChannelMaskConfig {
+            channel_mask_control: AU915_SUBBAND2_MASK_CNTL,
+            channel_mask: AU915_SUBBAND2_MASK_BYTES,
+        };
         let rc = unsafe {
-            lr1121_modem_lorawan_set_enabled_channels(
-                HAL_CTX as *const _,
-                AU915_SUBBAND2_MASK,
-                AU915_SUBBAND2_MASK_CNTL,
-            )
+            modem_e_connect_set_channel_mask(HAL_CTX as *const _, &config, 1)
         };
         if rc != MODEM_E_RC_OK { return Err(ModemEError::CommandFailed(rc)); }
         Ok(())
     }
 
     fn set_dev_eui(&mut self, eui: &[u8; 8]) -> Result<(), ModemEError> {
-        let rc = unsafe { lr1121_modem_lorawan_set_dev_eui(HAL_CTX as *const _, eui.as_ptr()) };
+        let rc = unsafe { modem_e_set_otaa_dev_eui(HAL_CTX as *const _, eui.as_ptr()) };
         if rc != MODEM_E_RC_OK { return Err(ModemEError::CommandFailed(rc)); }
         Ok(())
     }
 
     fn set_join_eui(&mut self, eui: &[u8; 8]) -> Result<(), ModemEError> {
-        let rc = unsafe { lr1121_modem_lorawan_set_join_eui(HAL_CTX as *const _, eui.as_ptr()) };
+        let rc = unsafe { modem_e_set_otaa_join_eui(HAL_CTX as *const _, eui.as_ptr()) };
         if rc != MODEM_E_RC_OK { return Err(ModemEError::CommandFailed(rc)); }
         Ok(())
     }
 
     fn set_app_key(&mut self, key: &[u8; 16]) -> Result<(), ModemEError> {
-        let rc = unsafe { lr1121_modem_lorawan_set_app_key(HAL_CTX as *const _, key.as_ptr()) };
+        // AppKey (LoRaWAN 1.0.4) = NwkKey in Modem-E API (see modem_e_lorawan.h).
+        let rc = unsafe { modem_e_set_otaa_nwk_key(HAL_CTX as *const _, key.as_ptr()) };
         if rc != MODEM_E_RC_OK { return Err(ModemEError::CommandFailed(rc)); }
         Ok(())
     }
 
     /// Join OTAA. Bloquea hasta evento JOINED en DIO1 o timeout_ms.
-    /// Modem-E maneja reintentos internamente con backoff.
     pub fn join(&mut self, timeout_ms: u32) -> Result<(), ModemEError> {
         info!("modem_e_join_start timeout_ms={}", timeout_ms);
-        let rc = unsafe { lr1121_modem_lorawan_join(HAL_CTX as *const _) };
+        let rc = unsafe { modem_e_join(HAL_CTX as *const _) };
         if rc != MODEM_E_RC_OK { return Err(ModemEError::CommandFailed(rc)); }
         self.wait_event(timeout_ms, EVENT_JOINED)
     }
 
-    /// Envía uplink no confirmado en el fport de weather. Bloquea hasta TX_DONE.
+    /// Envía uplink no confirmado. Bloquea hasta TX_DONE o timeout.
     pub fn request_uplink(&mut self, payload: &[u8]) -> Result<(), ModemEError> {
         if payload.len() > 255 { return Err(ModemEError::PayloadTooLarge); }
         debug!("modem_e_uplink_start len={}", payload.len());
         let rc = unsafe {
-            lr1121_modem_lorawan_request_uplink(
+            modem_e_request_tx(
                 HAL_CTX as *const _,
                 FPORT_WEATHER,
                 UPLINK_UNCONFIRMED,
@@ -406,24 +462,24 @@ impl ModemE {
             elapsed += poll_ms;
 
             if self.dio1.is_high().unwrap_or(false) {
-                let mut ev = Lr1121ModemEvent::default();
-                let rc = unsafe { lr1121_modem_get_event(HAL_CTX as *const _, &mut ev) };
+                let mut ev = ModemEEventFields::default();
+                let rc = unsafe { modem_e_get_event(HAL_CTX as *const _, &mut ev) };
                 if rc != MODEM_E_RC_OK { return Err(ModemEError::CommandFailed(rc)); }
 
                 if ev.event_type == EVENT_RESET {
-                    error!("modem_e_reset_event — chip reiniciado");
+                    error!("modem_e_reset_event — chip reiniciado inesperadamente");
                     return Err(ModemEError::CommandFailed(EVENT_RESET));
                 }
                 if ev.event_type == expected {
-                    debug!("modem_e_event_ok type={}", expected);
+                    debug!("modem_e_event_ok type=0x{:02x}", expected);
                     return Ok(());
                 }
-                error!("modem_e_event_unexpected got={} expected={}", ev.event_type, expected);
+                error!("modem_e_event_unexpected got=0x{:02x} expected=0x{:02x}", ev.event_type, expected);
                 return Err(ModemEError::UnexpectedEvent { got: ev.event_type, expected });
             }
 
             if elapsed >= timeout_ms {
-                error!("modem_e_event_timeout expected={} after_ms={}", expected, elapsed);
+                error!("modem_e_event_timeout expected=0x{:02x} after_ms={}", expected, elapsed);
                 return Err(ModemEError::BusyTimeout);
             }
         }

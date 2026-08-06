@@ -2,7 +2,7 @@
 
 - [x] 0.1 Archivar el change `migrate-lorawan-sx1278` como cancelado/supersedido. Commit sugerido: `chore(docs): archivar migrate-lorawan-sx1278 supersedido por migrate-lr1121-au915`. *(Ya completado — incluido en commit de propuesta)*
 - [ ] 0.2 Obtener módulos LR1121 (breakout boards con conector U.FL/SMA, ej. Waveshare Core1121 o Seeed Wio-LR1121). Verificar tensión SPI 3.3 V compatible con ESP32 antes de conectar. Requiere hardware físico.
-- [ ] 0.3 Descargar firmware Modem-E v2.1.0 (`lr1121_modem_v2.1.0.bin`) de `Lora-net/radio_firmware_images` y driver host SWDR009 (`lr1121_modemE_driver`). Verificar integridad con MD5 incluido. No requiere hardware.
+- [x] 0.3 Descargar firmware Modem-E v2.1.0 (`lr1121_modem_v2.1.0.bin`) de `Lora-net/radio_firmware_images` y driver host SWDR009 (`lr1121_modemE_driver`). Verificar integridad con MD5 incluido. No requiere hardware.
 - [ ] 0.4 Clonar `SWTL001` (referencia de flashing SPI de Semtech) y compilar el flasher para ESP32. Documentar el procedimiento en `hardware/flashing-modem-e.md`. Requiere ESP32 + módulo LR1121 físico.
 
 ## 1. Flash del firmware Modem-E en el nodo sensor

@@ -14,12 +14,12 @@ fn main() {
         return;
     }
 
-    // Compile SWDR009 C sources.
-    let inc = vendor.join("lr1121_modem");
+    // Compile SWDR009 C sources (all .c files in src/).
+    let src = vendor.join("src");
     let mut cc = cc::Build::new();
-    cc.include(&inc).flag_if_supported("-Wno-unused-parameter");
+    cc.include(&src).flag_if_supported("-Wno-unused-parameter");
 
-    for entry in std::fs::read_dir(&inc).expect("read vendor dir") {
+    for entry in std::fs::read_dir(&src).expect("read vendor/lr1121_modemE_driver/src") {
         let path = entry.unwrap().path();
         if path.extension().map(|e| e == "c").unwrap_or(false) {
             cc.file(&path);
@@ -30,9 +30,9 @@ fn main() {
 
     // Generate bindings from SWDR009 headers.
     let bindings = bindgen::Builder::default()
-        .header(inc.join("lr1121_modem_lorawan.h").to_str().unwrap())
-        .header(inc.join("lr1121_modem_common.h").to_str().unwrap())
-        .clang_arg(format!("-I{}", inc.display()))
+        .header(src.join("modem_e_lorawan.h").to_str().unwrap())
+        .header(src.join("modem_e_common.h").to_str().unwrap())
+        .clang_arg(format!("-I{}", src.display()))
         .use_core()
         .generate()
         .expect("bindgen failed for SWDR009");
