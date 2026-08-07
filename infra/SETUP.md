@@ -1,4 +1,4 @@
-# Setup del entorno LoRaWAN EU433
+# Setup del entorno LoRaWAN AU915
 
 ## 0. Flujo rápido sin ESP32 (Operator App)
 
@@ -59,7 +59,7 @@ EUI-64: AA:BB:CC:FF:FE:DD:EE:FF  (insertar FF:FE en el centro)
 3. Completar:
    - **Name**: `esp32-gateway-01`
    - **Gateway ID (EUI-64)**: el EUI del paso anterior (sin colones: `AABBCCFFFEDDEFF`)
-   - **Region**: EU433
+   - **Region**: AU915 (sub-band 2)
 4. Guardar
 
 El gateway aparecerá como **Online** una vez que el firmware esté corriendo y enviando heartbeats UDP.
@@ -72,8 +72,8 @@ El gateway aparecerá como **Online** una vez que el firmware esté corriendo y 
 
 1. Menú: **Device profiles** → **Add device profile**
 2. Completar:
-   - **Name**: `esp32-sensor-eu433`
-   - **Region**: EU433
+   - **Name**: `esp32-sensor-au915`
+   - **Region**: AU915 (sub-band 2)
    - **MAC version**: LoRaWAN 1.0.2
    - **Regional parameters revision**: B
    - **ADR algorithm**: Default (disabled para el prototipo)
@@ -93,7 +93,7 @@ El gateway aparecerá como **Online** una vez que el firmware esté corriendo y 
 2. Completar:
    - **Name**: `sensor-node-01`
    - **Device EUI (DevEUI)**: 8 bytes únicos, generados en ChirpStack o derivados de la MAC del ESP32
-   - **Device profile**: `esp32-sensor-eu433`
+   - **Device profile**: `esp32-sensor-au915`
 3. Guardar
 
 ### 3.4 Configurar las claves OTAA
@@ -155,16 +155,16 @@ solo difieren en `device_id` y en que los valores varían de forma cíclica.
 
 ---
 
-## 5. Gateway-node-mock: validar la cadena con un solo ESP32 (sin SX1278)
+## 5. Gateway-node-mock: validar la cadena con un solo ESP32 (sin radio LoRa)
 
 `gateway-node-mock` actúa simultáneamente como gateway sintético y como
-nodo sensor simulado. No requiere módulo SX1278. Valida la cadena completa
+nodo sensor simulado. No requiere módulo LR1121. Valida la cadena completa
 **ESP32 → WiFi → UDP → ChirpStack → MQTT → Backend → PostgreSQL → Frontend**
 con un solo ESP32 y sin hardware de radio.
 
 Diferencia clave con los otros mocks:
 
-| Binary | device_id | SX1278 | ChirpStack flow |
+| Binary | device_id | Radio LoRa (LR1121) | ChirpStack flow |
 |---|---|---|---|
 | `sensor-node-mock` | 2 | Sí (TX) | Completa via LoRa RF |
 | `gateway-mock` (Docker) | N/A | No | Bypasea ChirpStack (publica directo a MQTT) |
@@ -175,10 +175,10 @@ Diferencia clave con los otros mocks:
 Obtener el GatewayEUI del ESP32 (ver sección 2.1 — se imprime por serial al arrancar
 por primera vez con el binario). Registrarlo en ChirpStack siguiendo la sección 2.2.
 
-### 5.2 Crear el Device Profile EU433
+### 5.2 Crear el Device Profile AU915
 
-Si no existe ya (ver sección 3.1), crear el profile `esp32-sensor-eu433` con
-LoRaWAN 1.0.2, EU433, OTAA habilitado.
+Si no existe ya (ver sección 3.1), crear el profile `esp32-sensor-au915` con
+LoRaWAN 1.0.2, AU915 sub-band 2, OTAA habilitado.
 
 ### 5.3 Registrar el dispositivo gateway-node-mock
 
@@ -186,7 +186,7 @@ En la application `weather-station` → **Add device**:
 
 - **Name**: `gateway-node-mock`
 - **DevEUI**: nuevo EUI-64 (diferente al del nodo real y al sensor-node-mock)
-- **Device profile**: `esp32-sensor-eu433`
+- **Device profile**: `esp32-sensor-au915`
 
 Tras guardar, pestaña **Keys (OTAA)**:
 - **AppKey**: generar nueva (diferente a todos los demás dispositivos)
