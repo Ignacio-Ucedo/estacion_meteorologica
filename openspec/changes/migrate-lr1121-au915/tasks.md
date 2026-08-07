@@ -27,7 +27,7 @@
 
 - [x] 4.1 Crear `firmware/lr1121-transceiver/` como crate biblioteca Rust. Agregar `lr11xx_driver` (SWDR001) como fuente en `vendor/`. Configurar `build.rs` con `bindgen`. No requiere hardware. Commit sugerido: `feat(gateway): crear crate lr1121-transceiver con bindings FFI de SWDR001`.
 - [ ] 4.2 Implementar `Lr1121Transceiver::init()`: reset hardware, verificación de versión de chip y confirmación de modo transceiver (no Modem-E). Si el chip está en modo Modem-E retornar error claro. Requiere hardware físico (módulo LR1121 sin Modem-E). Commit sugerido: `feat(gateway): implementar init de LR1121 en modo transceiver`.
-- [ ] 4.3 Implementar `set_rx_config(903_900_000 Hz, SF7, BW125)` y `start_rx_continuous()`. Verificar que el chip entra en RX activo (corriente de consumo y registro de estado). Requiere hardware físico. Commit sugerido: `feat(gateway): configurar RX continuo en 903.9 MHz SF7BW125 en lr1121-transceiver`.
+- [ ] 4.3 Implementar `set_rx_config(916_800_000 Hz, SF7, BW125)` y `start_rx_continuous()`. Verificar que el chip entra en RX activo (corriente de consumo y registro de estado). Requiere hardware físico. Commit sugerido: `feat(gateway): configurar RX continuo en 916.8 MHz SF7BW125 en lr1121-transceiver`.
 - [ ] 4.4 Implementar `read_packet()`: leer payload, RSSI y SNR del chip vía SPI tras evento DIO1. Requiere hardware físico. Commit sugerido: `feat(gateway): implementar lectura de paquete recibido en lr1121-transceiver`.
 
 ## 5. Firmware del gateway: integración
@@ -47,6 +47,6 @@
 
 ## 8. Documentación
 
-- [x] 8.1 Actualizar `openspec/config.yaml`: LR1121/AU915, Modem-E v2.1.0 en nodo, transceiver en gateway, canal fijo 903.9 MHz SF7BW125 para PoC. Commit sugerido: `docs(docs): actualizar config.yaml con stack LR1121 AU915 Modem-E`.
+- [x] 8.1 Actualizar `openspec/config.yaml`: LR1121/AU915, Modem-E v2.1.0 en nodo, transceiver en gateway, canal fijo 916.8 MHz SF7BW125 para PoC. Commit sugerido: `docs(docs): actualizar config.yaml con stack LR1121 AU915 Modem-E`. *(Frecuencia corregida de 903.9 a 916.8 MHz por `fix-au915-subband2-frequency`.)*
 - [x] 8.2 Actualizar `CLAUDE.md` (sección arquitectura): reflejar LR1121, AU915, Modem-E en nodo, transceiver en gateway, crates `lr1121-modem-e` y `lr1121-transceiver`. Commit sugerido: `docs(docs): actualizar CLAUDE.md con arquitectura LR1121 AU915`.
 - [x] 8.3 Actualizar `hardware/netlist.md`: pinout LR1121 (BUSY GPIO27, DIO1 GPIO26), antenas recomendadas, nota sobre flashing Modem-E como prerequisito del nodo. Commit sugerido: `docs(hardware): actualizar netlist con pinout LR1121 y antenas AU915`.

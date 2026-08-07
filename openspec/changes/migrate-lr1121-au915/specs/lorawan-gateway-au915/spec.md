@@ -2,13 +2,13 @@
 
 ### Requirement: El gateway opera como single-channel UDP packet forwarder AU915 hacia ChirpStack
 
-El firmware del gateway SHALL recibir tramas LoRaWAN del nodo en el canal fijo de la PoC (903.9 MHz SF7BW125, AU915 sub-band 2, canal 8) usando el módulo LR1121 vía `lr1121-driver`, y reenviarlas a ChirpStack usando el protocolo Semtech UDP Packet Forwarder. La lógica del forwarder (mensajes PUSH_DATA, PULL_DATA, PULL_RESP, heartbeat de estadísticas) no cambia respecto a la implementación anterior.
+El firmware del gateway SHALL recibir tramas LoRaWAN del nodo en el canal fijo de la PoC (916.8 MHz SF7BW125, AU915 sub-band 2, canal 8) usando el módulo LR1121 vía `lr1121-driver`, y reenviarlas a ChirpStack usando el protocolo Semtech UDP Packet Forwarder. La lógica del forwarder (mensajes PUSH_DATA, PULL_DATA, PULL_RESP, heartbeat de estadísticas) no cambia respecto a la implementación anterior.
 
 **Limitación de PoC documentada**: gateway single-channel, no spec-compliant con LoRaWAN completo (AU915 estándar requiere hardware multi-canal). Suficiente para validar el enlace de rango con un único nodo en canal fijo. Para producción: reemplazar con gateway multi-canal dedicado.
 
 #### Scenario: El gateway reenvía un uplink recibido a ChirpStack
 - **GIVEN** el gateway tiene WiFi activo y ChirpStack está disponible con band plan AU915 sub-band 2
-- **WHEN** el gateway recibe una trama LoRaWAN válida del nodo en 903.9 MHz SF7BW125
+- **WHEN** el gateway recibe una trama LoRaWAN válida del nodo en 916.8 MHz SF7BW125
 - **THEN** el gateway encapsula la trama en un mensaje UDP Semtech PUSH_DATA y lo envía a ChirpStack, registrando el evento por serial con RSSI y SNR
 
 #### Scenario: El gateway registra todos los paquetes recibidos por serial

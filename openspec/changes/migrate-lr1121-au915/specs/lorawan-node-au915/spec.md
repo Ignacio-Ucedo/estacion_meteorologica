@@ -5,12 +5,12 @@
 El firmware del nodo sensor SHALL inicializar el stack `lorawan-device` configurado para AU915 sub-band 2 y completar el proceso de join OTAA con ChirpStack usando DevEUI, AppEUI y AppKey almacenados en NVS antes de comenzar el ciclo de transmisiones.
 
 - Band plan: AU915, sub-band 2 (canales 8–15 upstream 125 kHz + canal 0 upstream 500 kHz + canal 0 downstream 500 kHz).
-- Canal fijo PoC: 903.9 MHz SF7BW125 (canal 8, primer canal sub-band 2).
+- Canal fijo PoC: 916.8 MHz SF7BW125 (canal 8, primer canal sub-band 2).
 
 #### Scenario: Activación OTAA exitosa en primer arranque
 - **GIVEN** el nodo tiene DevEUI, AppEUI y AppKey correctos en NVS y ChirpStack está disponible en la red con band plan AU915 sub-band 2
 - **WHEN** el firmware inicia
-- **THEN** el nodo completa el join OTAA (recibe JoinAccept) en 903.9 MHz y registra el evento por serial antes de enviar el primer uplink
+- **THEN** el nodo completa el join OTAA (recibe JoinAccept) en 916.8 MHz y registra el evento por serial antes de enviar el primer uplink
 
 #### Scenario: Reintento automático si el join OTAA falla
 - **GIVEN** ChirpStack no responde al JoinRequest (gateway sin WiFi o ChirpStack caído)

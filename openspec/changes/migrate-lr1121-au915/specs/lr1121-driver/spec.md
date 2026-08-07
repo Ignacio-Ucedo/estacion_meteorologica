@@ -44,8 +44,8 @@ El crate `firmware/lr1121-transceiver` SHALL envolver el driver C `lr11xx_driver
 
 #### Scenario: Configuración de recepción y escucha continua
 - **GIVEN** el LR1121 está inicializado en modo transceiver
-- **WHEN** se llama a `set_rx_config(freq_hz: 903_900_000, sf: SF7, bw: BW125)` seguido de `start_rx_continuous()`
-- **THEN** el LR1121 entra en modo RX continuo en 903.9 MHz SF7BW125 y señaliza paquetes recibidos vía DIO1
+- **WHEN** se llama a `set_rx_config(freq_hz: 916_800_000, sf: SF7, bw: BW125)` seguido de `start_rx_continuous()`
+- **THEN** el LR1121 entra en modo RX continuo en 916.8 MHz SF7BW125 y señaliza paquetes recibidos vía DIO1
 
 #### Scenario: Lectura de paquete recibido
 - **GIVEN** el LR1121 está en RX continuo y llega un paquete LoRa

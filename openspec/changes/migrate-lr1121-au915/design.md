@@ -21,12 +21,12 @@ DHT22 + pluviómetro + anemómetro + ADC batería
         │  LR1121 corre Modem-E v2.1.0 (LoRaWAN 1.0.4 embebido en chip)
         │  Región AU915, sub-band 2, OTAA
         │  FRMPayload 14 bytes (mismo formato existente)
-        │  TX en 903.9 MHz SF7BW125 (canal 8, sub-band 2)
+        │  TX en 916.8 MHz SF7BW125 (canal 8, sub-band 2)
         ▼
    ESP32 gateway (Rust)
    └── lr1121-transceiver (crate Rust: FFI → lr11xx_driver C / SWDR001)
         │  LR1121 en modo transceiver (firmware de fábrica)
-        │  Escucha en 903.9 MHz SF7BW125 (canal fijo PoC)
+        │  Escucha en 916.8 MHz SF7BW125 (canal fijo PoC)
         │  Protocolo Semtech UDP Packet Forwarder (sin cambios de lógica)
         ▼
    ChirpStack v4 (Docker, band plan AU915 sub-band 2)
@@ -76,13 +76,15 @@ El ESP32 implementa el HAL SPI de 4 funciones que SWDR009 requiere: `write`, `re
 
 ### D2 — Driver gateway: transceiver SWDR001
 
-El LR1121 del gateway corre en modo transceiver estándar. Se crea un crate `lr1121-transceiver` con FFI sobre `lr11xx_driver` (SWDR001, activo, última actualización octubre 2025). El gateway solo necesita: `init`, `set_rx_config(903.9 MHz, SF7, BW125)`, `start_rx_continuous()`, `get_rx_payload() → (buf, rssi, snr)`.
+El LR1121 del gateway corre en modo transceiver estándar. Se crea un crate `lr1121-transceiver` con FFI sobre `lr11xx_driver` (SWDR001, activo, última actualización octubre 2025). El gateway solo necesita: `init`, `set_rx_config(916.8 MHz, SF7, BW125)`, `start_rx_continuous()`, `get_rx_payload() → (buf, rssi, snr)`.
 
 **Por qué no Modem-E en el gateway**: Modem-E es un stack para end devices LoRaWAN (OTAA, uplinks, downlinks). Un gateway necesita acceso crudo a la capa física para capturar cualquier trama LoRa y reenviarla sin procesamiento de protocolo. No existe un modo "gateway" en Modem-E.
 
 ### D3 — Canal fijo AU915 sub-band 2 para PoC
 
-AU915 define 64 canales upstream 125 kHz (902.3–914.9 MHz) + 8 canales 500 kHz + 8 downstream. Para el gateway single-channel de la PoC se usa el canal 8 de sub-band 2: **903.9 MHz SF7BW125** — el primero del sub-band 2, más compatible con gateways AU915 comerciales (RAK, Dragino). Modem-E se configura con la máscara de sub-band 2 (canales 8–15 habilitados). ChirpStack se configura con sub-band 2 únicamente.
+AU915 define 64 canales upstream 125 kHz (915.2–927.8 MHz) + 8 canales upstream 500 kHz (915.9–927.1 MHz) + 8 downstream 500 kHz (923.3–927.5 MHz). Para el gateway single-channel de la PoC se usa el canal 8 de sub-band 2: **916.8 MHz SF7BW125** — el primero del sub-band 2, más compatible con gateways AU915 comerciales (RAK, Dragino). Modem-E se configura con la máscara de sub-band 2 (canales 8–15 habilitados). ChirpStack se configura con sub-band 2 únicamente.
+
+> **Nota de corrección** (`fix-au915-subband2-frequency`): una versión anterior de este documento calculaba estos canales con la fórmula de US915 (`902.3 + n×0.2 MHz`), dando 903.9–905.3 MHz — fuera de los 915–928 MHz regulados por ENACOM en Argentina. La fórmula correcta de AU915 es `915.2 + n×0.2 MHz`.
 
 ### D4 — Pinout SPI LR1121 en ESP32
 

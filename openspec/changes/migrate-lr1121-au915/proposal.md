@@ -1,11 +1,11 @@
 ## Why
 
-Los módulos SX1278 disponibles no tienen conector pigtail para antena externa, y no se consiguen antenas yagi para 433 MHz en Argentina a nivel comercial. El LR1121 resuelve ambos problemas: opera en AU915 (902–928 MHz), la banda LoRaWAN regulatoria de Argentina con ecosistema de antenas maduro (yagi, omnidireccional SMA estándar), y sus breakout boards comerciales incluyen conector U.FL/SMA. Para un producto comercial, operar en AU915 es la decisión correcta y evita rehacer el hardware al escalar.
+Los módulos SX1278 disponibles no tienen conector pigtail para antena externa, y no se consiguen antenas yagi para 433 MHz en Argentina a nivel comercial. El LR1121 resuelve ambos problemas: opera en AU915 (915–928 MHz), la banda LoRaWAN regulatoria de Argentina (ENACOM) con ecosistema de antenas maduro (yagi, omnidireccional SMA estándar), y sus breakout boards comerciales incluyen conector U.FL/SMA. Para un producto comercial, operar en AU915 es la decisión correcta y evita rehacer el hardware al escalar.
 
 ## What Changes
 
-- **BREAKING** — Hardware de RF: SX1278 (433 MHz) → LR1121 (sub-GHz HF port, 902–928 MHz AU915). Aplica tanto al nodo sensor como al gateway.
-- **BREAKING** — Band plan LoRaWAN: EU433 → AU915 (902–928 MHz). Cambia configuración de ChirpStack, stack LoRaWAN en firmware del nodo y configuración de canal en gateway.
+- **BREAKING** — Hardware de RF: SX1278 (433 MHz) → LR1121 (sub-GHz HF port, 915–928 MHz AU915). Aplica tanto al nodo sensor como al gateway.
+- **BREAKING** — Band plan LoRaWAN: EU433 → AU915 (915–928 MHz). Cambia configuración de ChirpStack, stack LoRaWAN en firmware del nodo y configuración de canal en gateway.
 - **BREAKING** — Driver de radio: el stack LMIC configurado para SX1278/EU433 es reemplazado por un driver LR1121 sobre el SDK C oficial de Semtech (`lr11xx_driver`), expuesto a Rust vía FFI, con la crate `lorawan-device` para el stack LoRaWAN AU915.
 - El formato binario del payload (14 bytes, estructura fija) **no cambia** — solo el transporte RF. El campo `bateria_mv` usa rango correcto 0–15 000 mV (corregido en fix previo).
 - Nodo sensor (firmware): reemplazar bloque SX1278+LMIC por LR1121+lorawan-device, configurar AU915 sub-band 2 (canal fijo para PoC single-channel).
