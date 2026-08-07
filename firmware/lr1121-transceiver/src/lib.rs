@@ -19,8 +19,8 @@ use log::{debug, error, warn};
 // Constantes de radio — AU915 sub-band 2, canal 8 (PoC canal fijo)
 // ---------------------------------------------------------------------------
 
-/// Frecuencia del canal 8 AU915 sub-band 2 en Hz (903.9 MHz).
-pub const AU915_SUBBAND2_FREQ_HZ: u32 = 903_900_000;
+/// Frecuencia del canal 8 AU915 sub-band 2 en Hz (916.8 MHz).
+pub const AU915_SUBBAND2_FREQ_HZ: u32 = 916_800_000;
 
 // SF / BW enums deben coincidir con lr11xx_radio_lora_sf_t / bw_t de SWDR001.
 // Valores numéricos según lr11xx_radio.h de SWDR001.

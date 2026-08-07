@@ -1,7 +1,7 @@
 //! Gateway LoRaWAN single-channel: LR1121 transceiver RX → Semtech UDP → ChirpStack.
 //!
 //! El LR1121 opera en modo transceiver (firmware de fábrica).
-//! Canal fijo: 903.9 MHz SF7BW125 (AU915 sub-band 2, canal 8).
+//! Canal fijo: 916.8 MHz SF7BW125 (AU915 sub-band 2, canal 8).
 //!
 //! Limitación de PoC documentada: single-channel, no spec-compliant con AU915 completo.
 //! Protocolo: Semtech UDP Packet Forwarder (sin cambios respecto a la versión SX1278).
@@ -41,7 +41,7 @@ fn main() -> anyhow::Result<()> {
     esp_idf_svc::log::EspLogger::initialize_default();
 
     info!("gateway-node starting — AU915 sub-band 2 — LR1121 transceiver");
-    info!("channel=903.9MHz sf=SF7 bw=BW125 (AU915 canal 8, PoC single-channel)");
+    info!("channel=916.8MHz sf=SF7 bw=BW125 (AU915 canal 8, PoC single-channel)");
     info!("NOTA: single-channel no spec-compliant — solo para prototipo");
 
     let peripherals = Peripherals::take()?;
@@ -87,7 +87,7 @@ fn main() -> anyhow::Result<()> {
     radio.start_rx_continuous()
         .map_err(|e| anyhow::anyhow!("lr1121_rx_start_failed: {:?}", e))?;
 
-    info!("lr1121_transceiver_ok — modo RX continuo 903.9 MHz SF7BW125");
+    info!("lr1121_transceiver_ok — modo RX continuo 916.8 MHz SF7BW125");
 
     // --- UDP socket ---
     let sock = UdpSocket::bind("0.0.0.0:0")?;
