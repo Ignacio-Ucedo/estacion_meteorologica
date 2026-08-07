@@ -109,7 +109,7 @@ DHT22 + rain-gauge/anemometer pulses
    └── lr1121-modem-e crate (FFI → SWDR009 C SDK)
         │  LR1121 runs Modem-E v2.1.0 (LoRaWAN 1.0.4 certified, in-chip stack)
         │  Band plan: AU915 sub-band 2, OTAA, uplink every 10 min
-        │  Canal fijo PoC: 903.9 MHz SF7BW125 (canal 8, sub-band 2)
+        │  Canal fijo PoC: 916.8 MHz SF7BW125 (canal 8, sub-band 2)
         │  FRMPayload 14 bytes: device_id (u8), seq (u16 LE),
         │  temp_c*100 (i16 LE), hum*100 (u16 LE), lluvia_pulsos (u16 LE),
         │  viento_pulsos (u16 LE), bateria_mv (u16 LE), crc8
@@ -118,7 +118,7 @@ DHT22 + rain-gauge/anemometer pulses
    ESP32 single-channel gateway (Rust, esp-idf-hal/svc + WiFi)
    └── lr1121-transceiver crate (FFI → lr11xx_driver SWDR001 C SDK)
         │  LR1121 in transceiver mode (factory firmware)
-        │  Listens on 903.9 MHz SF7BW125 (fixed PoC channel)
+        │  Listens on 916.8 MHz SF7BW125 (fixed PoC channel)
         │  [POC limitation: 1 fixed channel, not full LoRaWAN spec-compliant]
         │  Semtech UDP Packet Forwarder Protocol → ChirpStack
         ▼
@@ -135,8 +135,8 @@ DHT22 + rain-gauge/anemometer pulses
 ```
 
 **Hardware note**: LR1121 modules (sub-GHz HF port: 150–960 MHz) are used
-throughout, operating in the AU915 band (902–928 MHz) — Argentina's LoRaWAN
-regulatory band plan. Breakout boards (Waveshare Core1121, Seeed Wio-LR1121)
+throughout, operating in the AU915 band (915–928 MHz) — Argentina's (ENACOM)
+LoRaWAN regulatory band plan. Breakout boards (Waveshare Core1121, Seeed Wio-LR1121)
 include U.FL/SMA connectors for external antennas.
 
 **Dual driver approach**:

@@ -223,7 +223,7 @@ DIO2, DIO3, DIO9/RFSW — sin conectar en esta rev. Validar según breakout adqu
 |-------|---------------------------------------|----------------------------------------------------------------------|----------|
 | U1    | ESP32 DevKitC V1 (30p)               | MCU gateway PoC — WiFi, alimentación USB                             | TENEMOS  |
 | U1-T  | ESP32-S3 DevKitC (38p)               | MCU gateway target — change `gateway-esp32s3-target`                 | FUTURO   |
-| U2    | LR1121 breakout (Waveshare Core1121  | Módulo LoRa AU915 en modo transceiver — RX 903.9 MHz SF7BW125        | COMPRAR  |
+| U2    | LR1121 breakout (Waveshare Core1121  | Módulo LoRa AU915 en modo transceiver — RX 916.8 MHz SF7BW125        | COMPRAR  |
 |       | o Seeed Wio-LR1121)                  | NO flashear Modem-E en el gateway (modo transceiver requerido)        |          |
 | U3    | Buck (step-down) MP1584/LM2596 | 12 V → 3.3 V para alimentación a batería                                 | FUTURO   |
 | U4    | W5500 módulo SPI            | Ethernet backhaul                                                           | FUTURO   |

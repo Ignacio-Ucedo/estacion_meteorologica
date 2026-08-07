@@ -24,8 +24,8 @@ context: |
   - Pluviómetro y anemómetro: conteo de pulsos por interrupción GPIO
   - Comunicación: LoRaWAN AU915 sub-band 2 con módulo LR1121 corriendo
     firmware Modem-E v2.1.0 (stack LoRaWAN 1.0.4 certificado embebido en chip).
-    Band plan: AU915 (902–928 MHz), la banda regulatoria de Argentina.
-    Canal fijo PoC: 903.9 MHz SF7BW125 (canal 8, sub-band 2).
+    Band plan: AU915 (915–928 MHz), la banda regulatoria de Argentina (ENACOM).
+    Canal fijo PoC: 916.8 MHz SF7BW125 (canal 8, sub-band 2).
     Activación OTAA. Crate host driver: `lr1121-modem-e` (FFI → SWDR009 C SDK).
     Payload binario de 14 bytes (FRMPayload fijo): device_id (u8),
     seq (u16 LE), temp_c*100 (i16 LE), hum*100 (u16 LE),
@@ -36,7 +36,7 @@ context: |
   ### Gateway LoRa
   - Segundo ESP32 (mismo stack Rust) con módulo LR1121 en modo transceiver + WiFi.
     Crate driver: `lr1121-transceiver` (FFI → lr11xx_driver SWDR001 C SDK).
-  - Opera como single-channel UDP packet forwarder en 903.9 MHz SF7BW125
+  - Opera como single-channel UDP packet forwarder en 916.8 MHz SF7BW125
     (AU915 sub-band 2, canal 8) usando el protocolo Semtech UDP hacia ChirpStack.
   - Limitación de prototipo documentada: canal único fijo, no spec-compliant
     con LoRaWAN completo; suficiente para un nodo en canal fijo.
