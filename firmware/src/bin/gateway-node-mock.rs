@@ -43,13 +43,17 @@ const SEND_INTERVAL_MS: u32 = 30_000; // 30s para testing; producción: 10 * 60 
 
 const DEVICE_ID: u8 = 3;
 const FPORT_WEATHER: u8 = 2;
+/// Canal fijo PoC AU915 sub-band 2 (canal 8), mismo valor que
+/// `AU915_SUBBAND2_FREQ_HZ` en `lr1121-transceiver` — sin radio LoRa acá,
+/// así que se declara localmente en vez de depender de ese crate.
+const CHANNEL_FREQ_MHZ: f64 = 916.8;
 
 fn main() -> anyhow::Result<()> {
     esp_idf_svc::sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    info!("gateway-node-mock starting — WiFi+UDP synthetic gateway, no SX1278");
-    info!("channel=433.175MHz sf=7 bw=125kHz (EU433) device_id={}", DEVICE_ID);
+    info!("gateway-node-mock starting — WiFi+UDP synthetic gateway, no radio hardware");
+    info!("channel=916.8MHz sf=7 bw=125kHz (AU915 sub-band 2, canal 8) device_id={}", DEVICE_ID);
 
     // Load OTAA keys before WiFi (both call EspDefaultNvsPartition::take internally,
     // which is Arc-based and safe to call multiple times)
@@ -174,7 +178,7 @@ fn main() -> anyhow::Result<()> {
 
         // Inject as synthetic RXPK
         let tmst_us = unsafe { esp_idf_svc::sys::esp_timer_get_time() } as u32;
-        let rxpk_json = build_rxpk_json(&frame, -75, 9.5, tmst_us);
+        let rxpk_json = build_rxpk_json(&frame, CHANNEL_FREQ_MHZ, -75, 9.5, tmst_us);
         let _ = send_push_data(&sock, &gateway_eui, &rxpk_json, &target_addr);
         rxfw += 1;
         info!("uplink_sent seq={} fcnt={} frame_len={}", seq, session.fcnt_up, frame.len());
@@ -237,7 +241,7 @@ fn join_via_udp(
         FreeRtos::delay_ms(200);
 
         let tmst_us = unsafe { esp_idf_svc::sys::esp_timer_get_time() } as u32;
-        let rxpk_json = build_rxpk_json(&join_req, -75, 9.5, tmst_us);
+        let rxpk_json = build_rxpk_json(&join_req, CHANNEL_FREQ_MHZ, -75, 9.5, tmst_us);
         let _ = send_push_data(sock, gateway_eui, &rxpk_json, target_addr);
         info!("lorawan_join attempt={} dev_nonce={:#06x}", attempt, dev_nonce);
 

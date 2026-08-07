@@ -37,12 +37,14 @@ pub fn random_token() -> [u8; 2] {
 }
 
 /// Construye el JSON RXPK para un paquete recibido (o sintetizado).
-/// `raw`: bytes del frame LoRaWAN (MHDR…MIC).
-pub fn build_rxpk_json(raw: &[u8], rssi: i16, snr: f32, tmst_us: u32) -> String {
+/// `raw`: bytes del frame LoRaWAN (MHDR…MIC). `freq_mhz`: frecuencia del canal en MHz
+/// (debe coincidir con un canal configurado en la región AU915 de ChirpStack).
+pub fn build_rxpk_json(raw: &[u8], freq_mhz: f64, rssi: i16, snr: f32, tmst_us: u32) -> String {
     let data_b64 = base64::engine::general_purpose::STANDARD.encode(raw);
     format!(
-        r#"{{"rxpk":[{{"tmst":{tmst},"freq":433.175,"chan":0,"rfch":0,"stat":1,"modu":"LORA","datr":"SF7BW125","codr":"4/5","rssi":{rssi},"lsnr":{snr:.1},"size":{size},"data":"{data}"}}]}}"#,
+        r#"{{"rxpk":[{{"tmst":{tmst},"freq":{freq_mhz},"chan":0,"rfch":0,"stat":1,"modu":"LORA","datr":"SF7BW125","codr":"4/5","rssi":{rssi},"lsnr":{snr:.1},"size":{size},"data":"{data}"}}]}}"#,
         tmst = tmst_us,
+        freq_mhz = freq_mhz,
         rssi = rssi,
         snr = snr,
         size = raw.len(),

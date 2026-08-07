@@ -130,6 +130,7 @@ fn main() -> anyhow::Result<()> {
                 rxok += 1;
                 let json = build_rxpk_json(
                     &pkt.payload,
+                    AU915_SUBBAND2_FREQ_HZ as f64 / 1e6,
                     pkt.rssi_dbm,
                     pkt.snr_db as f32,
                     tmst_us,
