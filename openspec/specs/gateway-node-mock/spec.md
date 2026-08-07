@@ -79,12 +79,14 @@ El firmware SHALL construir frames LoRaWAN reales (payload binario de 14
 bytes, CRC-8/MAXIM sobre los primeros 13, cifrado con AppSKey, MIC con
 NwkSKey) y enviarlos al ChirpStack Gateway Bridge en el formato RXPK del
 protocolo Semtech UDP Packet Forwarder v2. El envío SHALL ocurrir sobre
-WiFi; no se usa SX1278 en ningún momento.
+WiFi; no se usa hardware de radio LoRa en ningún momento. El campo `freq`
+del RXPK SHALL reflejar el canal fijo PoC de AU915 sub-band 2 configurado
+en ChirpStack (916.8 MHz, canal 8), no un valor de otra banda regulatoria.
 
 #### Scenario: Frame enviado exitosamente
 
 - **WHEN** la sesión OTAA está activa y WiFi disponible
-- **THEN** el firmware construye el RXPK JSON con `freq=433.175`, `datr="SF7BW125"`, `codr="4/5"` y envía PUSH_DATA al host configurado en el puerto 1700/UDP
+- **THEN** el firmware construye el RXPK JSON con `freq=916.8`, `datr="SF7BW125"`, `codr="4/5"` y envía PUSH_DATA al host configurado en el puerto 1700/UDP
 
 #### Scenario: PUSH_DATA con payload correcto
 
