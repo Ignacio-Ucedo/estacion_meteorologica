@@ -1,7 +1,8 @@
 ## Context
 
-El stack LoRaWAN implementado en `migrate-lorawan-sx1278` está completo en
-firmware: OTAA join, payload binario de 14 bytes, uplink cada 10 minutos.
+El stack LoRaWAN implementado en `migrate-lr1121-au915` está completo en
+firmware: OTAA join (vía Modem-E v2.1.0 embebido en el LR1121), payload
+binario de 14 bytes, uplink cada 10 minutos.
 Lo que bloquea la validación de banco es la ausencia de sensores físicos
 soldados. El mock los reemplaza con un generador determinístico.
 
@@ -16,7 +17,7 @@ soldados. El mock los reemplaza con un generador determinístico.
 
 **Non-Goals:**
 - Simular fallos de sensor ni reconexión por pérdida de LoRa (ya cubierto
-  por sensor-node.rs y las tareas de validación de migrate-lorawan-sx1278).
+  por sensor-node.rs y las tareas de validación de migrate-lr1121-au915).
 - Despliegue en campo o autonomía con batería (es una herramienta de banco).
 - Aleatoriedad real (no es necesaria; el patrón determinístico es suficiente
   para ejercitar el pipeline de datos).
@@ -30,9 +31,9 @@ MockEnvironmentSensor (sin GPIO)
   ▼
 build_binary() → [u8; 14] (device_id=2, CRC-8/MAXIM)
   ▼
-lorawan::send_uplink() → trama Class A EU433 433.175 MHz SF7BW125
+modem.request_uplink() → trama Class A AU915 sub-band 2, 916.8 MHz SF7BW125
   ▼
-SX1278 → gateway-node (Semtech UDP) → ChirpStack → MQTT → backend
+LR1121 (Modem-E) → gateway-node (Semtech UDP) → ChirpStack → MQTT → backend
 ```
 
 ## Generación de datos mock
@@ -88,7 +89,7 @@ pruebas.
 | Lecturas | DHT22 + GPIO (UnwiredEnvironmentSensor) | MockEnvironmentSensor |
 | Pulsos | ISR de reed switch / anemómetro | Calculados de seq |
 | Batería | 0 (placeholder) | 3700 mV (constante) |
-| GPIO init | Sí (SPI + reset) | Solo SPI + reset (SX1278) |
+| GPIO init | Sí (SPI + reset + busy + dio1) | Igual (SPI + reset + busy + dio1, LR1121) |
 | Uso esperado | Producción/campo | Banco/pruebas |
 
 ## Manejo de errores

@@ -46,16 +46,17 @@ pueden filtrar independientemente
 
 ## Payload
 
-Idéntico al de `lorawan-node`: 14 bytes little-endian, CRC-8/MAXIM en byte 13.
-Ver spec `lorawan-node` para la definición de campos. La única diferencia es
-`device_id=2`.
+Idéntico al de `lorawan-node-au915`: 14 bytes little-endian, CRC-8/MAXIM en
+byte 13. Ver spec `lorawan-node-au915` (change `migrate-lr1121-au915`) para
+la definición de campos. La única diferencia es `device_id=2`.
 
 ## Frecuencia de envío
 
-10 minutos (idéntica al nodo real).
+10 minutos (idéntica al nodo real), AU915 sub-band 2, canal fijo PoC
+916.8 MHz SF7BW125.
 
 ## Hardware requerido
 
-ESP32 DevKitC V1 + módulo SX1278 (mismo hardware que el nodo real, sin
-DHT22, sin reed switch, sin anemómetro). Conectado por USB a banco para
-desarrollo.
+ESP32 DevKitC V1 + módulo LR1121 corriendo Modem-E v2.1.0 (mismo hardware
+que el nodo real, sin DHT22, sin reed switch, sin anemómetro). Conectado
+por USB a banco para desarrollo.

@@ -21,6 +21,6 @@
 
 - [ ] 3.1 Flashear `sensor-node-mock` en un ESP32, confirmar join OTAA exitoso
   y uplinks visibles en ChirpStack con `device_id=2`. Requiere hardware ESP32
-  + SX1278 + gateway corriendo.
+  + LR1121 + gateway corriendo.
 - [ ] 3.2 Verificar que los uplinks del mock llegan a InfluxDB con temperatura
   y humedad variables y CRC válido. Requiere stack de infra completo.
