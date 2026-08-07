@@ -1,4 +1,4 @@
-//! Nodo sensor mock: stack LoRaWAN real, datos de sensores simulados.
+//! Nodo sensor mock: stack LoRaWAN real (LR1121 Modem-E), datos de sensores simulados.
 //!
 //! Sustituye lecturas GPIO por datos deterministicos plausibles mientras
 //! los sensores físicos (DHT22, pluviómetro, anemómetro) no están soldados.
@@ -11,21 +11,20 @@
 //!   - Pulsos calculados de seq (no ISR)
 //!   - bateria_mv = 3700 constante
 //!
-//! Requiere: ESP32 + SX1278, claves OTAA distintas en NVS, dispositivo
-//! registrado en ChirpStack (ver infra/SETUP.md).
+//! Requiere: ESP32 + LR1121 (Modem-E v2.1.0), claves OTAA distintas en NVS,
+//! dispositivo registrado en ChirpStack (ver infra/SETUP.md).
 
 use esp_idf_hal::{
     delay::FreeRtos,
-    gpio::PinDriver,
+    gpio::{AnyInputPin, AnyOutputPin, PinDriver},
     peripherals::Peripherals,
     spi::{SpiDeviceDriver, SpiDriver, config::Config as SpiConfig},
 };
 use log::{error, info, warn};
+use lr1121_modem_e::{ModemE, JOIN_TIMEOUT_MS};
 use weather_firmware::{
-    lorawan,
     nvs::load_otaa_keys,
     payload::{build_binary, BinaryMeasurement},
-    radio::Sx1278,
     sensors::{EnvironmentSensor, MockEnvironmentSensor},
 };
 
@@ -36,7 +35,7 @@ fn main() -> anyhow::Result<()> {
     esp_idf_svc::sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    info!("sensor-node-mock starting — datos simulados, LoRaWAN EU433 433.175 MHz SF7BW125");
+    info!("sensor-node-mock starting — datos simulados, LoRaWAN AU915 sub-band 2 via Modem-E v2.1.0");
 
     let peripherals = Peripherals::take()?;
 
@@ -57,27 +56,36 @@ fn main() -> anyhow::Result<()> {
 
     let spi_device = SpiDeviceDriver::new(
         spi_driver,
-        Some(peripherals.pins.gpio5), // NSS
-        &SpiConfig::new().baudrate(esp_idf_hal::units::Hertz(1_000_000)),
+        Some(peripherals.pins.gpio5), // NSS (strapping pin — ver R6 en netlist)
+        &SpiConfig::new().baudrate(esp_idf_hal::units::Hertz(8_000_000)),
     )?;
 
-    let reset = PinDriver::output(peripherals.pins.gpio14)?;
+    let busy  = PinDriver::input(unsafe { AnyInputPin::new(27) })?;
+    let reset = PinDriver::output(unsafe { AnyOutputPin::new(14) })?;
+    let dio1  = PinDriver::input(unsafe { AnyInputPin::new(26) })?;
 
-    let mut radio = Sx1278::new(spi_device, reset)?;
-    info!("sx1278_init_ok freq=433.175MHz sf=7 bw=125kHz");
+    let mut modem = ModemE::new(spi_device, busy, reset, dio1)
+        .map_err(|e| anyhow::anyhow!("modem_e_init_failed: {:?}", e))?;
+
+    modem.configure_au915_subband2(&keys.dev_eui, &keys.app_eui, &keys.app_key)
+        .map_err(|e| anyhow::anyhow!("modem_e_configure_failed: {:?}", e))?;
+    info!("modem_e_configured region=AU915 subband=2 fport=2");
 
     let mut sensors = MockEnvironmentSensor::new();
 
-    let mut session = loop {
-        match lorawan::otaa_join(&mut radio, &keys.dev_eui, &keys.app_eui, &keys.app_key) {
-            Ok(s) => break s,
+    loop {
+        info!("lorawan_join_start");
+        match modem.join(JOIN_TIMEOUT_MS) {
+            Ok(()) => {
+                info!("lorawan_join_ok");
+                break;
+            }
             Err(e) => {
-                error!("otaa_join_failed={:?} retrying in 60s", e);
+                error!("lorawan_join_failed={:?} — reintentando en 60s", e);
                 FreeRtos::delay_ms(60_000);
             }
         }
-    };
-    info!("lorawan_session_ok dev_addr={:02X?}", session.dev_addr);
+    }
 
     let mut seq: u16 = 0;
     loop {
@@ -110,7 +118,7 @@ fn main() -> anyhow::Result<()> {
             viento_pulsos: viento,
             bateria_mv,
         };
-        let mut payload = build_binary(&m);
+        let payload = build_binary(&m);
         info!(
             "mock_uplink seq={} temp_c={:.2} hum={:.2} lluvia_pulsos={} viento_pulsos={} bateria_mv={} crc={:#04x}",
             seq,
@@ -122,7 +130,7 @@ fn main() -> anyhow::Result<()> {
             payload[13]
         );
 
-        if let Err(e) = lorawan::send_uplink(&mut radio, &mut session, &mut payload) {
+        if let Err(e) = modem.request_uplink(&payload) {
             error!("uplink_error={:?} — continuando ciclo mock", e);
         }
 
