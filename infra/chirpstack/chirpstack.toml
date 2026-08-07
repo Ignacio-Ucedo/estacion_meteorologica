@@ -12,8 +12,8 @@ servers = ["redis://redis/"]
 
 [network]
 net_id = "000000"
-# AU915: 902–928 MHz (banda LoRaWAN regulatoria de Argentina).
-# PoC usa sub-band 2 (canales 8–15, canal fijo 903.9 MHz SF7BW125).
+# AU915: 915–928 MHz (banda LoRaWAN regulatoria de Argentina, ENACOM).
+# PoC usa sub-band 2 (canales 8–15, canal fijo 916.8 MHz SF7BW125).
 enabled_regions = ["au915_2"]
 
 [api]

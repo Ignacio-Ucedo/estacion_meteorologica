@@ -5,7 +5,7 @@ version: "3.8"
 # ChirpStack UI: http://localhost:8080  (admin / admin)
 # InfluxDB UI:   http://localhost:8086  (admin / adminpassword)
 # Semtech UDP Packet Forwarder: puerto 1700/UDP (ESP32 gateway → este host)
-# Band plan: AU915 sub-band 2, canal fijo 903.9 MHz SF7BW125 (LR1121 transceiver)
+# Band plan: AU915 sub-band 2, canal fijo 916.8 MHz SF7BW125 (LR1121 transceiver)
 
 services:
 

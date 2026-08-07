@@ -1,11 +1,11 @@
 # ChirpStack v4 — región AU915 sub-band 2
-# PoC gateway single-channel: 903.9 MHz SF7BW125 (canal 8, sub-band 2).
-# Banda regulatoria Argentina: AU915 (902–928 MHz).
+# PoC gateway single-channel: 916.8 MHz SF7BW125 (canal 8, sub-band 2).
+# Banda regulatoria Argentina (ENACOM): 915–928 MHz — coincide con el rango de AU915.
 
 [[regions]]
 
   id="au915_2"
-  description="AU915 sub-band 2 (canales 8–15, PoC single-channel 903.9 MHz)"
+  description="AU915 sub-band 2 (canales 8–15, PoC single-channel 916.8 MHz)"
   common_name="AU915"
 
   [regions.gateway]
@@ -28,58 +28,58 @@
         tls_key=""
 
   # Canales upstream 125 kHz — sub-band 2 (canales 8–15)
-  # Frecuencias: 902.3 + n*0.2 MHz para n=8..15
+  # Frecuencias: 915.2 + n*0.2 MHz para n=8..15 (fórmula AU915; NO la de US915)
   [[regions.gateway.channels]]
-    frequency=903900000
+    frequency=916800000
     bandwidth=125000
     modulation="LORA"
     spreading_factors=[7, 8, 9, 10]
 
   [[regions.gateway.channels]]
-    frequency=904100000
+    frequency=917000000
     bandwidth=125000
     modulation="LORA"
     spreading_factors=[7, 8, 9, 10]
 
   [[regions.gateway.channels]]
-    frequency=904300000
+    frequency=917200000
     bandwidth=125000
     modulation="LORA"
     spreading_factors=[7, 8, 9, 10]
 
   [[regions.gateway.channels]]
-    frequency=904500000
+    frequency=917400000
     bandwidth=125000
     modulation="LORA"
     spreading_factors=[7, 8, 9, 10]
 
   [[regions.gateway.channels]]
-    frequency=904700000
+    frequency=917600000
     bandwidth=125000
     modulation="LORA"
     spreading_factors=[7, 8, 9, 10]
 
   [[regions.gateway.channels]]
-    frequency=904900000
+    frequency=917800000
     bandwidth=125000
     modulation="LORA"
     spreading_factors=[7, 8, 9, 10]
 
   [[regions.gateway.channels]]
-    frequency=905100000
+    frequency=918000000
     bandwidth=125000
     modulation="LORA"
     spreading_factors=[7, 8, 9, 10]
 
   [[regions.gateway.channels]]
-    frequency=905300000
+    frequency=918200000
     bandwidth=125000
     modulation="LORA"
     spreading_factors=[7, 8, 9, 10]
 
   # Canal upstream 500 kHz — sub-band 2
   [[regions.gateway.channels]]
-    frequency=904600000
+    frequency=917500000
     bandwidth=500000
     modulation="LORA"
     spreading_factors=[8]
