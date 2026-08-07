@@ -32,7 +32,7 @@ pub enum Region {
     Us915 = 0x03, // MODEM_E_LORAWAN_REGION_US915
 }
 
-/// AU915 sub-band 2: upstream channels 8–15 (903.9–905.3 MHz 125 kHz).
+/// AU915 sub-band 2: upstream channels 8–15 (916.8–918.2 MHz 125 kHz).
 /// ChMaskCntl=0 covers channels 0–15; bits 8–15 set = sub-band 2.
 /// Byte order: [low_byte (ch0-7), high_byte (ch8-15)] — LoRaWAN little-endian.
 const AU915_SUBBAND2_MASK_CNTL: u8 = 0x00;
