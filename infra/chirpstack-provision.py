@@ -102,8 +102,12 @@ def provision(gateway_eui: str, token: str, backend_url: str):
     dp_id = None
     for dp in dp_list.result:
         if dp.name == "esp32-sensor-au915":
-            dp_id = dp.id
-            print(f"Device profile '{dp.name}' ya existe — OK")
+            if dp.region == common.Region.AU915:
+                dp_id = dp.id
+                print(f"Device profile '{dp.name}' ya existe (AU915) — OK")
+            else:
+                print(f"Device profile '{dp.name}' tiene region incorrecta ({dp.region}), eliminando para recrear...")
+                dp_client.Delete(api.DeleteDeviceProfileRequest(id=dp.id), metadata=auth)
             break
 
     if dp_id is None:
@@ -171,8 +175,15 @@ def provision(gateway_eui: str, token: str, backend_url: str):
     # ── 6. Device ─────────────────────────────────────────────────────────────
     dev_client = api.DeviceServiceStub(channel)
     try:
-        dev_client.Get(api.GetDeviceRequest(dev_eui=dev_eui), metadata=auth)
-        print(f"Device {dev_eui} ya existe — OK")
+        resp = dev_client.Get(api.GetDeviceRequest(dev_eui=dev_eui), metadata=auth)
+        existing = resp.device
+        if existing.device_profile_id != dp_id:
+            print(f"Device {dev_eui} tiene device_profile_id incorrecto, actualizando a AU915...")
+            existing.device_profile_id = dp_id
+            dev_client.Update(api.UpdateDeviceRequest(device=existing), metadata=auth)
+            print(f"Device {dev_eui} actualizado al profile AU915")
+        else:
+            print(f"Device {dev_eui} ya existe con profile AU915 — OK")
     except grpc.RpcError as e:
         if e.code() != grpc.StatusCode.NOT_FOUND:
             raise

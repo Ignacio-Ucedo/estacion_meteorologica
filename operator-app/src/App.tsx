@@ -19,12 +19,13 @@ export type Section =
 function App() {
   const [activeSection, setActiveSection] = useState<Section>("gateway");
   const [backendUrl, setBackendUrl] = useState<string>(getBackendUrl);
+  const [otaaKeys, setOtaaKeys] = useState({ devEui: "", appKey: "" });
 
   const renderPanel = () => {
     switch (activeSection) {
-      case "gateway":    return <VirtualGatewayPanel />;
+      case "gateway":    return <VirtualGatewayPanel onConfigLoaded={(devEui, appKey) => setOtaaKeys({ devEui, appKey })} />;
       case "users":      return <UserManagementPanel />;
-      case "settings":   return <SettingsPanel onUrlChange={setBackendUrl} />;
+      case "settings":   return <SettingsPanel onUrlChange={setBackendUrl} devEui={otaaKeys.devEui} appKey={otaaKeys.appKey} />;
       case "flash-gateway-mock":
         return <ComingSoonPanel title="Flash Gateway Mock" description="Flasheá un ESP32 como gateway virtual desde un archivo .bin precompilado. Configuración de NVS y registro en ChirpStack incluidos." />;
       case "flash-gateway-real":

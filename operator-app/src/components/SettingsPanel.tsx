@@ -4,8 +4,15 @@ import { getBackendUrl, BACKEND_URL_KEY, BACKEND_PRESETS } from "../api/backend"
 
 type SyncState = "idle" | "running" | "ok" | "error";
 
-export default function SettingsPanel({ onUrlChange }: { onUrlChange?: (url: string) => void }) {
+interface Props {
+  onUrlChange?: (url: string) => void;
+  devEui?: string;
+  appKey?: string;
+}
+
+export default function SettingsPanel({ onUrlChange, devEui = "", appKey = "" }: Props) {
   const [url, setUrl] = useState<string>(getBackendUrl);
+  const [chirpstackUrl, setChirpstackUrl] = useState<string>("http://localhost:8080");
   const [syncState, setSyncState] = useState<SyncState>("idle");
   const [syncOutput, setSyncOutput] = useState<string>("");
 
@@ -17,11 +24,18 @@ export default function SettingsPanel({ onUrlChange }: { onUrlChange?: (url: str
     setSyncOutput("");
   }
 
+  const canSync = devEui.length > 0 && appKey.length > 0;
+
   async function handleSync() {
     setSyncState("running");
     setSyncOutput("");
     try {
-      const output = await invoke<string>("sync_chirpstack", { backendUrl: url });
+      const output = await invoke<string>("sync_chirpstack", {
+        devEui,
+        appKey,
+        chirpstackUrl,
+        backendUrl: url,
+      });
       setSyncState("ok");
       setSyncOutput(output.trim());
     } catch (e) {
@@ -66,18 +80,40 @@ export default function SettingsPanel({ onUrlChange }: { onUrlChange?: (url: str
         <div className="divider" />
 
         <div className="config-section" style={{ maxWidth: "none" }}>
-          <label className="field-label">Integración ChirpStack</label>
+          <label className="field-label">Provisionar ChirpStack</label>
           <p style={{ fontSize: "0.75rem", color: "#8b949e", margin: "0.25rem 0 0.75rem" }}>
-            Sincroniza el webhook de ChirpStack para que los uplinks vayan al backend configurado arriba.
-            Requiere Docker corriendo y Python con <code>chirpstack-api</code>.
+            Crea o actualiza el device profile AU915, application, gateway virtual, device y AppKey.
+            No requiere Python — usa la API REST de ChirpStack directamente.
           </p>
+
+          <label className="field-label" style={{ marginBottom: "0.25rem" }}>ChirpStack URL</label>
+          <input
+            className="field-input"
+            value={chirpstackUrl}
+            onChange={(e) => setChirpstackUrl(e.target.value.trim())}
+            placeholder="http://localhost:8080"
+            style={{ fontSize: "0.85rem", marginBottom: "0.75rem" }}
+          />
+
+          {!canSync && (
+            <p style={{ fontSize: "0.75rem", color: "#f59e0b", marginBottom: "0.6rem" }}>
+              Cargá un CSV en el panel <strong>Gateway Virtual</strong> para habilitar la provisión.
+            </p>
+          )}
+
+          {canSync && (
+            <p style={{ fontSize: "0.75rem", color: "#8b949e", marginBottom: "0.6rem" }}>
+              DevEUI: <code style={{ color: "#86efac" }}>{devEui.toLowerCase()}</code>
+            </p>
+          )}
+
           <button
             className={`btn ${syncState === "ok" ? "btn-secondary" : "btn-primary"}`}
             style={{ fontSize: "0.8rem", padding: "0.25rem 0.75rem", alignSelf: "flex-start" }}
             onClick={handleSync}
-            disabled={syncState === "running"}
+            disabled={syncState === "running" || !canSync}
           >
-            {syncState === "running" ? "Sincronizando…" : "Sincronizar ChirpStack"}
+            {syncState === "running" ? "Provisionando…" : "Provisionar ChirpStack"}
           </button>
 
           {syncOutput && (
@@ -91,7 +127,7 @@ export default function SettingsPanel({ onUrlChange }: { onUrlChange?: (url: str
               color: syncState === "error" ? "#fca5a5" : "#86efac",
               whiteSpace: "pre-wrap",
               wordBreak: "break-word",
-              maxHeight: "200px",
+              maxHeight: "260px",
               overflowY: "auto",
             }}>
               {syncOutput}

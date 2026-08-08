@@ -117,7 +117,7 @@ function UserSelect({
   );
 }
 
-export default function VirtualGatewayPanel() {
+export default function VirtualGatewayPanel({ onConfigLoaded }: { onConfigLoaded?: (devEui: string, appKey: string) => void }) {
   const [config, setConfig] = useState<GatewayConfig>(() => {
     try {
       const saved = localStorage.getItem("gateway_config");
@@ -225,6 +225,7 @@ export default function VirtualGatewayPanel() {
         app_eui: loaded.app_eui,
         app_key: loaded.app_key,
       }));
+      onConfigLoaded?.(loaded.dev_eui, loaded.app_key);
     } catch (e) {
       alert(String(e));
     }

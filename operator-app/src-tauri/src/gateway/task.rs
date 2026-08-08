@@ -175,7 +175,7 @@ async fn run_gateway_inner(
         let mic = crypto::uplink_mic(&session.nwk_skey, &session.dev_addr, fcnt, &mac_payload);
         let uplink_frame = frame::build_uplink(&session.dev_addr, fcnt, FPORT_WEATHER, &payload, &mic);
 
-        let rxpk = build_rxpk_json(&uplink_frame, -80, 7.0, now_us());
+        let rxpk = build_rxpk_json(&uplink_frame, 916.8, -80, 7.0, now_us());
         if let Err(e) = send_push_data(&sock, &GATEWAY_EUI, &rxpk, &host_resolved) {
             emit_log(app, "WARN", &format!("uplink UDP falló: {e}"));
         }
@@ -235,7 +235,7 @@ async fn join_otaa(
         }
         tokio::time::sleep(Duration::from_millis(200)).await;
 
-        let rxpk = build_rxpk_json(&join_req, -75, 9.5, now_us());
+        let rxpk = build_rxpk_json(&join_req, 916.8, -75, 9.5, now_us());
         if let Err(e) = send_push_data(sock, gateway_eui, &rxpk, host) {
             return Err(format!("PUSH_DATA JoinRequest falló (attempt {attempt}): {e}"));
         }
