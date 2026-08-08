@@ -13,5 +13,5 @@
 ## 3. Validación
 
 - [ ] 3.1 Verificar que el backend recibe y escribe correctamente uplinks del nodo físico: arrancar FastAPI con las variables de entorno del docker-compose, confirmar en los logs que los mensajes MQTT se procesan y los puntos aparecen en InfluxDB. Requiere el stack de infra corriendo y el nodo sensor transmitiendo.
-- [ ] 3.2 Verificar comportamiento ante CRC inválido: enviar un payload adulterado directamente al topic MQTT y confirmar que se descarta con log de error sin escribir en InfluxDB.
-- [ ] 3.3 Verificar reconexión MQTT: detener y reiniciar Mosquitto mientras el backend corre; confirmar que la suscripción se restablece sin reiniciar uvicorn.
+- [x] 3.2 Verificar comportamiento ante CRC inválido: enviar un payload adulterado directamente al topic MQTT y confirmar que se descarta con log de error sin escribir en InfluxDB.
+- [x] 3.3 Verificar reconexión MQTT: detener y reiniciar Mosquitto mientras el backend corre; confirmar que la suscripción se restablece sin reiniciar uvicorn.

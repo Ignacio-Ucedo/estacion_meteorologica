@@ -115,7 +115,7 @@ def on_message(client, userdata, message):
         .field("wind_pulses", reading.wind_pulses)
         .field("battery_mv", reading.battery_mv)
         .field("seq", reading.seq)
-        .time(ts, WritePrecision.NANOSECONDS)
+        .time(ts, WritePrecision.NS)
     )
 
     try:
