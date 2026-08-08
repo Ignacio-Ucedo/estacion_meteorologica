@@ -1,15 +1,15 @@
 ## 1. Preparación de infraestructura
 
-- [ ] 1.1 Levantar el stack de infra: `docker compose -f infra/docker-compose.yml up -d`. Verificar que ChirpStack UI responde en `http://localhost:8080` y que el Gateway Bridge está corriendo. No requiere hardware LoRa.
+- [x] 1.1 Levantar el stack de infra: `docker compose -f infra/docker-compose.yml up -d`. Verificar que ChirpStack UI responde en `http://localhost:8080` y que el Gateway Bridge está corriendo. No requiere hardware LoRa.
   `chore(infra): levantar stack AU915 para validación etapa 1`
-- [ ] 1.2 Correr `python3 infra/chirpstack-provision.py` (con `--gateway-eui` obtenido en el paso 2.1 o sin él para provisionar solo el device). Verificar que el device profile `esp32-sensor-au915` existe en ChirpStack UI y la application `weather-station` tiene el HTTP integration configurado. No requiere hardware LoRa.
+- [x] 1.2 Correr `python3 infra/chirpstack-provision.py` (con `--gateway-eui` obtenido en el paso 2.1 o sin él para provisionar solo el device). Verificar que el device profile `esp32-sensor-au915` existe en ChirpStack UI y la application `weather-station` tiene el HTTP integration configurado. No requiere hardware LoRa.
   `chore(infra): provisionar ChirpStack AU915 para gateway-node-mock`
-- [ ] 1.3 Verificar que el backend FastAPI está corriendo y el subscriber paho-mqtt está suscrito al topic de ChirpStack. Revisar logs del backend en busca de `mqtt_connected` o similar. No requiere hardware LoRa.
+- [x] 1.3 Verificar que el backend FastAPI está corriendo y el subscriber paho-mqtt está suscrito al topic de ChirpStack. Revisar logs del backend en busca de `mqtt_connected` o similar. No requiere hardware LoRa.
   `chore(infra): verificar backend MQTT subscriber activo`
 
 ## 2. Flash del firmware
 
-- [ ] 2.1 Compilar `gateway-node-mock` para el ESP32 desde `firmware/`: `cargo build --bin gateway-node-mock`. Verificar que compila sin errores. Anotar el `gateway_eui` que se imprimirá (se puede calcular de la MAC o esperar al paso 2.3). No requiere hardware LoRa para compilar.
+- [x] 2.1 Compilar `gateway-node-mock` para el ESP32 desde `firmware/`: `cargo build --bin gateway-node-mock`. Verificar que compila sin errores. Anotar el `gateway_eui` que se imprimirá (se puede calcular de la MAC o esperar al paso 2.3). No requiere hardware LoRa para compilar.
   `build(firmware): compilar gateway-node-mock para validación etapa 1`
 - [ ] 2.2 Provisionar NVS del ESP32 con las claves OTAA del mock (`device_id=3`): correr `cargo espflash erase-flash` para limpiar NVS previo, luego flashear el CSV de NVS con `espflash write-bin`. Usar `firmware/nvs_mock.csv` con DevEUI/AppKey distintos a los del nodo real. Requiere ESP32 físico conectado por USB.
   `chore(firmware): provisionar NVS del ESP32 con claves OTAA gateway-node-mock`

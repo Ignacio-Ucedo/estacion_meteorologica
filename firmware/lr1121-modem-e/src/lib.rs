@@ -85,8 +85,8 @@ impl std::error::Error for ModemEError {}
 
 pub(crate) struct HalCtx {
     pub spi: SpiDeviceDriver<'static, SpiDriver<'static>>,
-    pub busy: PinDriver<'static, esp_idf_hal::gpio::AnyInputPin, Input>,
-    pub reset: PinDriver<'static, esp_idf_hal::gpio::AnyOutputPin, Output>,
+    pub busy: PinDriver<'static, Input>,
+    pub reset: PinDriver<'static, Output>,
 }
 
 /// Puntero al HalCtx activo.
@@ -100,7 +100,7 @@ const BUSY_POLL_MAX_ITERS: u32 = 1_000; // 1 s máximo
 unsafe fn wait_busy_low() -> bool {
     let ctx = &mut *HAL_CTX;
     for _ in 0..BUSY_POLL_MAX_ITERS {
-        if ctx.busy.is_low().unwrap_or(false) {
+        if ctx.busy.is_low() {
             return true;
         }
         FreeRtos::delay_ms(BUSY_POLL_INTERVAL_MS);
@@ -344,7 +344,7 @@ extern "C" {
 /// modem.request_uplink(FPORT_WEATHER, &payload)?;
 /// ```
 pub struct ModemE {
-    dio1: PinDriver<'static, esp_idf_hal::gpio::AnyInputPin, Input>,
+    dio1: PinDriver<'static, Input>,
     _ctx: Box<HalCtx>,
 }
 
@@ -352,13 +352,13 @@ impl ModemE {
     /// Inicializa el driver y verifica que el chip corre Modem-E (use_case == 5).
     pub fn new(
         spi: SpiDeviceDriver<'static, SpiDriver<'static>>,
-        busy: PinDriver<'static, esp_idf_hal::gpio::AnyInputPin, Input>,
-        reset: PinDriver<'static, esp_idf_hal::gpio::AnyOutputPin, Output>,
-        dio1: PinDriver<'static, esp_idf_hal::gpio::AnyInputPin, Input>,
+        busy: PinDriver<'static, Input>,
+        reset: PinDriver<'static, Output>,
+        dio1: PinDriver<'static, Input>,
     ) -> Result<Self, ModemEError> {
         let ctx = Box::new(HalCtx { spi, busy, reset });
         // SAFETY: single-threaded ESP32 firmware; pointer is valid for the duration of ModemE.
-        unsafe { HAL_CTX = Box::as_ptr(&ctx) as *mut HalCtx; }
+        unsafe { HAL_CTX = &*ctx as *const HalCtx as *mut HalCtx; }
 
         let mut version = ModemEVersion::default();
         let rc = unsafe { modem_e_get_modem_version(HAL_CTX as *const _, &mut version) };
@@ -461,7 +461,7 @@ impl ModemE {
             FreeRtos::delay_ms(poll_ms);
             elapsed += poll_ms;
 
-            if self.dio1.is_high().unwrap_or(false) {
+            if self.dio1.is_high() {
                 let mut ev = ModemEEventFields::default();
                 let rc = unsafe { modem_e_get_event(HAL_CTX as *const _, &mut ev) };
                 if rc != MODEM_E_RC_OK { return Err(ModemEError::CommandFailed(rc)); }

@@ -82,8 +82,8 @@ const RC_OK: u8 = 0;
 
 pub(crate) struct HalCtx {
     pub spi: SpiDeviceDriver<'static, SpiDriver<'static>>,
-    pub busy: PinDriver<'static, esp_idf_hal::gpio::AnyInputPin, Input>,
-    pub reset: PinDriver<'static, esp_idf_hal::gpio::AnyOutputPin, Output>,
+    pub busy: PinDriver<'static, Input>,
+    pub reset: PinDriver<'static, Output>,
 }
 
 pub(crate) static mut HAL_CTX: *mut HalCtx = core::ptr::null_mut();
@@ -94,7 +94,7 @@ const BUSY_MAX_ITERS: u32 = 1_000;
 unsafe fn wait_busy_low() -> bool {
     let ctx = &mut *HAL_CTX;
     for _ in 0..BUSY_MAX_ITERS {
-        if ctx.busy.is_low().unwrap_or(false) { return true; }
+        if ctx.busy.is_low() { return true; }
         FreeRtos::delay_ms(BUSY_POLL_MS);
     }
     false
@@ -283,7 +283,7 @@ extern "C" {
 /// }
 /// ```
 pub struct Lr1121Transceiver {
-    dio1: PinDriver<'static, esp_idf_hal::gpio::AnyInputPin, Input>,
+    dio1: PinDriver<'static, Input>,
     _ctx: Box<HalCtx>,
 }
 
@@ -291,12 +291,12 @@ impl Lr1121Transceiver {
     /// Inicializa el chip y verifica modo transceiver (no Modem-E).
     pub fn new(
         spi: SpiDeviceDriver<'static, SpiDriver<'static>>,
-        busy: PinDriver<'static, esp_idf_hal::gpio::AnyInputPin, Input>,
-        reset: PinDriver<'static, esp_idf_hal::gpio::AnyOutputPin, Output>,
-        dio1: PinDriver<'static, esp_idf_hal::gpio::AnyInputPin, Input>,
+        busy: PinDriver<'static, Input>,
+        reset: PinDriver<'static, Output>,
+        dio1: PinDriver<'static, Input>,
     ) -> Result<Self, TransceiverError> {
         let ctx = Box::new(HalCtx { spi, busy, reset });
-        unsafe { HAL_CTX = Box::as_ptr(&ctx) as *mut HalCtx; }
+        unsafe { HAL_CTX = &*ctx as *const HalCtx as *mut HalCtx; }
 
         // Reset + get version
         let rc = unsafe { lr11xx_system_reset(HAL_CTX as *const _) };
@@ -356,7 +356,7 @@ impl Lr1121Transceiver {
         // Poll DIO1 hasta RX_DONE
         loop {
             FreeRtos::delay_ms(5);
-            if self.dio1.is_high().unwrap_or(false) { break; }
+            if self.dio1.is_high() { break; }
         }
 
         // Estadísticas RSSI/SNR
