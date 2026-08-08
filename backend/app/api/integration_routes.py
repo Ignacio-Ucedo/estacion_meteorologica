@@ -23,8 +23,9 @@ async def chirpstack_uplink(event: dict[str, Any], session: SessionDep) -> dict[
 
     data_b64: str = event.get("data", "")
     if not data_b64:
-        log.warning("uplink_no_data dev_eui=%s", dev_eui)
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="uplink_no_data")
+        # Eventos join/ack/status de ChirpStack no tienen payload — ignorar silenciosamente
+        log.debug("uplink_no_data dev_eui=%s event_type=%s — skipped", dev_eui, event.get("type", "unknown"))
+        return {"status": "ignored", "reason": "no_data"}
 
     try:
         raw = base64.b64decode(data_b64)
