@@ -45,7 +45,7 @@ El firmware SHALL generar lecturas sintéticas con ciclo triangular de temperatu
 #### Scenario: seq incrementa monotónicamente y batería constante
 
 - **WHEN** se observan N uplinks consecutivos (N ≥ 3)
-- **THEN** el campo `seq` incrementa de 1 en 1 en cada uplink y `bateria_mv = 4200` en todos
+- **THEN** el campo `seq` incrementa de 1 en 1 en cada uplink y `bateria_mv = 3700` en todos
 
 
 ### Requirement: Ingesta en InfluxDB y visibilidad en frontend
@@ -55,7 +55,7 @@ Las lecturas descifradas por ChirpStack SHALL llegar al backend FastAPI via HTTP
 #### Scenario: Lectura almacenada en InfluxDB con campos correctos
 
 - **WHEN** el backend recibe el evento HTTP de un uplink exitoso
-- **THEN** InfluxDB contiene un punto en `weather_reading` con `device_id=3`, `temp_c` en rango [15.0, 25.0], `humidity_rh` en rango [0.0, 100.0], `battery_mv=4200` y timestamp dentro de los últimos 60 s
+- **THEN** InfluxDB contiene un punto en `weather_reading` con `device_id=3`, `temp_c` en rango [15.0, 25.0], `humidity_rh` en rango [0.0, 100.0], `battery_mv=3700` y timestamp dentro de los últimos 60 s
 
 #### Scenario: Frontend muestra lecturas en tiempo real
 
