@@ -2,9 +2,9 @@
 marshaler = "json"
 
 [integration.mqtt]
-event_topic_template   = "eu433/gateway/{{ .GatewayID }}/event/{{ .EventType }}"
-state_topic_template   = "eu433/gateway/{{ .GatewayID }}/state/{{ .StateType }}"
-command_topic_template = "eu433/gateway/{{ .GatewayID }}/command/#"
+event_topic_template   = "au915_2/gateway/{{ .GatewayID }}/event/{{ .EventType }}"
+state_topic_template   = "au915_2/gateway/{{ .GatewayID }}/state/{{ .StateType }}"
+command_topic_template = "au915_2/gateway/{{ .GatewayID }}/command/#"
 
 [integration.mqtt.auth.generic]
 servers = ["tcp://mosquitto:1883/"]

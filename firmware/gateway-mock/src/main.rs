@@ -288,7 +288,7 @@ fn build_event<'a>(
             application_id: &config.app_id,
             application_name: "weather-station",
             device_profile_id: "gateway-mock-profile",
-            device_profile_name: "gateway-mock-eu433",
+            device_profile_name: "gateway-mock-au915",
             device_name: "gateway-mock-synthetic",
             dev_eui: &config.dev_eui,
         },
@@ -307,7 +307,7 @@ fn build_event<'a>(
             channel: 0,
         }],
         tx_info: TxInfo {
-            frequency: 433_175_000,
+            frequency: 916_800_000,
             modulation: TxModulation {
                 lora: LoraModulation {
                     bandwidth: 125_000,

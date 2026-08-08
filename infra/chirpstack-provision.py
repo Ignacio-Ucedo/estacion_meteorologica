@@ -101,16 +101,16 @@ def provision(gateway_eui: str, token: str, backend_url: str):
     )
     dp_id = None
     for dp in dp_list.result:
-        if dp.name == "esp32-sensor-eu433":
+        if dp.name == "esp32-sensor-au915":
             dp_id = dp.id
             print(f"Device profile '{dp.name}' ya existe — OK")
             break
 
     if dp_id is None:
         dp = api.DeviceProfile(
-            name="esp32-sensor-eu433",
+            name="esp32-sensor-au915",
             tenant_id=TENANT_ID,
-            region=common.Region.EU433,
+            region=common.Region.AU915,
             mac_version=common.MacVersion.LORAWAN_1_0_2,
             reg_params_revision=common.RegParamsRevision.B,
             supports_otaa=True,
@@ -118,7 +118,7 @@ def provision(gateway_eui: str, token: str, backend_url: str):
         )
         resp = dp_client.Create(api.CreateDeviceProfileRequest(device_profile=dp), metadata=auth)
         dp_id = resp.id
-        print(f"Device profile 'esp32-sensor-eu433' creado: {dp_id}")
+        print(f"Device profile 'esp32-sensor-au915' creado: {dp_id}")
 
     # ── 4. Application ────────────────────────────────────────────────────────
     app_client = api.ApplicationServiceStub(channel)

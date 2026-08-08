@@ -9,8 +9,8 @@
 
 ## 2. Documentación de pinout y reserva de GPIOs
 
-- [ ] 2.1 Agregar sección "Gateway ESP32-S3 DevKitC" en `hardware/netlist.md` con tabla de pinout SX1278 (SCK=18, MISO=19, MOSI=23, NSS=5, RST=14, DIO0=26) y nota explícita de que GPIO5 no es strapping pin en el ESP32-S3 (a diferencia del ESP32 clásico).
-  `docs(hardware): documentar pinout SX1278 en ESP32-S3 DevKitC con nota GPIO5`
+- [ ] 2.1 Agregar sección "Gateway ESP32-S3 DevKitC" en `hardware/netlist.md` con tabla de pinout LR1121 (SCK=18, MISO=19, MOSI=23, NSS=5, RST=14, BUSY=27, DIO1=26) y nota explícita de que GPIO5 no es strapping pin en el ESP32-S3 (a diferencia del ESP32 clásico).
+  `docs(hardware): documentar pinout LR1121 en ESP32-S3 DevKitC con nota GPIO5`
 - [ ] 2.2 Agregar tabla de GPIOs reservados para W5500 (CS=GPIO10, INT=GPIO9), SIM7000G (TX=GPIO17, RX=GPIO16, PWR_KEY=GPIO15) y ADC de alimentación (VIN_MON=GPIO4) en la sección de `hardware/netlist.md` del gateway S3. Incluir nota de que son reservas sin driver implementado.
   `docs(hardware): reservar GPIOs W5500, SIM7000G y ADC alimentación en ESP32-S3`
 - [ ] 2.3 Agregar nota sobre GPIO23 (MOSI): verificar si el modelo concreto de ESP32-S3 DevKitC 38p a adquirir tiene GPIO23 libre o conectado a LED onboard, y documentar la alternativa MOSI=GPIO11 (HSPI S3) en caso de conflicto. Dejar como OQ1 pendiente hasta tener el hardware.
@@ -18,7 +18,7 @@
 
 ## 3. Validación en hardware (requiere hardware real — ESP32-S3 DevKitC)
 
-- [ ] 3.1 *(Bloqueado hasta adquirir ESP32-S3)* Flashear `gateway-node` compilado para `xtensa-esp32s3-espidf` en el ESP32-S3 DevKitC 38p con `cargo espflash`. Verificar que el log serial muestra `gateway-node starting`, el `gateway_eui` correcto derivado de la MAC WiFi, y que el SX1278 inicializa correctamente en modo RX continuo.
+- [ ] 3.1 *(Bloqueado hasta adquirir ESP32-S3)* Flashear `gateway-node` compilado para `xtensa-esp32s3-espidf` en el ESP32-S3 DevKitC 38p con `cargo espflash`. Verificar que el log serial muestra `gateway-node starting`, el `gateway_eui` correcto derivado de la MAC WiFi, y que el LR1121 inicializa correctamente en modo RX continuo (916.8 MHz SF7BW125).
   `test(gateway): validar arranque gateway-node en ESP32-S3 DevKitC real`
 - [ ] 3.2 *(Bloqueado hasta adquirir ESP32-S3)* Conectar el nodo sensor (ESP32 clásico) y verificar que el gateway S3 recibe y reenvía uplinks a ChirpStack correctamente. Confirmar que el cambio de SoC no afecta al comportamiento del protocolo UDP.
   `test(gateway): validar recepción y forwarding de uplinks LoRaWAN en ESP32-S3`
