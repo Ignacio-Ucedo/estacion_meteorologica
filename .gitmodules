@@ -1,0 +1,3 @@
+[submodule "firmware/lr1121-modem-e/vendor/lr1121_modemE_driver"]
+	path = firmware/lr1121-modem-e/vendor/lr1121_modemE_driver
+	url = https://github.com/Lora-net/lr1121_modemE_driver.git

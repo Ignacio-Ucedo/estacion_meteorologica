@@ -26,8 +26,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
 
       # Linux: webkit2gtk-4.1 requerido por Tauri v2
       - name: Install Linux system dependencies
@@ -120,8 +118,11 @@ jobs:
           prerelease: ${{ startsWith(github.ref_name, 'v0.') }}
           args: --bundles ${{ matrix.bundles }}
 
-      # Restaura la propiedad de /__w/ para que el post-cleanup de
-      # actions/checkout pueda escribir en /__w/_temp/ con Node 24.
+      # $RUNNER_TEMP puede ser un bind-mount separado de /__w/; chown ambos
+      # explícitamente para que el post-cleanup de actions/checkout pueda
+      # escribir save_state en $RUNNER_TEMP/_runner_file_commands/ con Node 24.
       - name: Restore workspace ownership (Linux)
         if: always() && runner.os == 'Linux'
-        run: sudo chown -R "$(id -u):$(id -g)" /__w/ 2>/dev/null || true
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP" 2>/dev/null || true
+          sudo chown -R "$(id -u):$(id -g)" /__w/ 2>/dev/null || true
