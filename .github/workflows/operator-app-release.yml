@@ -15,7 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: ubuntu-22.04
+          - platform: ubuntu-24.04
             bundles: appimage,deb
           - platform: windows-latest
             bundles: msi
@@ -29,7 +29,7 @@ jobs:
 
       # Linux: webkit2gtk-4.1 requerido por Tauri v2
       - name: Install Linux system dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-24.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -42,7 +42,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: operator-app/package-lock.json
 
@@ -64,7 +64,7 @@ jobs:
       # En desarrollo se usa el script placeholder (requiere Python + esptool instalado).
 
       - name: Download esptool sidecar (Linux)
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-24.04'
         working-directory: operator-app/src-tauri/binaries
         run: |
           curl -fsSL "https://github.com/espressif/esptool/releases/download/v4.8.1/esptool-v4.8.1-linux-amd64.zip" -o esptool.zip
