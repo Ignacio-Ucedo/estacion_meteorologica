@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Linux: webkit2gtk-4.1 requerido por Tauri v2
+      # Linux: webkit2gtk-4.1 requerido por Tauri v2; acl requerido para setfacl
       - name: Install Linux system dependencies
         if: matrix.platform == 'ubuntu-24.04'
         run: |
@@ -38,7 +38,8 @@ jobs:
             libappindicator3-dev \
             librsvg2-dev \
             patchelf \
-            libudev-dev
+            libudev-dev \
+            acl
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -118,11 +119,14 @@ jobs:
           prerelease: ${{ startsWith(github.ref_name, 'v0.') }}
           args: --bundles ${{ matrix.bundles }}
 
-      # $RUNNER_TEMP puede ser un bind-mount separado de /__w/; chown ambos
-      # explícitamente para que el post-cleanup de actions/checkout pueda
-      # escribir save_state en $RUNNER_TEMP/_runner_file_commands/ con Node 24.
-      - name: Restore workspace ownership (Linux)
+      # El runner binary corre como root dentro del container Docker de ubuntu-24.04
+      # y crea save_state_<uuid> como root:root durante el post-cleanup (DESPUÉS de
+      # que cualquier chown del paso de usuario haya corrido). setfacl -d aplica una
+      # ACL por defecto al directorio para que los archivos creados por root hereden
+      # permisos de escritura para "otros" (= usuario runner de Node.js).
+      - name: Fix runner file-commands permissions (Linux)
         if: always() && runner.os == 'Linux'
         run: |
-          sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP" 2>/dev/null || true
-          sudo chown -R "$(id -u):$(id -g)" /__w/ 2>/dev/null || true
+          sudo mkdir -p "$RUNNER_TEMP/_runner_file_commands"
+          sudo chmod 777  "$RUNNER_TEMP/_runner_file_commands"
+          setfacl -d -m o::rw "$RUNNER_TEMP/_runner_file_commands"
