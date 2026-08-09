@@ -26,6 +26,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       # Linux: webkit2gtk-4.1 requerido por Tauri v2
       - name: Install Linux system dependencies
