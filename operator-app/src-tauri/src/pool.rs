@@ -3,6 +3,11 @@
 /// Esquema CSV de importación:
 ///   dev_eui,app_key,assigned,assigned_at
 ///   70B3D5FFFE000001,00112233445566778899AABBCCDDEEFF,0,
+///
+/// Cuando el pool está vacío, `next_available` genera un par aleatorio
+/// automáticamente (administración local, crypto-safe) para que el flujo
+/// de aprovisionamiento no requiera intervención manual.
+use rand::Rng;
 use rusqlite::{Connection, params};
 use std::path::Path;
 
@@ -32,13 +37,13 @@ fn init(conn: &Connection) -> Result<(), String> {
 }
 
 /// Retorna el próximo par DevEUI+AppKey libre y lo marca como asignado.
+/// Si el pool está vacío, genera un par aleatorio, lo registra y lo retorna.
 pub fn next_available(db_path: &Path) -> Result<KeyEntry, String> {
     let conn = open(db_path)?;
     init(&conn)?;
 
     let now = chrono_now();
 
-    // Seleccionar el primer par no asignado y marcarlo en una sola operación.
     let rows_changed = conn
         .execute(
             "UPDATE key_pool SET assigned = 1, assigned_at = ?1
@@ -48,7 +53,14 @@ pub fn next_available(db_path: &Path) -> Result<KeyEntry, String> {
         .map_err(|e| format!("Error al asignar clave: {e}"))?;
 
     if rows_changed == 0 {
-        return Err("Pool agotado: no hay pares DevEUI+AppKey disponibles. Importá un nuevo CSV.".into());
+        // Pool vacío — generar par aleatorio y registrarlo como asignado.
+        let entry = generate_random_pair();
+        conn.execute(
+            "INSERT INTO key_pool (dev_eui, app_key, assigned, assigned_at) VALUES (?1, ?2, 1, ?3)",
+            params![entry.dev_eui, entry.app_key, now],
+        )
+        .map_err(|e| format!("Error al guardar clave generada: {e}"))?;
+        return Ok(entry);
     }
 
     conn.query_row(
@@ -66,6 +78,23 @@ pub fn next_available(db_path: &Path) -> Result<KeyEntry, String> {
         },
     )
     .map_err(|e| format!("Error al leer clave asignada: {e}"))
+}
+
+/// Genera un par DevEUI + AppKey con bytes aleatorios del OS (crypto-safe).
+/// El primer byte del DevEUI tiene el bit de administración local activado
+/// para indicar que no es un EUI-64 globalmente asignado.
+fn generate_random_pair() -> KeyEntry {
+    let mut rng = rand::thread_rng();
+    let mut dev_eui_bytes: [u8; 8] = rng.gen();
+    dev_eui_bytes[0] = (dev_eui_bytes[0] | 0x02) & 0xFE; // locally-administered, unicast
+    let app_key_bytes: [u8; 16] = rng.gen();
+
+    KeyEntry {
+        dev_eui: dev_eui_bytes.iter().map(|b| format!("{b:02X}")).collect(),
+        app_key: app_key_bytes.iter().map(|b| format!("{b:02X}")).collect(),
+        assigned: true,
+        assigned_at: Some(chrono_now()),
+    }
 }
 
 /// Importa pares DevEUI+AppKey desde un CSV y los agrega al pool.

@@ -20,7 +20,6 @@ export default function WizardStep2_Config({ state, onUpdate, onBack, onNext }: 
   const [keyError, setKeyError] = useState<string | null>(null);
   const [loadingKey, setLoadingKey] = useState(false);
 
-  // Obtener el próximo par disponible del pool si no hay claves cargadas.
   useEffect(() => {
     if (state.devEui || state.appKey) return;
     setLoadingKey(true);
@@ -102,15 +101,14 @@ export default function WizardStep2_Config({ state, onUpdate, onBack, onNext }: 
       {/* OTAA Keys (solo lectura) */}
       <fieldset style={{ border: "1px solid #2d3148", borderRadius: 8, padding: "16px 16px 12px" }}>
         <legend style={{ fontSize: 12, color: "#64748b", padding: "0 6px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-          Claves OTAA (asignadas del pool)
+          Claves OTAA
         </legend>
         {loadingKey ? (
-          <p style={{ fontSize: 13, color: "#64748b" }}>Obteniendo clave del pool…</p>
+          <p style={{ fontSize: 13, color: "#64748b" }}>Asignando claves OTAA…</p>
         ) : keyError ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <p style={{ fontSize: 13, color: "#f87171" }}>{keyError}</p>
-            <p style={{ fontSize: 12, color: "#64748b" }}>
-              Importá un CSV de claves desde Configuración → Pool de Claves, luego volvé aquí.
+            <p style={{ fontSize: 13, color: "#f87171" }}>
+              Error al obtener claves: {keyError}
             </p>
           </div>
         ) : (
