@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 mod commands;
 pub mod chirpstack_api;
+pub mod device_log;
 pub mod esptool;
 mod gateway;
 pub mod nvs;
@@ -12,6 +13,7 @@ use commands::chirpstack::{
     discover_chirpstack_ids, load_chirpstack_config, register_device_chirpstack,
     save_chirpstack_config, sync_chirpstack,
 };
+use commands::device_log::{export_devices_csv, list_devices, log_provisioning};
 use commands::flash::{
     flash_firmware, flash_nvs, generate_nvs_bin, import_key_pool, key_pool_stats, list_ports,
     next_available_key, start_usb_watcher, verify_nvs,
@@ -45,6 +47,9 @@ pub fn run() {
             flash_firmware,
             flash_nvs,
             verify_nvs,
+            log_provisioning,
+            list_devices,
+            export_devices_csv,
         ])
         .setup(|app| {
             start_usb_watcher(app.handle().clone());

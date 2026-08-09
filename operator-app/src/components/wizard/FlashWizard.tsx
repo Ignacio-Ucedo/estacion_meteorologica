@@ -36,7 +36,7 @@ export default function FlashWizard({ title }: Props) {
           />
         );
       case 3:
-        return <WizardStep3_Flash state={state} onBack={() => goTo(2)} onNext={() => goTo(4)} />;
+        return <WizardStep3_Flash state={state} onUpdate={patch} onBack={() => goTo(2)} onNext={() => goTo(4)} />;
       case 4:
         return <WizardStep4_NVS state={state} onBack={() => goTo(3)} onNext={() => goTo(5)} />;
       case 5:

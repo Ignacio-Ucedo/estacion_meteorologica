@@ -3,6 +3,7 @@ import Sidebar from "./components/Sidebar";
 import VirtualGatewayPanel from "./components/VirtualGatewayPanel";
 import UserManagementPanel from "./components/UserManagementPanel";
 import SettingsPanel from "./components/SettingsPanel";
+import HistoryPanel from "./components/HistoryPanel";
 import FlashWizard from "./components/wizard/FlashWizard";
 import { getBackendUrl } from "./api/backend";
 import "./App.css";
@@ -10,6 +11,7 @@ import "./App.css";
 export type Section =
   | "gateway"
   | "users"
+  | "history"
   | "settings"
   | "flash-gateway-mock"
   | "flash-gateway-real"
@@ -25,6 +27,7 @@ function App() {
     switch (activeSection) {
       case "gateway":    return <VirtualGatewayPanel onConfigLoaded={(devEui, appKey) => setOtaaKeys({ devEui, appKey })} />;
       case "users":      return <UserManagementPanel />;
+      case "history":    return <HistoryPanel />;
       case "settings":   return <SettingsPanel onUrlChange={setBackendUrl} devEui={otaaKeys.devEui} appKey={otaaKeys.appKey} />;
       case "flash-gateway-mock":
         return <FlashWizard title="Flash Gateway Mock" />;

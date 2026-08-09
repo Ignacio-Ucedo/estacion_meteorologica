@@ -73,10 +73,10 @@
 
 ## 10. Log Local de Dispositivos
 
-- [ ] 10.1 Crear esquema SQLite local: tabla `devices` con DevEUI, MAC, fecha, versión firmware, estado, parámetros JSON
-- [ ] 10.2 Guardar entrada al completar cada aprovisionamiento (exitoso o parcial)
-- [ ] 10.3 Construir vista de historial en la UI con filtros por estado y fecha
-- [ ] 10.4 Implementar exportación a CSV del historial completo
+- [x] 10.1 Crear esquema SQLite local: tabla `devices` con DevEUI, MAC, fecha, versión firmware, estado, parámetros JSON
+- [x] 10.2 Guardar entrada al completar cada aprovisionamiento (exitoso o parcial)
+- [x] 10.3 Construir vista de historial en la UI con filtros por estado y fecha
+- [x] 10.4 Implementar exportación a CSV del historial completo
   - Commit: `feat(operator-app): log persistente de dispositivos provisionados`
 
 ## 11. Descarga de Firmware desde GitHub Releases

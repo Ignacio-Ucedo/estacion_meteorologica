@@ -19,11 +19,12 @@ interface FlashLogEvent {
 
 interface Props {
   state: WizardState;
+  onUpdate: (updates: Partial<WizardState>) => void;
   onBack: () => void;
   onNext: () => void;
 }
 
-export default function WizardStep3_Flash({ state, onBack, onNext }: Props) {
+export default function WizardStep3_Flash({ state, onUpdate, onBack, onNext }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [firmwarePath, setFirmwarePath] = useState<string>("");
   const [logs, setLogs] = useState<LogLine[]>([]);
@@ -67,6 +68,7 @@ export default function WizardStep3_Flash({ state, onBack, onNext }: Props) {
         firmwarePath,
       });
       setStatus("ok");
+      onUpdate({ firmwarePath });
       addLog("✓ Flash completado con éxito", "ok");
     } catch (err: unknown) {
       const msg = typeof err === "string" ? err : String(err);

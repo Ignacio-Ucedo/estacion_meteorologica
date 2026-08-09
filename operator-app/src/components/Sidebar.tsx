@@ -12,6 +12,7 @@ const ITEMS: SidebarItem[] = [
   { id: "settings", label: "Configuración", icon: "⚙️" },
   { id: "users", label: "Usuarios", icon: "👤" },
   { id: "gateway", label: "Gateway Virtual", icon: "📡" },
+  { id: "history", label: "Historial", icon: "📋" },
   { id: "flash-gateway-mock", label: "Flash Gateway Mock", icon: "💾", comingSoon: true },
   { id: "flash-gateway-real", label: "Flash Gateway Real", icon: "💾", comingSoon: true },
   { id: "flash-node-mock", label: "Flash Node Mock", icon: "💾", comingSoon: true },

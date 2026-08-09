@@ -102,10 +102,31 @@ export default function WizardStep5_ChirpStack({ state, onReset }: Props) {
         appId: config.appId,
         profileId: config.profileId,
       });
+      // 10.2: Guardar entrada en el log local
+      await invoke("log_provisioning", {
+        devEui: state.devEui,
+        port: state.port ?? "",
+        wifiSsid: state.wifiSsid,
+        chirpstackHost: state.chirpstackHost,
+        status: "ok",
+        firmwareFile: state.firmwarePath,
+        paramsJson: JSON.stringify({ devEui: state.devEui, appEui: state.appEui, wifiSsid: state.wifiSsid, chirpstackHost: state.chirpstackHost }),
+      });
       setResultMsg(msg);
       setStatus("ok");
     } catch (err: unknown) {
-      setErrorMsg(typeof err === "string" ? err : String(err));
+      const msg = typeof err === "string" ? err : String(err);
+      // 10.2: Log parcial (NVS ya fue flasheado en step 4, pero ChirpStack falló)
+      await invoke("log_provisioning", {
+        devEui: state.devEui,
+        port: state.port ?? "",
+        wifiSsid: state.wifiSsid,
+        chirpstackHost: state.chirpstackHost,
+        status: "partial",
+        firmwareFile: state.firmwarePath,
+        paramsJson: JSON.stringify({ error: msg }),
+      }).catch(() => {});
+      setErrorMsg(msg);
       setStatus("error");
     }
   }

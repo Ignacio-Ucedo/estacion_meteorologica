@@ -7,6 +7,7 @@ export interface WizardState {
   devEui: string;
   appEui: string;
   appKey: string;
+  firmwarePath: string;
 }
 
 export const INITIAL_STATE: WizardState = {
@@ -18,4 +19,5 @@ export const INITIAL_STATE: WizardState = {
   devEui: "",
   appEui: "0000000000000000",
   appKey: "",
+  firmwarePath: "",
 };
