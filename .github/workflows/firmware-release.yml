@@ -35,7 +35,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config --system --add safe.directory "$GITHUB_WORKSPACE"
+          export GIT_CONFIG_GLOBAL=/tmp/.gitconfig
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           cd "$GITHUB_WORKSPACE"
           git init -q
           git remote add origin \
