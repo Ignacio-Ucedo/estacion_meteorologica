@@ -1,0 +1,88 @@
+name: Firmware Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build gateway-node-mock
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf-rust:all_latest
+
+    env:
+      # Credenciales compiladas en el binario de referencia (CI).
+      # Las credenciales reales de cada dispositivo se cargan vía NVS
+      # por la operator-app en el proceso de provisioning.
+      WIFI_SSID: ${{ secrets.WIFI_SSID || 'ci-placeholder' }}
+      WIFI_PASS: ${{ secrets.WIFI_PASS || 'ci-placeholder' }}
+      CHIRPSTACK_HOST: ${{ secrets.CHIRPSTACK_HOST || '0.0.0.0' }}
+      # Evita que cargo intente escribir en /root cuando corre como runner
+      CARGO_HOME: /usr/local/cargo
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            /usr/local/cargo/registry
+            /usr/local/cargo/git
+            firmware/target
+          key: ${{ runner.os }}-cargo-esp32-${{ hashFiles('firmware/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-esp32-
+
+      - name: Install espflash
+        run: cargo install espflash --locked
+
+      - name: Build gateway-node-mock (release)
+        working-directory: firmware
+        run: cargo build --release --bin gateway-node-mock
+
+      - name: Generate .bin image
+        working-directory: firmware
+        run: |
+          espflash save-image \
+            --chip esp32 \
+            --merge \
+            target/xtensa-esp32-espidf/release/gateway-node-mock \
+            gateway-node-mock.bin
+
+      - name: Copy partition table
+        working-directory: firmware
+        run: cp partitions.csv gateway-node-mock-partitions.csv
+
+      - name: Generate SHA256 checksums
+        working-directory: firmware
+        run: |
+          sha256sum gateway-node-mock.bin          > gateway-node-mock.bin.sha256
+          sha256sum gateway-node-mock-partitions.csv > gateway-node-mock-partitions.csv.sha256
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ github.ref_name }}
+          path: |
+            firmware/gateway-node-mock.bin
+            firmware/gateway-node-mock.bin.sha256
+            firmware/gateway-node-mock-partitions.csv
+            firmware/gateway-node-mock-partitions.csv.sha256
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            firmware/gateway-node-mock.bin
+            firmware/gateway-node-mock.bin.sha256
+            firmware/gateway-node-mock-partitions.csv
+            firmware/gateway-node-mock-partitions.csv.sha256

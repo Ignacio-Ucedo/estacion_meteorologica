@@ -1,9 +1,9 @@
 ## 1. CI — Firmware Release Pipeline
 
-- [ ] 1.1 Crear `.github/workflows/firmware-release.yml` con trigger en tags `v*`
-- [ ] 1.2 Configurar el job de compilación con `esp-rs/idf-rust` en `ubuntu-latest` (toolchain xtensa)
-- [ ] 1.3 Compilar `gateway-node-mock` en release y exportar el `.bin` como artefacto
-- [ ] 1.4 Publicar el `.bin` y `partitions.csv` en el GitHub Release junto con sus checksums SHA256
+- [x] 1.1 Crear `.github/workflows/firmware-release.yml` con trigger en tags `v*`
+- [x] 1.2 Configurar el job de compilación con `esp-rs/idf-rust` en `ubuntu-latest` (toolchain xtensa)
+- [x] 1.3 Compilar `gateway-node-mock` en release y exportar el `.bin` como artefacto
+- [x] 1.4 Publicar el `.bin` y `partitions.csv` en el GitHub Release junto con sus checksums SHA256
 - [ ] 1.5 Verificar el pipeline creando un tag `v0.1.0-test` y confirmando que el release se genera
   - Commit: `ci(firmware): agregar pipeline de release para binarios de firmware`
 
