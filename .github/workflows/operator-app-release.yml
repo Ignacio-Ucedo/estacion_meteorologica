@@ -69,9 +69,9 @@ jobs:
         run: |
           curl -fsSL "https://github.com/espressif/esptool/releases/download/v4.8.1/esptool-v4.8.1-linux-amd64.zip" -o esptool.zip
           unzip -q esptool.zip
-          cp esptool/esptool esptool-x86_64-unknown-linux-gnu
+          find . -name 'esptool' -type f | head -1 | xargs -I{} cp {} esptool-x86_64-unknown-linux-gnu
           chmod +x esptool-x86_64-unknown-linux-gnu
-          rm -rf esptool.zip esptool/
+          rm -rf esptool.zip esptool-v4.8.1-linux-amd64/
 
       - name: Download esptool sidecar (Windows)
         if: matrix.platform == 'windows-latest'
@@ -80,8 +80,8 @@ jobs:
         run: |
           curl -fsSL "https://github.com/espressif/esptool/releases/download/v4.8.1/esptool-v4.8.1-win64.zip" -o esptool.zip
           unzip -q esptool.zip
-          cp esptool/esptool.exe esptool-x86_64-pc-windows-msvc.exe
-          rm -rf esptool.zip esptool/
+          find . -name 'esptool.exe' | head -1 | xargs -I{} cp {} esptool-x86_64-pc-windows-msvc.exe
+          rm -rf esptool.zip esptool-v4.8.1-win64/
 
       - name: Download esptool sidecar (macOS)
         if: startsWith(matrix.platform, 'macos-')
@@ -90,9 +90,9 @@ jobs:
           curl -fsSL "https://github.com/espressif/esptool/releases/download/v4.8.1/esptool-v4.8.1-macos.zip" -o esptool.zip
           unzip -q esptool.zip
           TARGET=$(rustc -vV | sed -n 's/^host: //p')
-          cp esptool/esptool "esptool-${TARGET}"
+          find . -name 'esptool' -type f | head -1 | xargs -I{} cp {} "esptool-${TARGET}"
           chmod +x "esptool-${TARGET}"
-          rm -rf esptool.zip esptool/
+          rm -rf esptool.zip esptool-v4.8.1-macos/
 
       # ── Build y publicación ───────────────────────────────────────────────────
       - name: Build and release
@@ -117,8 +117,8 @@ jobs:
           prerelease: ${{ startsWith(github.ref_name, 'v0.') }}
           args: --bundles ${{ matrix.bundles }}
 
-      # tauri-action puede cambiar permisos en $RUNNER_TEMP; esto permite
-      # que actions/checkout haga su post-cleanup sin EACCES con Node 24.
-      - name: Restore runner temp permissions
+      # Restaura la propiedad de /__w/ para que el post-cleanup de
+      # actions/checkout pueda escribir en /__w/_temp/ con Node 24.
+      - name: Restore workspace ownership (Linux)
         if: always() && runner.os == 'Linux'
-        run: sudo chmod -R a+rw "$RUNNER_TEMP" 2>/dev/null || true
+        run: sudo chown -R "$(id -u):$(id -g)" /__w/ 2>/dev/null || true
