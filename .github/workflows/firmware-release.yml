@@ -27,20 +27,22 @@ jobs:
       CARGO_HOME: /usr/local/cargo
 
     steps:
-      - uses: actions/checkout@v4
-
-      # Debe correr antes de cualquier step de build. El post-step de
-      # actions/checkout es JS action que corre en el HOST como uid 1001;
-      # el container corre como root y deja /__w/_temp owned by root.
-      # apt-get update es obligatorio: la imagen puede tener lista desactualizada.
-      - name: Setup workspace permissions for post-cleanup
+      # actions/checkout@v4 es una JS action: su post-step corre en el HOST
+      # como uid 1001 e intenta escribir save_state en /__w/_temp/ que quedó
+      # owned by root (container corre como root). Reemplazamos con git nativo
+      # dentro del container: sin JS action → sin post-step → sin EACCES.
+      - name: Checkout
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          apt-get update -qq
-          apt-get install -y --no-install-recommends acl
-          mkdir -p /__w/_temp/_runner_file_commands
-          chmod 777 /__w/_temp/_runner_file_commands
-          setfacl -d -m o::rw /__w/_temp/_runner_file_commands
-          chown -R 1001:1001 /__w/_temp/
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          cd "$GITHUB_WORKSPACE"
+          git init -q
+          git remote add origin \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=1 origin "$GITHUB_SHA"
+          git checkout FETCH_HEAD
+          git submodule update --init --recursive
 
       - name: Cache Cargo registry
         uses: actions/cache@v4
