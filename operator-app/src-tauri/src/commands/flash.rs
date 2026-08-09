@@ -1,6 +1,8 @@
 use serialport::{SerialPortType, available_ports};
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::nvs::{self, NvsParams};
+
 use crate::pool::{self, KeyEntry, PoolStats};
 
 /// VID/PID de chips USB-serial comunes en módulos ESP32.
@@ -121,4 +123,15 @@ pub fn import_key_pool(app: AppHandle, csv_content: String) -> Result<u32, Strin
 pub fn key_pool_stats(app: AppHandle) -> Result<PoolStats, String> {
     let path = pool_db_path(&app)?;
     pool::stats(&path)
+}
+
+// ── Generación de partición NVS ───────────────────────────────────────────────
+
+/// Genera el binario de partición NVS para un nodo sensor.
+/// Retorna los bytes codificados en base64 para transferir al frontend.
+/// El binario puede flashearse directamente en la dirección 0x9000 con esptool.
+#[tauri::command]
+pub fn generate_nvs_bin(params: NvsParams) -> Result<String, String> {
+    let bytes = nvs::generate(&params)?;
+    Ok(base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &bytes))
 }

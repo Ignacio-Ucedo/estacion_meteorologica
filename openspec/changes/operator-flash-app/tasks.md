@@ -33,10 +33,10 @@
 
 ## 5. Generación de NVS Bin
 
-- [ ] 5.1 Implementar en Rust (backend Tauri) el generador de partición NVS compatible con esp-idf
+- [x] 5.1 Implementar en Rust (backend Tauri) el generador de partición NVS compatible con esp-idf
   - Formato: namespace `lorawan`, entradas `dev_eui` (hex2bin), `app_eui` (hex2bin), `app_key` (hex2bin); namespace `wifi`, entradas `ssid` y `pass` (string)
-- [ ] 5.2 Testear la salida contra el NVS generado por `nvs_partition_gen.py` con los mismos parámetros
-- [ ] 5.3 Exponer como comando Tauri `generate_nvs_bin` que retorna los bytes del `.bin`
+- [x] 5.2 Testear la salida contra el NVS generado por `nvs_partition_gen.py` con los mismos parámetros
+- [x] 5.3 Exponer como comando Tauri `generate_nvs_bin` que retorna los bytes del `.bin`
   - Commit: `feat(operator-app): generador de partición NVS en Rust sin dependencias externas`
 
 ## 6. Wizard de Configuración (UI)
