@@ -96,7 +96,7 @@ jobs:
 
       # ── Build y publicación ───────────────────────────────────────────────────
       - name: Build and release
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v0.5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -116,3 +116,9 @@ jobs:
           releaseDraft: false
           prerelease: ${{ startsWith(github.ref_name, 'v0.') }}
           args: --bundles ${{ matrix.bundles }}
+
+      # tauri-action puede cambiar permisos en $RUNNER_TEMP; esto permite
+      # que actions/checkout haga su post-cleanup sin EACCES con Node 24.
+      - name: Restore runner temp permissions
+        if: always() && runner.os == 'Linux'
+        run: sudo chmod -R a+rw "$RUNNER_TEMP" 2>/dev/null || true
