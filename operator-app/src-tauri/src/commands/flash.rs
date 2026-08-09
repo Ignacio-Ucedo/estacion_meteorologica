@@ -201,35 +201,17 @@ pub async fn flash_nvs(app: AppHandle, port: String, params: NvsParams) -> Resul
 
 // ── WiFi del sistema operativo ────────────────────────────────────────────────
 
-#[derive(serde::Serialize)]
-pub struct WifiSuggestions {
-    /// SSID de la red WiFi activa (si el adaptador está asociado a alguna).
-    pub connected: Option<String>,
-    /// Todas las redes WiFi visibles (incluye `connected` si existe).
-    pub available: Vec<String>,
-}
-
-/// Detecta la red WiFi activa y escanea las redes visibles para el adaptador.
-/// Funciona tanto si la PC está en WiFi como en Ethernet: en el caso ethernet
-/// el campo `connected` será `None` pero `available` contendrá las redes
-/// visibles en el aire que el operario puede seleccionar.
+/// Intenta detectar la red WiFi a la que está conectada la PC del operario.
+/// Retorna `Some(ssid)` si puede determinarlo, `None` si no está disponible
+/// o no hay conexión inalámbrica activa.
 #[tauri::command]
-pub fn get_wifi_suggestions() -> WifiSuggestions {
-    let connected = detect_connected_wifi();
-    let mut available = scan_available_wifi();
-    // Poner la red conectada primero y evitar duplicados.
-    if let Some(ref c) = connected {
-        available.retain(|s| s != c);
-        available.insert(0, c.clone());
-    }
-    WifiSuggestions { connected, available }
+pub fn get_current_wifi_ssid() -> Option<String> {
+    detect_wifi_ssid()
 }
-
-// ── Linux ──────────────────────────────────────────────────────────────────
 
 #[cfg(target_os = "linux")]
-fn detect_connected_wifi() -> Option<String> {
-    // nmcli: red activa del adaptador WiFi.
+fn detect_wifi_ssid() -> Option<String> {
+    // Intentar nmcli (disponible en distros con NetworkManager).
     let out = std::process::Command::new("nmcli")
         .args(["-t", "-f", "active,ssid", "dev", "wifi"])
         .output()
@@ -246,33 +228,17 @@ fn detect_connected_wifi() -> Option<String> {
             return Some(ssid);
         }
     }
-    // Fallback: iwgetid (kernels sin NetworkManager).
-    let out2 = std::process::Command::new("iwgetid").arg("-r").output().ok()?;
+    // Fallback: iwgetid (wext, disponible en kernels más antiguos).
+    let out2 = std::process::Command::new("iwgetid")
+        .arg("-r")
+        .output()
+        .ok()?;
     let ssid = String::from_utf8_lossy(&out2.stdout).trim().to_string();
     if ssid.is_empty() { None } else { Some(ssid) }
 }
 
-#[cfg(target_os = "linux")]
-fn scan_available_wifi() -> Vec<String> {
-    let Ok(out) = std::process::Command::new("nmcli")
-        .args(["-t", "-f", "ssid", "dev", "wifi", "list"])
-        .output()
-    else {
-        return vec![];
-    };
-    let mut seen = std::collections::HashSet::new();
-    String::from_utf8_lossy(&out.stdout)
-        .lines()
-        .map(|l| l.trim().replace("\\:", ":")) // nmcli escapa los ':' en terse mode
-        .filter(|s| !s.is_empty())
-        .filter(|s| seen.insert(s.clone()))
-        .collect()
-}
-
-// ── Windows ─────────────────────────────────────────────────────────────────
-
 #[cfg(target_os = "windows")]
-fn detect_connected_wifi() -> Option<String> {
+fn detect_wifi_ssid() -> Option<String> {
     let out = std::process::Command::new("netsh")
         .args(["wlan", "show", "interfaces"])
         .output()
@@ -280,6 +246,7 @@ fn detect_connected_wifi() -> Option<String> {
     let text = String::from_utf8_lossy(&out.stdout);
     for line in text.lines() {
         let t = line.trim();
+        // "SSID                   : MyNetwork"  (pero no "BSSID")
         if t.starts_with("SSID") && !t.starts_with("BSSID") {
             if let Some(val) = t.splitn(2, ':').nth(1) {
                 let ssid = val.trim().to_string();
@@ -292,42 +259,16 @@ fn detect_connected_wifi() -> Option<String> {
     None
 }
 
-#[cfg(target_os = "windows")]
-fn scan_available_wifi() -> Vec<String> {
-    let Ok(out) = std::process::Command::new("netsh")
-        .args(["wlan", "show", "networks"])
-        .output()
-    else {
-        return vec![];
-    };
-    let text = String::from_utf8_lossy(&out.stdout);
-    let mut ssids = Vec::new();
-    let mut seen = std::collections::HashSet::new();
-    for line in text.lines() {
-        let t = line.trim();
-        // "SSID 1 : NetworkName"  (pero no "BSSID")
-        if t.starts_with("SSID") && !t.starts_with("BSSID") {
-            if let Some(val) = t.splitn(2, ':').nth(1) {
-                let ssid = val.trim().to_string();
-                if !ssid.is_empty() && seen.insert(ssid.clone()) {
-                    ssids.push(ssid);
-                }
-            }
-        }
-    }
-    ssids
-}
-
-// ── macOS ───────────────────────────────────────────────────────────────────
-
 #[cfg(target_os = "macos")]
-fn detect_connected_wifi() -> Option<String> {
+fn detect_wifi_ssid() -> Option<String> {
+    // networksetup funciona en todas las versiones recientes de macOS.
     for iface in ["en0", "en1", "en2"] {
         let out = std::process::Command::new("networksetup")
             .args(["-getairportnetwork", iface])
             .output()
             .ok()?;
         let text = String::from_utf8_lossy(&out.stdout);
+        // "Current Wi-Fi Network: MyNetwork"
         if let Some(rest) = text.trim().strip_prefix("Current Wi-Fi Network:") {
             let ssid = rest.trim().to_string();
             if !ssid.is_empty() {
@@ -338,19 +279,10 @@ fn detect_connected_wifi() -> Option<String> {
     None
 }
 
-#[cfg(target_os = "macos")]
-fn scan_available_wifi() -> Vec<String> {
-    // airport -s requiere permisos elevados en macOS 13+; omitimos el scan.
-    vec![]
+#[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
+fn detect_wifi_ssid() -> Option<String> {
+    None
 }
-
-// ── Otros ───────────────────────────────────────────────────────────────────
-
-#[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
-fn detect_connected_wifi() -> Option<String> { None }
-
-#[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
-fn scan_available_wifi() -> Vec<String> { vec![] }
 
 /// Lee la partición NVS desde el ESP32 y la compara byte a byte con la esperada.
 ///
