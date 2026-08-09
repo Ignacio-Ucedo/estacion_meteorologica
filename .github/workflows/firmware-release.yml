@@ -89,11 +89,16 @@ jobs:
 
       # Este step corre dentro del container (como root). El post-step de
       # actions/checkout es una JS action que corre en el HOST como runner
-      # (uid 1001); si el container dejó /__w/_temp/ owned by root, falla con
-      # EACCES al intentar escribir save_state. Lo corregimos antes de salir.
+      # (uid/gid 1001). Dentro del container /__w/_actions puede aparecer owned
+      # por root (el runner lo crea con privilegios de Docker), por eso NO
+      # usamos stat para detectar el UID — lo hardcodeamos a 1001.
+      # Además aplicamos setfacl para que archivos creados por root hereden
+      # permisos de escritura para "otros" (= runner en el host).
       - name: Restore workspace ownership for host post-cleanup
         if: always()
         run: |
-          HOST_UID=$(stat -c '%u' /__w/_actions 2>/dev/null || echo 1001)
-          HOST_GID=$(stat -c '%g' /__w/_actions 2>/dev/null || echo 1001)
-          chown -R "${HOST_UID}:${HOST_GID}" /__w/ 2>/dev/null || true
+          apt-get install -y --no-install-recommends acl 2>/dev/null || true
+          mkdir -p /__w/_temp/_runner_file_commands
+          chmod 777 /__w/_temp/_runner_file_commands
+          setfacl -d -m o::rw /__w/_temp/_runner_file_commands 2>/dev/null || true
+          chown -R 1001:1001 /__w/_temp/ 2>/dev/null || true
