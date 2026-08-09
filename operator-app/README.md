@@ -1,36 +1,112 @@
-# Operator App — Gateway Virtual
+# Operator App
 
-Aplicación de escritorio (Tauri + React) que simula el gateway LoRaWAN desde la PC,
-sin necesitar hardware ESP32. Realiza OTAA join real contra ChirpStack y envía uplinks
-sintéticos con temperatura, humedad, lluvia y viento.
+Aplicación de escritorio (Tauri v2 + React) para aprovisionar nodos de la
+estación meteorológica: flashea firmware, escribe claves OTAA + WiFi en la
+partición NVS del ESP32, y registra el dispositivo en ChirpStack v4.
 
-## Prerequisitos
+---
+
+## Instalación (usuario final)
+
+Descargá el instalador correspondiente a tu sistema desde
+[GitHub Releases](https://github.com/Ignacio-Ucedo/estacion_meteorologica/releases).
+
+| Plataforma | Archivo | Instrucciones |
+|------------|---------|---------------|
+| Linux | `.AppImage` | `chmod +x OperatorApp_*.AppImage && ./OperatorApp_*.AppImage` |
+| Linux | `.deb` | `sudo dpkg -i operator-app_*.deb` |
+| Windows | `.msi` | Doble clic → siguiente → instalar |
+| macOS | `.dmg` | Abrir → arrastrar a Aplicaciones |
+
+### Linux — permisos USB
+
+Para que la app pueda acceder a los puertos serie (ESP32 por USB), creá un
+archivo de reglas udev:
+
+```bash
+sudo tee /etc/udev/rules.d/99-esp32-usb.rules <<'EOF'
+# Silicon Labs CP210x (CP2102/CP2104)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", MODE="0666", TAG+="uaccess"
+# WCH CH340/CH341
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", MODE="0666", TAG+="uaccess"
+# FTDI FT232
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", MODE="0666", TAG+="uaccess"
+# ESP32-S3 nativo (USB-OTG)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", MODE="0666", TAG+="uaccess"
+EOF
+sudo udevadm control --reload
+sudo udevadm trigger
+```
+
+Reconectá el ESP32 después de aplicar las reglas. Alternativamente:
+
+```bash
+sudo usermod -aG dialout $USER
+# Cerrar sesión y volver a iniciar para que tome efecto
+```
+
+### macOS — Gatekeeper
+
+Si macOS bloquea la app por no estar firmada:
+
+```bash
+xattr -cr /Applications/OperatorApp.app
+```
+
+---
+
+## Desarrollo
+
+### Prerequisitos
 
 - Rust (stable) + `cargo`
 - Node.js ≥ 18 + npm
-- **Linux**: `webkit2gtk-4.1` — en Arch: `sudo pacman -S webkit2gtk-4.1`
+- **Linux**: `sudo apt-get install libwebkit2gtk-4.1-dev libgtk-3-dev libappindicator3-dev`
+  (Arch: `sudo pacman -S webkit2gtk-4.1`)
 - Stack de infra corriendo: `cd infra && docker compose up -d`
+- `python3 -m pip install esptool` — para el sidecar de desarrollo
 
-## Iniciar en modo desarrollo
+### Modo desarrollo
 
 ```bash
 cd operator-app
 npm install
-cargo tauri dev
+npm run tauri dev
 ```
 
-## Flujo de uso
+El sidecar de esptool en desarrollo es un script shell (`binaries/esptool-*-linux-gnu`)
+que delega a `python3 -m esptool`. En producción, el CI descarga el binario
+standalone de esptool v4.8.1 y lo substituye antes de `tauri build`.
 
-1. **Cargar claves OTAA**: clic en "Cargar desde nvs_mock.csv" → seleccionar `firmware/nvs_mock.csv`
-2. **Verificar host**: campo "ChirpStack host" debe decir `127.0.0.1:1700`
-3. **Iniciar**: clic en ▶ Iniciar — el log muestra `JoinAccept ok` en unos segundos
-4. Los uplinks se envían cada 30 s (configurable); los datos aparecen en el dashboard React (`cd frontend && npm run dev`)
+### Build local
+
+```bash
+npm run tauri build
+```
+
+> Requiere el sidecar real en `binaries/esptool-{target-triple}`.
+> Descargalo desde [espressif/esptool releases](https://github.com/espressif/esptool/releases/tag/v4.8.1)
+> y renombralo al triple de tu arquitectura (ej. `esptool-x86_64-unknown-linux-gnu`).
+
+---
+
+## Flujo de aprovisionamiento
+
+1. **Puerto USB** — seleccioná el ESP32 conectado
+2. **Configuración** — WiFi SSID/pass, host ChirpStack, DevEUI+AppKey asignados del pool
+3. **Firmware** — descargá el `.bin` desde GitHub Releases o seleccioná uno local; flashealo
+4. **NVS** — flashea y verifica la partición NVS con las claves OTAA y credenciales WiFi
+5. **ChirpStack** — registra el device automáticamente vía API REST v4
+
+---
 
 ## Troubleshooting
 
 | Síntoma | Causa probable |
 |---------|----------------|
-| Botón "Cargar CSV" no abre diálogo | Faltan permisos de `tauri-plugin-dialog` (ya corregido en esta versión) |
-| `JoinAccept timeout` en todos los intentos | Verificar que ChirpStack tiene el device registrado con el DevEUI/AppKey del CSV; ver `infra/SETUP.md` sección 3 |
-| `uplink UDP falló` | Verificar que el host es `127.0.0.1:1700` y no `localhost:1700` (en algunos sistemas `localhost` resuelve a IPv6) |
-| App no abre en Linux | Instalar `webkit2gtk-4.1` |
+| Puerto USB no aparece | Instalar udev rules (ver sección de permisos USB) |
+| `Permission denied` / `[Errno 13]` en el flash | Permisos USB no configurados |
+| `JoinAccept timeout` en todos los intentos | Verificar que ChirpStack tiene el device registrado con DevEUI/AppKey correcto |
+| `uplink UDP falló` | Verificar que el host es `127.0.0.1:1700` y no `localhost:1700` |
+| App no abre en Linux | Instalar `libwebkit2gtk-4.1-0` |
+| Pool agotado | Importar un nuevo CSV con pares DevEUI+AppKey vía el panel de configuración |

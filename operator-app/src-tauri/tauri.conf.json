@@ -31,7 +31,12 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": ["binaries/esptool"]
+    "externalBin": ["binaries/esptool"],
+    "linux": {
+      "deb": {
+        "depends": ["libwebkit2gtk-4.1-0", "libgtk-3-0", "libappindicator3-1"]
+      }
+    }
   },
   "plugins": {
     "shell": {

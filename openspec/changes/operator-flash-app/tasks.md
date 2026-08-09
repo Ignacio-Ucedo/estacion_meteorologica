@@ -89,7 +89,7 @@
 
 ## 12. Build y Distribución
 
-- [ ] 12.1 Configurar `tauri build` para Linux (AppImage/deb), Windows (.msi) y macOS (.dmg)
-- [ ] 12.2 Agregar workflow CI `.github/workflows/operator-app-release.yml` que compila y publica los instaladores en cada tag
-- [ ] 12.3 Documentar el proceso de instalación en `operator-app/README.md` incluyendo udev rules para Linux
+- [x] 12.1 Configurar `tauri build` para Linux (AppImage/deb), Windows (.msi) y macOS (.dmg)
+- [x] 12.2 Agregar workflow CI `.github/workflows/operator-app-release.yml` que compila y publica los instaladores en cada tag
+- [x] 12.3 Documentar el proceso de instalación en `operator-app/README.md` incluyendo udev rules para Linux
   - Commit: `build(operator-app): configurar build multiplataforma y pipeline de distribución`
