@@ -81,10 +81,10 @@
 
 ## 11. Descarga de Firmware desde GitHub Releases
 
-- [ ] 11.1 Implementar consulta a la GitHub Releases API para obtener la última versión disponible
-- [ ] 11.2 Descargar y cachear el `.bin` localmente (directorio de datos de la app)
-- [ ] 11.3 Mostrar en la UI la versión de firmware que se va a flashear y ofrecer actualización si hay una nueva
-- [ ] 11.4 Verificar checksum SHA256 del `.bin` descargado antes de usarlo
+- [x] 11.1 Implementar consulta a la GitHub Releases API para obtener la última versión disponible
+- [x] 11.2 Descargar y cachear el `.bin` localmente (directorio de datos de la app)
+- [x] 11.3 Mostrar en la UI la versión de firmware que se va a flashear y ofrecer actualización si hay una nueva
+- [x] 11.4 Verificar checksum SHA256 del `.bin` descargado antes de usarlo
   - Commit: `feat(operator-app): descarga y caché de firmware desde GitHub Releases`
 
 ## 12. Build y Distribución

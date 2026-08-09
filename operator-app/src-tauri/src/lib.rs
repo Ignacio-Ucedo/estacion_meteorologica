@@ -5,6 +5,7 @@ pub mod chirpstack_api;
 pub mod device_log;
 pub mod esptool;
 mod gateway;
+pub mod github;
 pub mod nvs;
 mod pool;
 mod state;
@@ -14,6 +15,7 @@ use commands::chirpstack::{
     save_chirpstack_config, sync_chirpstack,
 };
 use commands::device_log::{export_devices_csv, list_devices, log_provisioning};
+use commands::firmware::{check_firmware_update, download_firmware};
 use commands::flash::{
     flash_firmware, flash_nvs, generate_nvs_bin, import_key_pool, key_pool_stats, list_ports,
     next_available_key, start_usb_watcher, verify_nvs,
@@ -50,6 +52,8 @@ pub fn run() {
             log_provisioning,
             list_devices,
             export_devices_csv,
+            check_firmware_update,
+            download_firmware,
         ])
         .setup(|app| {
             start_usb_watcher(app.handle().clone());
