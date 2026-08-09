@@ -1,13 +1,17 @@
 use std::sync::Arc;
 
 mod commands;
+pub mod chirpstack_api;
 pub mod esptool;
 mod gateway;
 pub mod nvs;
 mod pool;
 mod state;
 
-use commands::chirpstack::sync_chirpstack;
+use commands::chirpstack::{
+    discover_chirpstack_ids, load_chirpstack_config, register_device_chirpstack,
+    save_chirpstack_config, sync_chirpstack,
+};
 use commands::flash::{
     flash_firmware, flash_nvs, generate_nvs_bin, import_key_pool, key_pool_stats, list_ports,
     next_available_key, start_usb_watcher, verify_nvs,
@@ -18,6 +22,7 @@ use state::AppState;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
@@ -28,6 +33,10 @@ pub fn run() {
             get_gateway_status,
             load_nvs_csv,
             sync_chirpstack,
+            register_device_chirpstack,
+            discover_chirpstack_ids,
+            save_chirpstack_config,
+            load_chirpstack_config,
             list_ports,
             next_available_key,
             import_key_pool,

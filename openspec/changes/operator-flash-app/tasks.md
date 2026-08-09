@@ -65,10 +65,10 @@
 
 ## 9. Registro en ChirpStack
 
-- [ ] 9.1 Implementar cliente HTTP en Rust para la API REST de ChirpStack v4 (login, create device)
-- [ ] 9.2 Implementar comando Tauri `register_device_chirpstack` con el DevEUI, AppKey y application ID
-- [ ] 9.3 Manejar el caso de device ya existente (update en lugar de create)
-- [ ] 9.4 Guardar credenciales de ChirpStack en configuración persistente de la app (host + token)
+- [x] 9.1 Implementar cliente HTTP en Rust para la API REST de ChirpStack v4 (login, create device)
+- [x] 9.2 Implementar comando Tauri `register_device_chirpstack` con el DevEUI, AppKey y application ID
+- [x] 9.3 Manejar el caso de device ya existente (update en lugar de create)
+- [x] 9.4 Guardar credenciales de ChirpStack en configuración persistente de la app (host + token)
   - Commit: `feat(operator-app): registro automático de device en ChirpStack`
 
 ## 10. Log Local de Dispositivos
