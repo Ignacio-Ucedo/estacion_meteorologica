@@ -11,8 +11,8 @@ mod pool;
 mod state;
 
 use commands::chirpstack::{
-    discover_chirpstack_ids, load_chirpstack_config, register_device_chirpstack,
-    save_chirpstack_config, sync_chirpstack,
+    discover_and_save_chirpstack_host, discover_chirpstack_ids, load_chirpstack_config,
+    register_device_chirpstack, save_chirpstack_config, sync_chirpstack,
 };
 use commands::device_log::{export_devices_csv, list_devices, log_provisioning};
 use commands::firmware::{check_firmware_update, download_firmware};
@@ -37,6 +37,7 @@ pub fn run() {
             get_gateway_status,
             load_nvs_csv,
             sync_chirpstack,
+            discover_and_save_chirpstack_host,
             register_device_chirpstack,
             discover_chirpstack_ids,
             save_chirpstack_config,
@@ -57,6 +58,19 @@ pub fn run() {
         ])
         .setup(|app| {
             start_usb_watcher(app.handle().clone());
+            // Auto-descubrir ChirpStack en background si aún no está cacheado.
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                use tauri_plugin_store::StoreExt;
+                if let Ok(store) = handle.store("operator-config.json") {
+                    if store.get("chirpstack_host").is_none() {
+                        if let Some(host) = chirpstack_api::discover_host().await {
+                            store.set("chirpstack_host", serde_json::json!(host));
+                            let _ = store.save();
+                        }
+                    }
+                }
+            });
             Ok(())
         })
         .run(tauri::generate_context!())

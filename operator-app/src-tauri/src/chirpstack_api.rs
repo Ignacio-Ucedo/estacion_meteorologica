@@ -1,6 +1,73 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
+// ── Auto-descubrimiento de host ChirpStack ────────────────────────────────────
+
+/// Devuelve la IPv4 local determinando la ruta de salida via UDP sin enviar datos.
+fn get_local_ipv4() -> Option<std::net::Ipv4Addr> {
+    let socket = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
+    socket.connect("8.8.8.8:80").ok()?;
+    match socket.local_addr().ok()?.ip() {
+        std::net::IpAddr::V4(ip) => Some(ip),
+        _ => None,
+    }
+}
+
+/// Escanea la subred /24 local en paralelo buscando un host ChirpStack v4.
+/// Retorna la URL base (`http://<ip>:8080`) del primer servidor encontrado.
+pub async fn discover_host() -> Option<String> {
+    let local_ip = get_local_ipv4()?;
+    let [a, b, c, _] = local_ip.octets();
+
+    let mut set = tokio::task::JoinSet::new();
+    for i in 1u8..=254 {
+        let ip = std::net::Ipv4Addr::new(a, b, c, i);
+        set.spawn(probe_chirpstack(ip));
+    }
+
+    while let Some(res) = set.join_next().await {
+        if let Ok(Some(host)) = res {
+            set.abort_all();
+            return Some(host);
+        }
+    }
+    None
+}
+
+/// Prueba si `ip:8080` es un ChirpStack v4: TCP probe rápido + fingerprint HTTP.
+async fn probe_chirpstack(ip: std::net::Ipv4Addr) -> Option<String> {
+    use tokio::net::TcpStream;
+    use tokio::time::{Duration, timeout};
+
+    // TCP handshake con timeout corto para no bloquear el scan.
+    let Ok(Ok(_)) = timeout(
+        Duration::from_millis(250),
+        TcpStream::connect(format!("{ip}:8080")),
+    )
+    .await
+    else {
+        return None;
+    };
+
+    // ChirpStack v4 sin autenticar devuelve {"code":16,"message":"Unauthenticated",...}
+    let client = Client::builder()
+        .timeout(std::time::Duration::from_millis(600))
+        .build()
+        .ok()?;
+    let resp = client
+        .get(format!("http://{ip}:8080/api/applications?limit=1"))
+        .send()
+        .await
+        .ok()?;
+    let json: serde_json::Value = resp.json().await.ok()?;
+
+    if json.get("message").and_then(|m| m.as_str()) == Some("Unauthenticated") {
+        Some(format!("http://{ip}:8080"))
+    } else {
+        None
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChirpstackCreds {
     pub host: String,

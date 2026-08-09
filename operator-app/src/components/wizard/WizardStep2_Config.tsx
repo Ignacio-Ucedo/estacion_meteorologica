@@ -36,7 +36,6 @@ export default function WizardStep2_Config({ state, onUpdate, onBack, onNext }: 
   const valid =
     state.wifiSsid.trim().length > 0 &&
     state.wifiPass.trim().length > 0 &&
-    state.chirpstackHost.trim().length > 0 &&
     state.devEui.length === 16 &&
     state.appKey.length === 32;
 
@@ -78,23 +77,6 @@ export default function WizardStep2_Config({ state, onUpdate, onBack, onNext }: 
               onChange={(e) => onUpdate({ wifiPass: e.target.value })}
             />
           </div>
-        </div>
-      </fieldset>
-
-      {/* ChirpStack */}
-      <fieldset style={{ border: "1px solid #2d3148", borderRadius: 8, padding: "16px 16px 12px" }}>
-        <legend style={{ fontSize: 12, color: "#64748b", padding: "0 6px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-          ChirpStack
-        </legend>
-        <div className="field-row">
-          <label className="field-label">Host / IP del servidor</label>
-          <input
-            className="field-input"
-            type="text"
-            placeholder="192.168.1.100"
-            value={state.chirpstackHost}
-            onChange={(e) => onUpdate({ chirpstackHost: e.target.value })}
-          />
         </div>
       </fieldset>
 

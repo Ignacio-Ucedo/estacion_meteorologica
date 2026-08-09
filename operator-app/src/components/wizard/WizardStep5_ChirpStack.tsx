@@ -5,6 +5,7 @@ import type { WizardState } from "./types";
 type RegStatus = "idle" | "registering" | "ok" | "error";
 
 interface ChirpstackConfig {
+  host: string;
   apiToken: string;
   appId: string;
   profileId: string;
@@ -31,30 +32,56 @@ export default function WizardStep5_ChirpStack({ state, onReset }: Props) {
   const [resultMsg, setResultMsg] = useState<string>("");
 
   const [config, setConfig] = useState<ChirpstackConfig>({
+    host: "",
     apiToken: "",
     appId: "",
     profileId: "",
   });
   const [configLoaded, setConfigLoaded] = useState(false);
 
+  const [discoveringHost, setDiscoveringHost] = useState(false);
+  const [hostError, setHostError] = useState<string | null>(null);
+
   const [discovering, setDiscovering] = useState(false);
   const [discoverError, setDiscoverError] = useState<string | null>(null);
   const [apps, setApps] = useState<DiscoveredOption[]>([]);
   const [profiles, setProfiles] = useState<DiscoveredOption[]>([]);
 
-  // 9.4: Cargar configuración persistida al montar
   useEffect(() => {
     invoke<ChirpstackConfig>("load_chirpstack_config")
       .then((saved) => {
         setConfig(saved);
         setConfigLoaded(true);
+        if (!saved.host) {
+          runHostDiscovery();
+        }
       })
-      .catch(() => setConfigLoaded(true));
+      .catch(() => {
+        setConfigLoaded(true);
+        runHostDiscovery();
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const configComplete = config.apiToken.trim() && config.appId.trim() && config.profileId.trim();
+  async function runHostDiscovery() {
+    setDiscoveringHost(true);
+    setHostError(null);
+    try {
+      const host = await invoke<string>("discover_and_save_chirpstack_host");
+      setConfig((c) => ({ ...c, host }));
+    } catch (err: unknown) {
+      setHostError(typeof err === "string" ? err : "No se encontró ChirpStack en la red");
+    } finally {
+      setDiscoveringHost(false);
+    }
+  }
 
-  // 9.1: Descubrir aplicaciones y perfiles disponibles en ChirpStack
+  const configComplete =
+    config.host.trim() &&
+    config.apiToken.trim() &&
+    config.appId.trim() &&
+    config.profileId.trim();
+
   async function discover() {
     if (!config.apiToken.trim()) {
       setDiscoverError("Ingresá el token de API primero.");
@@ -64,7 +91,7 @@ export default function WizardStep5_ChirpStack({ state, onReset }: Props) {
     setDiscoverError(null);
     try {
       const result = await invoke<DiscoverResult>("discover_chirpstack_ids", {
-        host: state.chirpstackHost,
+        host: config.host,
         apiToken: config.apiToken,
       });
       setApps(result.applications);
@@ -82,46 +109,42 @@ export default function WizardStep5_ChirpStack({ state, onReset }: Props) {
     }
   }
 
-  // 9.2 + 9.3: Registrar device (create o update) + guardar config
   async function register() {
     if (!configComplete) return;
     setStatus("registering");
     setErrorMsg(null);
     try {
       const msg = await invoke<string>("register_device_chirpstack", {
-        host: state.chirpstackHost,
+        host: config.host,
         apiToken: config.apiToken,
         appId: config.appId,
         profileId: config.profileId,
         devEui: state.devEui,
         appKey: state.appKey,
       });
-      // 9.4: Persistir credenciales para el próximo aprovisionamiento
       await invoke("save_chirpstack_config", {
         apiToken: config.apiToken,
         appId: config.appId,
         profileId: config.profileId,
       });
-      // 10.2: Guardar entrada en el log local
       await invoke("log_provisioning", {
         devEui: state.devEui,
         port: state.port ?? "",
         wifiSsid: state.wifiSsid,
-        chirpstackHost: state.chirpstackHost,
+        chirpstackHost: config.host,
         status: "ok",
         firmwareFile: state.firmwarePath,
-        paramsJson: JSON.stringify({ devEui: state.devEui, appEui: state.appEui, wifiSsid: state.wifiSsid, chirpstackHost: state.chirpstackHost }),
+        paramsJson: JSON.stringify({ devEui: state.devEui, appEui: state.appEui, wifiSsid: state.wifiSsid, chirpstackHost: config.host }),
       });
       setResultMsg(msg);
       setStatus("ok");
     } catch (err: unknown) {
       const msg = typeof err === "string" ? err : String(err);
-      // 10.2: Log parcial (NVS ya fue flasheado en step 4, pero ChirpStack falló)
       await invoke("log_provisioning", {
         devEui: state.devEui,
         port: state.port ?? "",
         wifiSsid: state.wifiSsid,
-        chirpstackHost: state.chirpstackHost,
+        chirpstackHost: config.host,
         status: "partial",
         firmwareFile: state.firmwarePath,
         paramsJson: JSON.stringify({ error: msg }),
@@ -132,9 +155,7 @@ export default function WizardStep5_ChirpStack({ state, onReset }: Props) {
   }
 
   if (!configLoaded) {
-    return (
-      <div style={{ color: "#64748b", fontSize: 13 }}>Cargando configuración…</div>
-    );
+    return <div style={{ color: "#64748b", fontSize: 13 }}>Cargando configuración…</div>;
   }
 
   return (
@@ -148,6 +169,41 @@ export default function WizardStep5_ChirpStack({ state, onReset }: Props) {
         </p>
       </div>
 
+      {/* Host ChirpStack */}
+      <div style={{
+        background: "#1a1d2e",
+        border: `1px solid ${hostError ? "#7f1d1d" : config.host ? "#166534" : "#2d3148"}`,
+        borderRadius: 8,
+        padding: "10px 14px",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        fontSize: 13,
+      }}>
+        {discoveringHost ? (
+          <>
+            <span style={{ color: "#64748b" }}>⟳</span>
+            <span style={{ color: "#64748b" }}>Buscando ChirpStack en la red…</span>
+          </>
+        ) : hostError ? (
+          <>
+            <span style={{ color: "#f87171", flex: 1 }}>✕ {hostError}</span>
+            <button className="btn btn-secondary" style={{ fontSize: 11, padding: "3px 10px" }} onClick={runHostDiscovery}>
+              Reintentar
+            </button>
+          </>
+        ) : (
+          <>
+            <span style={{ color: "#4ade80" }}>✓</span>
+            <span style={{ color: "#94a3b8" }}>ChirpStack:</span>
+            <code style={{ color: "#60a5fa", fontFamily: "monospace", flex: 1 }}>{config.host}</code>
+            <button className="btn btn-secondary" style={{ fontSize: 11, padding: "3px 10px" }} onClick={runHostDiscovery}>
+              Redescubrir
+            </button>
+          </>
+        )}
+      </div>
+
       {/* Resumen del device */}
       <div style={{
         background: "#1a1d2e",
@@ -158,12 +214,11 @@ export default function WizardStep5_ChirpStack({ state, onReset }: Props) {
         flexDirection: "column",
         gap: 6,
       }}>
-        <Row label="Host ChirpStack" value={state.chirpstackHost} />
         <Row label="DevEUI" value={state.devEui} mono />
         <Row label="AppKey" value={state.appKey} mono />
       </div>
 
-      {/* Configuración ChirpStack (solo cuando no está registrando/ok) */}
+      {/* Configuración ChirpStack */}
       {status !== "ok" && (
         <div style={{
           background: "#0f1117",
@@ -178,7 +233,6 @@ export default function WizardStep5_ChirpStack({ state, onReset }: Props) {
             Credenciales ChirpStack
           </p>
 
-          {/* Token */}
           <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <span style={{ fontSize: 12, color: "#64748b" }}>API Token</span>
             <input
@@ -191,7 +245,6 @@ export default function WizardStep5_ChirpStack({ state, onReset }: Props) {
             />
           </label>
 
-          {/* App ID */}
           <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <span style={{ fontSize: 12, color: "#64748b" }}>Application ID</span>
             {apps.length > 0 ? (
@@ -218,7 +271,6 @@ export default function WizardStep5_ChirpStack({ state, onReset }: Props) {
             )}
           </label>
 
-          {/* Profile ID */}
           <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <span style={{ fontSize: 12, color: "#64748b" }}>Device Profile ID</span>
             {profiles.length > 0 ? (
@@ -245,12 +297,11 @@ export default function WizardStep5_ChirpStack({ state, onReset }: Props) {
             )}
           </label>
 
-          {/* Discover button */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <button
               className="btn btn-secondary"
               onClick={discover}
-              disabled={discovering || status === "registering" || !config.apiToken.trim()}
+              disabled={discovering || status === "registering" || !config.apiToken.trim() || !config.host}
               style={{ fontSize: 12 }}
             >
               {discovering ? "Descubriendo…" : "Descubrir IDs automáticamente"}
@@ -262,7 +313,6 @@ export default function WizardStep5_ChirpStack({ state, onReset }: Props) {
         </div>
       )}
 
-      {/* Estado del registro */}
       {status === "idle" && (
         <div style={{
           padding: "12px 14px",
@@ -292,7 +342,7 @@ export default function WizardStep5_ChirpStack({ state, onReset }: Props) {
         }}>
           <span style={{ fontSize: 16 }}>⟳</span>
           Conectando con ChirpStack en{" "}
-          <code style={{ fontFamily: "monospace" }}>{state.chirpstackHost}</code>…
+          <code style={{ fontFamily: "monospace" }}>{config.host}</code>…
         </div>
       )}
 
@@ -325,9 +375,7 @@ export default function WizardStep5_ChirpStack({ state, onReset }: Props) {
             <p style={{ fontSize: 14, color: "#4ade80", textAlign: "center", fontWeight: 600 }}>
               Aprovisionamiento completado
             </p>
-            <p style={{ fontSize: 12, color: "#86efac", textAlign: "center" }}>
-              {resultMsg}
-            </p>
+            <p style={{ fontSize: 12, color: "#86efac", textAlign: "center" }}>{resultMsg}</p>
           </div>
 
           <div style={{
@@ -345,7 +393,7 @@ export default function WizardStep5_ChirpStack({ state, onReset }: Props) {
             <p>Puerto: <code style={{ fontFamily: "monospace", color: "#e2e8f0" }}>{state.port}</code></p>
             <p>DevEUI: <code style={{ fontFamily: "monospace", color: "#e2e8f0" }}>{state.devEui}</code></p>
             <p>WiFi SSID: <code style={{ fontFamily: "monospace", color: "#e2e8f0" }}>{state.wifiSsid}</code></p>
-            <p>ChirpStack: <code style={{ fontFamily: "monospace", color: "#e2e8f0" }}>{state.chirpstackHost}</code></p>
+            <p>ChirpStack: <code style={{ fontFamily: "monospace", color: "#e2e8f0" }}>{config.host}</code></p>
           </div>
         </div>
       )}

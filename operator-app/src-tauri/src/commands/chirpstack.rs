@@ -7,6 +7,7 @@ use crate::chirpstack_api::{self, ChirpstackCreds};
 
 const GATEWAY_EUI: &str = "aabbccfffeddeeff";
 const STORE_FILE: &str = "operator-config.json";
+const KEY_HOST: &str = "chirpstack_host";
 const KEY_TOKEN: &str = "chirpstack_api_token";
 const KEY_APP_ID: &str = "chirpstack_app_id";
 const KEY_PROFILE_ID: &str = "chirpstack_profile_id";
@@ -101,6 +102,19 @@ pub async fn discover_chirpstack_ids(
     }))
 }
 
+/// Escanea la red local buscando ChirpStack v4 en el puerto 8080.
+/// Al encontrarlo guarda el host en el store y lo retorna.
+#[tauri::command]
+pub async fn discover_and_save_chirpstack_host(app: AppHandle) -> Result<String, String> {
+    let host = chirpstack_api::discover_host()
+        .await
+        .ok_or("No se encontró ChirpStack en la red local (puerto 8080)")?;
+    let store = app.store(STORE_FILE).map_err(|e| e.to_string())?;
+    store.set(KEY_HOST, serde_json::json!(&host));
+    store.save().map_err(|e| e.to_string())?;
+    Ok(host)
+}
+
 // 9.4: Persiste las credenciales de ChirpStack en el store local de la app.
 #[tauri::command]
 pub fn save_chirpstack_config(
@@ -116,13 +130,15 @@ pub fn save_chirpstack_config(
     store.save().map_err(|e| e.to_string())
 }
 
-// 9.4: Carga las credenciales de ChirpStack persistidas.
+// 9.4: Carga las credenciales de ChirpStack persistidas (incluye el host descubierto).
 #[tauri::command]
 pub fn load_chirpstack_config(app: AppHandle) -> Result<serde_json::Value, String> {
     let store = app.store(STORE_FILE).map_err(|e| e.to_string())?;
+    let get = |k| store.get(k).and_then(|v| v.as_str().map(str::to_owned)).unwrap_or_default();
     Ok(serde_json::json!({
-        "apiToken":  store.get(KEY_TOKEN).and_then(|v| v.as_str().map(str::to_owned)).unwrap_or_default(),
-        "appId":     store.get(KEY_APP_ID).and_then(|v| v.as_str().map(str::to_owned)).unwrap_or_default(),
-        "profileId": store.get(KEY_PROFILE_ID).and_then(|v| v.as_str().map(str::to_owned)).unwrap_or_default(),
+        "host":      get(KEY_HOST),
+        "apiToken":  get(KEY_TOKEN),
+        "appId":     get(KEY_APP_ID),
+        "profileId": get(KEY_PROFILE_ID),
     }))
 }
