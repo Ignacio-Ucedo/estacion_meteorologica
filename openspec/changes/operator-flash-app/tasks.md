@@ -41,11 +41,11 @@
 
 ## 6. Wizard de Configuración (UI)
 
-- [ ] 6.1 Construir el componente `WizardStep1_Port`: selección de puerto USB detectado
-- [ ] 6.2 Construir `WizardStep2_Config`: campos SSID, password WiFi, host ChirpStack, DevEUI+AppKey asignados (solo lectura)
-- [ ] 6.3 Construir `WizardStep3_Flash`: progreso del flash del firmware con log en tiempo real
-- [ ] 6.4 Construir `WizardStep4_NVS`: progreso del flash del NVS y verificación post-flash
-- [ ] 6.5 Construir `WizardStep5_ChirpStack`: estado del registro en ChirpStack y confirmación final
+- [x] 6.1 Construir el componente `WizardStep1_Port`: selección de puerto USB detectado
+- [x] 6.2 Construir `WizardStep2_Config`: campos SSID, password WiFi, host ChirpStack, DevEUI+AppKey asignados (solo lectura)
+- [x] 6.3 Construir `WizardStep3_Flash`: progreso del flash del firmware con log en tiempo real
+- [x] 6.4 Construir `WizardStep4_NVS`: progreso del flash del NVS y verificación post-flash
+- [x] 6.5 Construir `WizardStep5_ChirpStack`: estado del registro en ChirpStack y confirmación final
   - Commit: `feat(operator-app): wizard de aprovisionamiento paso a paso`
 
 ## 7. Flash del Firmware vía esptool Sidecar

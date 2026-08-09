@@ -3,7 +3,7 @@ import Sidebar from "./components/Sidebar";
 import VirtualGatewayPanel from "./components/VirtualGatewayPanel";
 import UserManagementPanel from "./components/UserManagementPanel";
 import SettingsPanel from "./components/SettingsPanel";
-import ComingSoonPanel from "./components/ComingSoonPanel";
+import FlashWizard from "./components/wizard/FlashWizard";
 import { getBackendUrl } from "./api/backend";
 import "./App.css";
 
@@ -27,13 +27,13 @@ function App() {
       case "users":      return <UserManagementPanel />;
       case "settings":   return <SettingsPanel onUrlChange={setBackendUrl} devEui={otaaKeys.devEui} appKey={otaaKeys.appKey} />;
       case "flash-gateway-mock":
-        return <ComingSoonPanel title="Flash Gateway Mock" description="Flasheá un ESP32 como gateway virtual desde un archivo .bin precompilado. Configuración de NVS y registro en ChirpStack incluidos." />;
+        return <FlashWizard title="Flash Gateway Mock" />;
       case "flash-gateway-real":
-        return <ComingSoonPanel title="Flash Gateway Real" description="Flasheá el gateway de producción con credenciales WiFi y registro en ChirpStack de campo." />;
+        return <FlashWizard title="Flash Gateway Real" />;
       case "flash-node-mock":
-        return <ComingSoonPanel title="Flash Node Mock" description="Flasheá un ESP32 como nodo LoRa sin sensores para testear el pipeline completo en laboratorio." />;
+        return <FlashWizard title="Flash Node Mock" />;
       case "flash-node-real":
-        return <ComingSoonPanel title="Flash Node Real" description="Flasheá el nodo meteorológico completo (DHT22 + pluviómetro + anemómetro). Verifica el primer uplink post-flash." />;
+        return <FlashWizard title="Flash Node Real" />;
     }
   };
 
