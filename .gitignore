@@ -96,5 +96,8 @@ firmware/nvs_mock.bin
 firmware/.cargo/config.local.toml
 
 # Binarios sidecar de la operator-app (descargados localmente con download-sidecars.sh)
-operator-app/src-tauri/binaries/
+# Binarios reales de esptool descargados por scripts/download-sidecars.sh
+# El placeholder de desarrollo (esptool-*-linux-gnu como script sh) sí se trackea
+operator-app/src-tauri/binaries/*.exe
+operator-app/src-tauri/binaries/*.dmg
 

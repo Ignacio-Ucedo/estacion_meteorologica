@@ -1,0 +1,5 @@
+#!/bin/sh
+# Sidecar de desarrollo: delega a esptool instalado en el sistema.
+# En producción este archivo es reemplazado por el binario standalone de esptool v4.8.1
+# (ver scripts/download-sidecars.sh).
+exec python3 -m esptool "$@"

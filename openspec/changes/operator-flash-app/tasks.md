@@ -50,17 +50,17 @@
 
 ## 7. Flash del Firmware vía esptool Sidecar
 
-- [ ] 7.1 Implementar comando Tauri `flash_firmware` que invoca el sidecar esptool con los parámetros correctos (`write_flash 0x0 firmware.bin`)
-- [ ] 7.2 Streamear stdout/stderr de esptool al frontend en tiempo real para mostrar progreso
-- [ ] 7.3 Detectar y manejar errores de permisos USB y mostrar instrucciones de corrección en la UI
-- [ ] 7.4 Implementar verificación de conectividad del ESP32 antes del flash (esptool `chip_id`)
+- [x] 7.1 Implementar comando Tauri `flash_firmware` que invoca el sidecar esptool con los parámetros correctos (`write_flash 0x0 firmware.bin`)
+- [x] 7.2 Streamear stdout/stderr de esptool al frontend en tiempo real para mostrar progreso
+- [x] 7.3 Detectar y manejar errores de permisos USB y mostrar instrucciones de corrección en la UI
+- [x] 7.4 Implementar verificación de conectividad del ESP32 antes del flash (esptool `chip_id`)
   - Commit: `feat(operator-app): flash de firmware vía esptool sidecar`
 
 ## 8. Flash del NVS y Verificación
 
-- [ ] 8.1 Implementar comando Tauri `flash_nvs` que flashea el NVS generado en la dirección `0x9000`
-- [ ] 8.2 Implementar `verify_nvs` con read-back de la partición NVS y comparación byte a byte
-- [ ] 8.3 Mostrar resultado de verificación en la UI con indicador visual de éxito/error
+- [x] 8.1 Implementar comando Tauri `flash_nvs` que flashea el NVS generado en la dirección `0x9000`
+- [x] 8.2 Implementar `verify_nvs` con read-back de la partición NVS y comparación byte a byte
+- [x] 8.3 Mostrar resultado de verificación en la UI con indicador visual de éxito/error
   - Commit: `feat(operator-app): flash y verificación de partición NVS`
 
 ## 9. Registro en ChirpStack

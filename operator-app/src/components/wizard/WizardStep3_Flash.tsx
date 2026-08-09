@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { open } from "@tauri-apps/plugin-dialog";
 import type { WizardState } from "./types";
 
 type Status = "idle" | "running" | "ok" | "error";
@@ -6,7 +9,12 @@ type Status = "idle" | "running" | "ok" | "error";
 interface LogLine {
   ts: string;
   text: string;
-  kind: "info" | "ok" | "err";
+  level: "info" | "ok" | "err";
+}
+
+interface FlashLogEvent {
+  level: string;
+  text: string;
 }
 
 interface Props {
@@ -17,38 +25,62 @@ interface Props {
 
 export default function WizardStep3_Flash({ state, onBack, onNext }: Props) {
   const [status, setStatus] = useState<Status>("idle");
+  const [firmwarePath, setFirmwarePath] = useState<string>("");
   const [logs, setLogs] = useState<LogLine[]>([]);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const logEndRef = useRef<HTMLDivElement>(null);
 
-  function addLog(text: string, kind: LogLine["kind"] = "info") {
+  // Auto-scroll al último log
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [logs]);
+
+  function addLog(text: string, level: LogLine["level"] = "info") {
     const ts = new Date().toLocaleTimeString("es-AR", { hour12: false });
-    setLogs((prev) => [...prev, { ts, text, kind }]);
+    setLogs((prev) => [...prev, { ts, text, level }]);
   }
 
-  // Placeholder: simula el progreso hasta que la sección 7 implemente flash_firmware.
-  function startFlash() {
+  async function selectFirmware() {
+    const selected = await open({
+      multiple: false,
+      filters: [{ name: "Firmware ESP32", extensions: ["bin"] }],
+    });
+    if (typeof selected === "string") {
+      setFirmwarePath(selected);
+    }
+  }
+
+  async function startFlash() {
+    if (!firmwarePath) return;
     setStatus("running");
     setLogs([]);
-    addLog(`Puerto: ${state.port}`);
-    addLog("Verificando conectividad del ESP32…");
+    setErrorMsg(null);
 
-    const steps = [
-      [600,  "Conectando con esptool…",               "info" as const],
-      [1200, "Detectado: ESP32 (chip_id OK)",          "ok"   as const],
-      [1800, "Escribiendo firmware en 0x0000…",         "info" as const],
-      [3000, "Flash: ████████████████████ 100%",        "info" as const],
-      [3200, "Verificando escritura…",                  "info" as const],
-      [3600, "✓ Firmware flasheado correctamente",      "ok"   as const],
-    ] as const;
+    // Escuchar eventos de log en tiempo real
+    const unlisten = await listen<FlashLogEvent>("flash-log", (e) => {
+      addLog(e.payload.text, e.payload.level as LogLine["level"]);
+    });
 
-    for (const [ms, text, kind] of steps) {
-      setTimeout(() => addLog(text, kind), ms);
+    try {
+      await invoke("flash_firmware", {
+        port: state.port,
+        firmwarePath,
+      });
+      setStatus("ok");
+      addLog("✓ Flash completado con éxito", "ok");
+    } catch (err: unknown) {
+      const msg = typeof err === "string" ? err : String(err);
+      setStatus("error");
+      setErrorMsg(msg);
+      addLog(`✕ ${msg}`, "err");
+    } finally {
+      unlisten();
     }
-    setTimeout(() => setStatus("ok"), 3700);
   }
 
-  const logColor = (kind: LogLine["kind"]) => {
-    if (kind === "ok")  return "#4ade80";
-    if (kind === "err") return "#f87171";
+  const logColor = (level: LogLine["level"]) => {
+    if (level === "ok") return "#4ade80";
+    if (level === "err") return "#f87171";
     return "#cbd5e1";
   };
 
@@ -59,12 +91,33 @@ export default function WizardStep3_Flash({ state, onBack, onNext }: Props) {
           Flash de firmware
         </h3>
         <p style={{ fontSize: 13, color: "#64748b" }}>
-          Escribe el binario del nodo en la memoria flash del ESP32 ({state.port}).
+          Puerto:{" "}
+          <code style={{ fontFamily: "monospace", color: "#60a5fa" }}>{state.port}</code>
         </p>
       </div>
 
+      {/* Selección de firmware */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <button
+          className="btn btn-secondary"
+          onClick={selectFirmware}
+          disabled={status === "running"}
+        >
+          Seleccionar .bin…
+        </button>
+        {firmwarePath ? (
+          <code style={{ fontSize: 12, color: "#94a3b8", fontFamily: "monospace", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {firmwarePath}
+          </code>
+        ) : (
+          <span style={{ fontSize: 13, color: "#475569" }}>
+            Seleccioná el firmware .bin compilado
+          </span>
+        )}
+      </div>
+
       {/* Área de log */}
-      <div className="log-section" style={{ minHeight: 200 }}>
+      <div className="log-section" style={{ minHeight: 220, maxHeight: 300 }}>
         <div className="log-header">
           <span className="log-title">Salida de esptool</span>
           {status === "running" && (
@@ -80,25 +133,42 @@ export default function WizardStep3_Flash({ state, onBack, onNext }: Props) {
         <div className="log-container">
           {logs.length === 0 ? (
             <div className="log-empty">
-              {status === "idle" ? "Presioná «Flash firmware» para comenzar." : "Iniciando…"}
+              {!firmwarePath
+                ? "Seleccioná un archivo .bin para comenzar."
+                : "Presioná «Flash firmware» para comenzar."}
             </div>
           ) : (
             logs.map((l, i) => (
               <div key={i} className="log-line">
                 <span className="log-ts">{l.ts}</span>
-                <span style={{ color: logColor(l.kind), fontFamily: "monospace", fontSize: 12 }}>
+                <span style={{ color: logColor(l.level), fontFamily: "monospace", fontSize: 12 }}>
                   {l.text}
                 </span>
               </div>
             ))
           )}
+          <div ref={logEndRef} />
         </div>
       </div>
 
-      <InfoBox>
-        La implementación real (sección 7) invocará el sidecar <code>esptool</code> con{" "}
-        <code>write_flash 0x0 firmware.bin</code> y streameará stdout en tiempo real.
-      </InfoBox>
+      {/* Error de permisos USB */}
+      {status === "error" && errorMsg?.includes("dialout") && (
+        <div style={{
+          padding: "12px 14px",
+          background: "#1c1017",
+          border: "1px solid #7f1d1d",
+          borderRadius: 8,
+          fontSize: 12,
+          color: "#f87171",
+          lineHeight: 1.7,
+        }}>
+          <strong>Error de permisos USB</strong>
+          <pre style={{ marginTop: 6, fontFamily: "monospace", fontSize: 11, color: "#fca5a5", background: "#0f0a0a", padding: "6px 8px", borderRadius: 4 }}>
+            sudo usermod -aG dialout $USER{"\n"}
+            # Luego cerrá sesión y volvé a iniciarla
+          </pre>
+        </div>
+      )}
 
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <button
@@ -109,8 +179,20 @@ export default function WizardStep3_Flash({ state, onBack, onNext }: Props) {
           ← Atrás
         </button>
         <div style={{ display: "flex", gap: 8 }}>
+          {status === "error" && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => { setStatus("idle"); setLogs([]); setErrorMsg(null); }}
+            >
+              Reintentar
+            </button>
+          )}
           {status === "idle" && (
-            <button className="btn btn-primary" onClick={startFlash}>
+            <button
+              className="btn btn-primary"
+              disabled={!firmwarePath}
+              onClick={startFlash}
+            >
               Flash firmware
             </button>
           )}
@@ -119,29 +201,8 @@ export default function WizardStep3_Flash({ state, onBack, onNext }: Props) {
               Siguiente → NVS
             </button>
           )}
-          {status === "error" && (
-            <button className="btn btn-secondary" onClick={() => { setStatus("idle"); setLogs([]); }}>
-              Reintentar
-            </button>
-          )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function InfoBox({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{
-      padding: "10px 12px",
-      background: "#1e293b",
-      border: "1px solid #334155",
-      borderRadius: 6,
-      fontSize: 12,
-      color: "#64748b",
-      lineHeight: 1.5,
-    }}>
-      {children}
     </div>
   );
 }

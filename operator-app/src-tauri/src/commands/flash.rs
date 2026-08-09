@@ -135,3 +135,115 @@ pub fn generate_nvs_bin(params: NvsParams) -> Result<String, String> {
     let bytes = nvs::generate(&params)?;
     Ok(base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &bytes))
 }
+
+// ── Flash vía esptool sidecar ─────────────────────────────────────────────────
+
+/// Verifica la conectividad del ESP32 y flashea el firmware en 0x0000.
+///
+/// Emite eventos `flash-log` ({ level, text }) en tiempo real.
+/// `firmware_path`: ruta local al archivo .bin (descargado desde GitHub Releases
+/// o compilado localmente). Sección 11 se encarga de la descarga automática.
+#[tauri::command]
+pub async fn flash_firmware(
+    app: AppHandle,
+    port: String,
+    firmware_path: String,
+) -> Result<(), String> {
+    use crate::esptool;
+
+    // 7.4: verificar conectividad antes del flash
+    esptool::chip_id(&app, &port, "flash-log").await?;
+
+    // 7.1: flash del firmware en 0x0000
+    esptool::emit_log(&app, "flash-log", "info", "Iniciando flash del firmware…");
+    esptool::write_flash(&app, &port, "0x0", &firmware_path, "flash-log").await?;
+
+    esptool::emit_log(&app, "flash-log", "ok", "✓ Firmware flasheado correctamente");
+    Ok(())
+}
+
+/// Genera la partición NVS y la flashea en 0x9000.
+///
+/// Emite eventos `nvs-log` ({ level, text }) en tiempo real.
+#[tauri::command]
+pub async fn flash_nvs(app: AppHandle, port: String, params: NvsParams) -> Result<(), String> {
+    use crate::esptool;
+
+    // 8.1: generar NVS binary
+    esptool::emit_log(&app, "nvs-log", "info", "Generando partición NVS…");
+    let nvs_bytes = nvs::generate(&params)?;
+    esptool::emit_log(
+        &app,
+        "nvs-log",
+        "info",
+        &format!("NVS generado: {} bytes", nvs_bytes.len()),
+    );
+
+    // Escribir a archivo temporal
+    let tmp = std::env::temp_dir().join("operator_nvs.bin");
+    std::fs::write(&tmp, &nvs_bytes)
+        .map_err(|e| format!("Error escribiendo NVS temporal: {e}"))?;
+
+    // 8.1: flash en 0x9000
+    esptool::emit_log(&app, "nvs-log", "info", "Flasheando NVS en 0x9000…");
+    esptool::write_flash(
+        &app,
+        &port,
+        "0x9000",
+        tmp.to_str().unwrap_or("/tmp/operator_nvs.bin"),
+        "nvs-log",
+    )
+    .await?;
+
+    esptool::emit_log(&app, "nvs-log", "ok", "✓ NVS flasheado en 0x9000");
+    Ok(())
+}
+
+/// Lee la partición NVS desde el ESP32 y la compara byte a byte con la esperada.
+///
+/// Emite eventos `nvs-log` en tiempo real.
+/// Retorna Ok(true) si coincide, Ok(false) si difiere, Err si no se pudo leer.
+#[tauri::command]
+pub async fn verify_nvs(app: AppHandle, port: String, params: NvsParams) -> Result<bool, String> {
+    use crate::esptool;
+
+    // 8.2: leer partición desde el ESP32
+    let tmp_readback = std::env::temp_dir().join("operator_nvs_readback.bin");
+    esptool::emit_log(&app, "nvs-log", "info", "Leyendo partición NVS desde el ESP32…");
+
+    esptool::read_flash(
+        &app,
+        &port,
+        "0x9000",
+        "0x6000", // tamaño de la partición NVS
+        tmp_readback.to_str().unwrap_or("/tmp/operator_nvs_readback.bin"),
+        "nvs-log",
+    )
+    .await?;
+
+    // Comparar con el binario esperado
+    let expected = nvs::generate(&params)?;
+    let actual = std::fs::read(&tmp_readback)
+        .map_err(|e| format!("No se pudo leer el readback NVS: {e}"))?;
+
+    // 8.2: comparar byte a byte
+    let mismatches = expected
+        .iter()
+        .zip(actual.iter())
+        .enumerate()
+        .filter(|(_, (a, b))| a != b)
+        .count();
+
+    if mismatches == 0 {
+        esptool::emit_log(&app, "nvs-log", "ok", "✓ Verificación NVS: coincide byte a byte");
+        Ok(true)
+    } else {
+        esptool::emit_log(
+            &app,
+            "nvs-log",
+            "err",
+            &format!("✕ Verificación NVS: {mismatches} bytes difieren"),
+        );
+        Ok(false)
+    }
+}

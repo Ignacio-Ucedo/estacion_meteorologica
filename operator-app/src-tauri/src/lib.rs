@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 mod commands;
+pub mod esptool;
 mod gateway;
 pub mod nvs;
 mod pool;
@@ -8,8 +9,8 @@ mod state;
 
 use commands::chirpstack::sync_chirpstack;
 use commands::flash::{
-    generate_nvs_bin, import_key_pool, key_pool_stats, list_ports, next_available_key,
-    start_usb_watcher,
+    flash_firmware, flash_nvs, generate_nvs_bin, import_key_pool, key_pool_stats, list_ports,
+    next_available_key, start_usb_watcher, verify_nvs,
 };
 use commands::gateway::{get_gateway_status, load_nvs_csv, start_gateway, stop_gateway};
 use state::AppState;
@@ -32,6 +33,9 @@ pub fn run() {
             import_key_pool,
             key_pool_stats,
             generate_nvs_bin,
+            flash_firmware,
+            flash_nvs,
+            verify_nvs,
         ])
         .setup(|app| {
             start_usb_watcher(app.handle().clone());
