@@ -16,10 +16,16 @@ interface Props {
   onNext: () => void;
 }
 
+interface WifiSuggestions {
+  connected: string | null;
+  available: string[];
+}
+
 export default function WizardStep2_Config({ state, onUpdate, onBack, onNext }: Props) {
   const [keyError, setKeyError] = useState<string | null>(null);
   const [loadingKey, setLoadingKey] = useState(false);
   const [detectedSsid, setDetectedSsid] = useState<string | null>(null);
+  const [availableSsids, setAvailableSsids] = useState<string[]>([]);
 
   useEffect(() => {
     if (state.devEui || state.appKey) return;
@@ -35,12 +41,12 @@ export default function WizardStep2_Config({ state, onUpdate, onBack, onNext }: 
   }, []);
 
   useEffect(() => {
-    if (state.wifiSsid) return; // ya hay valor, no sobreescribir
-    invoke<string | null>("get_current_wifi_ssid")
-      .then((ssid) => {
-        if (ssid) {
-          setDetectedSsid(ssid);
-          onUpdate({ wifiSsid: ssid });
+    invoke<WifiSuggestions>("get_wifi_suggestions")
+      .then(({ connected, available }) => {
+        setAvailableSsids(available);
+        if (!state.wifiSsid && connected) {
+          setDetectedSsid(connected);
+          onUpdate({ wifiSsid: connected });
         }
       })
       .catch(() => { /* ignorar si no se puede detectar */ });
@@ -78,6 +84,7 @@ export default function WizardStep2_Config({ state, onUpdate, onBack, onNext }: 
               <input
                 className="field-input"
                 type="text"
+                list="wifi-ssid-list"
                 placeholder="nombre de la red WiFi"
                 value={state.wifiSsid}
                 onChange={(e) => {
@@ -85,10 +92,17 @@ export default function WizardStep2_Config({ state, onUpdate, onBack, onNext }: 
                   onUpdate({ wifiSsid: e.target.value });
                 }}
               />
+              {availableSsids.length > 0 && (
+                <datalist id="wifi-ssid-list">
+                  {availableSsids.map((ssid) => (
+                    <option key={ssid} value={ssid} />
+                  ))}
+                </datalist>
+              )}
             </div>
             {detectedSsid && state.wifiSsid === detectedSsid && (
               <p style={{ fontSize: 11, color: "#60a5fa", margin: "0 0 0 90px" }}>
-                Red WiFi detectada de la PC — podés cambiarla si corresponde a otra red
+                Red WiFi detectada — podés cambiarla si el gateway usa otra
               </p>
             )}
           </div>
