@@ -1,5 +1,7 @@
 use serialport::{SerialPortType, available_ports};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
+
+use crate::pool::{self, KeyEntry, PoolStats};
 
 /// VID/PID de chips USB-serial comunes en módulos ESP32.
 const KNOWN_CHIPS: &[(u16, &str)] = &[
@@ -88,4 +90,35 @@ pub fn start_usb_watcher(app: AppHandle) {
             }
         }
     });
+}
+
+// ── Pool de OTAA keys ─────────────────────────────────────────────────────────
+
+fn pool_db_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map(|d| d.join("key_pool.db"))
+        .map_err(|e| format!("No se pudo obtener directorio de datos: {e}"))
+}
+
+/// Retorna el próximo par DevEUI+AppKey libre del pool y lo marca como asignado.
+#[tauri::command]
+pub fn next_available_key(app: AppHandle) -> Result<KeyEntry, String> {
+    let path = pool_db_path(&app)?;
+    pool::next_available(&path)
+}
+
+/// Importa un CSV con columnas dev_eui,app_key al pool local. Retorna el número
+/// de nuevos pares insertados (duplicados son ignorados).
+#[tauri::command]
+pub fn import_key_pool(app: AppHandle, csv_content: String) -> Result<u32, String> {
+    let path = pool_db_path(&app)?;
+    pool::import_from_csv(&path, &csv_content)
+}
+
+/// Estadísticas del pool: total de pares, disponibles y asignados.
+#[tauri::command]
+pub fn key_pool_stats(app: AppHandle) -> Result<PoolStats, String> {
+    let path = pool_db_path(&app)?;
+    pool::stats(&path)
 }

@@ -25,10 +25,10 @@
 
 ## 4. Pool de OTAA Keys
 
-- [ ] 4.1 Definir el esquema del pool: CSV con columnas `dev_eui,app_key,assigned,assigned_at`
-- [ ] 4.2 Implementar comando Tauri `next_available_key` que retorna el próximo par libre y lo marca como asignado
-- [ ] 4.3 Implementar comando `import_key_pool` que parsea un CSV y agrega pares al pool (SQLite local)
-- [ ] 4.4 Generar un pool de prueba con 20 pares DevEUI+AppKey (OUI local `70:B3:D5`) para desarrollo
+- [x] 4.1 Definir el esquema del pool: CSV con columnas `dev_eui,app_key,assigned,assigned_at`
+- [x] 4.2 Implementar comando Tauri `next_available_key` que retorna el próximo par libre y lo marca como asignado
+- [x] 4.3 Implementar comando `import_key_pool` que parsea un CSV y agrega pares al pool (SQLite local)
+- [x] 4.4 Generar un pool de prueba con 20 pares DevEUI+AppKey (OUI local `70:B3:D5`) para desarrollo
   - Commit: `feat(operator-app): pool de OTAA keys con asignación automática`
 
 ## 5. Generación de NVS Bin
