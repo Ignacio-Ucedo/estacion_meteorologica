@@ -15,16 +15,16 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: espressif/idf-rust:all_latest
+      options: --user root
 
     env:
-      # Credenciales compiladas en el binario de referencia (CI).
-      # Las credenciales reales de cada dispositivo se cargan vía NVS
-      # por la operator-app en el proceso de provisioning.
       WIFI_SSID: ${{ secrets.WIFI_SSID || 'ci-placeholder' }}
       WIFI_PASS: ${{ secrets.WIFI_PASS || 'ci-placeholder' }}
       CHIRPSTACK_HOST: ${{ secrets.CHIRPSTACK_HOST || '0.0.0.0' }}
-      # Evita que cargo intente escribir en /root cuando corre como runner
       CARGO_HOME: /usr/local/cargo
+      # El runner setea HOME=/github/home (read-only); apuntamos git config
+      # a /root/.gitconfig que sí es writable cuando corremos como root.
+      GIT_CONFIG_GLOBAL: /root/.gitconfig
 
     steps:
       # actions/checkout@v4 es una JS action: su post-step corre en el HOST
@@ -35,7 +35,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          export GIT_CONFIG_GLOBAL=/tmp/.gitconfig
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           cd "$GITHUB_WORKSPACE"
           git init -q
