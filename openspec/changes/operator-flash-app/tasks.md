@@ -9,10 +9,10 @@
 
 ## 2. Scaffold de la Operator App (Tauri)
 
-- [ ] 2.1 Inicializar el proyecto Tauri en `operator-app/` con `create-tauri-app` (React + TypeScript)
-- [ ] 2.2 Configurar `tauri.conf.json`: nombre, identificador, permisos de shell para sidecar esptool
-- [ ] 2.3 Bundlear el binario de `esptool` como sidecar (descargar release oficial standalone de esptool)
-- [ ] 2.4 Verificar que `tauri dev` levanta la app en Linux
+- [x] 2.1 Inicializar el proyecto Tauri en `operator-app/` con `create-tauri-app` (React + TypeScript)
+- [x] 2.2 Configurar `tauri.conf.json`: nombre, identificador, permisos de shell para sidecar esptool
+- [x] 2.3 Bundlear el binario de `esptool` como sidecar (descargar release oficial standalone de esptool)
+- [x] 2.4 Verificar que `tauri dev` levanta la app en Linux
   - Commit: `feat(operator-app): scaffold inicial Tauri + React`
 
 ## 3. Detección USB y Selección de Puerto

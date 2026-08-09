@@ -95,3 +95,6 @@ firmware/nvs_mock.csv
 firmware/nvs_mock.bin
 firmware/.cargo/config.local.toml
 
+# Binarios sidecar de la operator-app (descargados localmente con download-sidecars.sh)
+operator-app/src-tauri/binaries/
+
