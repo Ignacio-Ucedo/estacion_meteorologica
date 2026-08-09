@@ -17,8 +17,8 @@ use commands::chirpstack::{
 use commands::device_log::{export_devices_csv, list_devices, log_provisioning};
 use commands::firmware::{check_firmware_update, download_firmware};
 use commands::flash::{
-    flash_firmware, flash_nvs, generate_nvs_bin, get_current_wifi_ssid, import_key_pool,
-    key_pool_stats, list_ports, next_available_key, start_usb_watcher, verify_nvs,
+    flash_firmware, flash_nvs, generate_nvs_bin, import_key_pool, key_pool_stats, list_ports,
+    next_available_key, start_usb_watcher, verify_nvs,
 };
 use commands::gateway::{get_gateway_status, load_nvs_csv, start_gateway, stop_gateway};
 use state::AppState;
@@ -54,7 +54,6 @@ pub fn run() {
             export_devices_csv,
             check_firmware_update,
             download_firmware,
-            get_current_wifi_ssid,
         ])
         .setup(|app| {
             start_usb_watcher(app.handle().clone());

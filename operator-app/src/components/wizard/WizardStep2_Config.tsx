@@ -19,7 +19,6 @@ interface Props {
 export default function WizardStep2_Config({ state, onUpdate, onBack, onNext }: Props) {
   const [keyError, setKeyError] = useState<string | null>(null);
   const [loadingKey, setLoadingKey] = useState(false);
-  const [detectedSsid, setDetectedSsid] = useState<string | null>(null);
 
   useEffect(() => {
     if (state.devEui || state.appKey) return;
@@ -31,19 +30,6 @@ export default function WizardStep2_Config({ state, onUpdate, onBack, onNext }: 
       })
       .catch((err: string) => setKeyError(err))
       .finally(() => setLoadingKey(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (state.wifiSsid) return; // ya hay valor, no sobreescribir
-    invoke<string | null>("get_current_wifi_ssid")
-      .then((ssid) => {
-        if (ssid) {
-          setDetectedSsid(ssid);
-          onUpdate({ wifiSsid: ssid });
-        }
-      })
-      .catch(() => { /* ignorar si no se puede detectar */ });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -72,25 +58,15 @@ export default function WizardStep2_Config({ state, onUpdate, onBack, onNext }: 
           WiFi del gateway
         </legend>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div className="field-row">
-              <label className="field-label">SSID</label>
-              <input
-                className="field-input"
-                type="text"
-                placeholder="nombre de la red WiFi"
-                value={state.wifiSsid}
-                onChange={(e) => {
-                  if (e.target.value !== detectedSsid) setDetectedSsid(null);
-                  onUpdate({ wifiSsid: e.target.value });
-                }}
-              />
-            </div>
-            {detectedSsid && state.wifiSsid === detectedSsid && (
-              <p style={{ fontSize: 11, color: "#60a5fa", margin: "0 0 0 90px" }}>
-                Red WiFi detectada de la PC — podés cambiarla si corresponde a otra red
-              </p>
-            )}
+          <div className="field-row">
+            <label className="field-label">SSID</label>
+            <input
+              className="field-input"
+              type="text"
+              placeholder="nombre de la red WiFi"
+              value={state.wifiSsid}
+              onChange={(e) => onUpdate({ wifiSsid: e.target.value })}
+            />
           </div>
           <div className="field-row">
             <label className="field-label">Contraseña</label>
