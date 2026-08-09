@@ -29,6 +29,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Debe correr antes de cualquier step de build. El post-step de
+      # actions/checkout es JS action que corre en el HOST como uid 1001;
+      # el container corre como root y deja /__w/_temp owned by root.
+      # apt-get update es obligatorio: la imagen puede tener lista desactualizada.
+      - name: Setup workspace permissions for post-cleanup
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends acl
+          mkdir -p /__w/_temp/_runner_file_commands
+          chmod 777 /__w/_temp/_runner_file_commands
+          setfacl -d -m o::rw /__w/_temp/_runner_file_commands
+          chown -R 1001:1001 /__w/_temp/
+
       - name: Cache Cargo registry
         uses: actions/cache@v4
         with:
@@ -87,18 +100,3 @@ jobs:
             firmware/gateway-node-mock-partitions.csv
             firmware/gateway-node-mock-partitions.csv.sha256
 
-      # Este step corre dentro del container (como root). El post-step de
-      # actions/checkout es una JS action que corre en el HOST como runner
-      # (uid/gid 1001). Dentro del container /__w/_actions puede aparecer owned
-      # por root (el runner lo crea con privilegios de Docker), por eso NO
-      # usamos stat para detectar el UID — lo hardcodeamos a 1001.
-      # Además aplicamos setfacl para que archivos creados por root hereden
-      # permisos de escritura para "otros" (= runner en el host).
-      - name: Restore workspace ownership for host post-cleanup
-        if: always()
-        run: |
-          apt-get install -y --no-install-recommends acl 2>/dev/null || true
-          mkdir -p /__w/_temp/_runner_file_commands
-          chmod 777 /__w/_temp/_runner_file_commands
-          setfacl -d -m o::rw /__w/_temp/_runner_file_commands 2>/dev/null || true
-          chown -R 1001:1001 /__w/_temp/ 2>/dev/null || true
