@@ -5,6 +5,7 @@ mod gateway;
 mod state;
 
 use commands::chirpstack::sync_chirpstack;
+use commands::flash::{list_ports, start_usb_watcher};
 use commands::gateway::{get_gateway_status, load_nvs_csv, start_gateway, stop_gateway};
 use state::AppState;
 
@@ -21,7 +22,12 @@ pub fn run() {
             get_gateway_status,
             load_nvs_csv,
             sync_chirpstack,
+            list_ports,
         ])
+        .setup(|app| {
+            start_usb_watcher(app.handle().clone());
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

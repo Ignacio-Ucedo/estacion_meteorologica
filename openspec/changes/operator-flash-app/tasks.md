@@ -17,10 +17,10 @@
 
 ## 3. Detección USB y Selección de Puerto
 
-- [ ] 3.1 Agregar crate `serialport` al backend Tauri para listar puertos disponibles
-- [ ] 3.2 Implementar comando Tauri `list_ports` que retorna puertos con VID/PID (filtrar chips CP210x, CH340)
-- [ ] 3.3 Implementar listener de eventos de conexión/desconexión USB en tiempo real
-- [ ] 3.4 Construir componente React `PortSelector` que muestra la lista y actualiza automáticamente
+- [x] 3.1 Agregar crate `serialport` al backend Tauri para listar puertos disponibles
+- [x] 3.2 Implementar comando Tauri `list_ports` que retorna puertos con VID/PID (filtrar chips CP210x, CH340)
+- [x] 3.3 Implementar listener de eventos de conexión/desconexión USB en tiempo real
+- [x] 3.4 Construir componente React `PortSelector` que muestra la lista y actualiza automáticamente
   - Commit: `feat(operator-app): detección automática de puertos USB`
 
 ## 4. Pool de OTAA Keys
