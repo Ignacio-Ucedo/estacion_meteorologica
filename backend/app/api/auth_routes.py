@@ -4,7 +4,7 @@ import jwt
 from fastapi import APIRouter, HTTPException, Request, status
 
 from app.config import get_settings
-from app.db.users import create_user, get_user_by_username, list_users, verify_password
+from app.db.users import create_user, delete_user, get_user_by_username, list_users, verify_password
 from app.schemas import LoginRequest, RegisterRequest, TokenResponse, UserResponse
 
 router = APIRouter()
@@ -70,3 +70,9 @@ def me(request: Request) -> UserResponse:
 def get_users() -> list[dict]:
     """Lista todos los clientes — sin auth, uso exclusivo del operator-app en red local."""
     return list_users()
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user_endpoint(user_id: str) -> None:
+    if not delete_user(user_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")

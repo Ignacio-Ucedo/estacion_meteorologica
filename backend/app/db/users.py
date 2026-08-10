@@ -57,6 +57,12 @@ def list_users() -> list[dict]:
     return [{"id": r["id"], "username": r["username"], "created_at": r["created_at"]} for r in rows]
 
 
+def delete_user(user_id: str) -> bool:
+    cursor = _db().execute("DELETE FROM users WHERE id = ?", (user_id,))
+    _db().commit()
+    return cursor.rowcount > 0
+
+
 def verify_password(username: str, password: str) -> dict | None:
     user = get_user_by_username(username)
     if user is None:

@@ -20,8 +20,8 @@ export interface BackendUser {
 }
 
 export async function fetchUsers(): Promise<BackendUser[]> {
-  const res = await fetch(`${getBackendUrl()}/auth/users`);
-  if (!res.ok) throw new Error(`GET /auth/users: ${res.status}`);
+  const res = await fetch(`${getBackendUrl()}/users`);
+  if (!res.ok) throw new Error(`GET /users: ${res.status}`);
   return res.json() as Promise<BackendUser[]>;
 }
 
@@ -36,6 +36,6 @@ export async function claimStation(devEui: string, userId: string): Promise<void
 }
 
 export async function deleteUser(userId: string): Promise<void> {
-  const res = await fetch(`${getBackendUrl()}/auth/users/${userId}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(`DELETE /auth/users/${userId}: ${res.status}`);
+  const res = await fetch(`${getBackendUrl()}/users/${userId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`DELETE /users/${userId}: ${res.status}`);
 }
