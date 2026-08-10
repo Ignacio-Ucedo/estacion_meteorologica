@@ -71,24 +71,20 @@ jobs:
       - name: Install espflash
         run: cargo install espflash --locked
 
-      - name: Set up ESP-IDF environment for root
+      - name: Set up ESP environment for root
         run: |
-          # IDF_PATH no está como Docker ENV en esta imagen.
-          # RUSTUP_HOME=/home/esp/.rustup → home del usuario default es /home/esp.
+          # espressif/idf-rust usa espup, que genera ~/export-esp.sh
+          # (no el export.sh del esp-idf clásico).
           USER_HOME=$(dirname "$RUSTUP_HOME")
-          EXPORT_SH=$(find "$USER_HOME" /opt -name "export.sh" -path "*/esp-idf/*" 2>/dev/null | head -1)
-          if [ -z "$EXPORT_SH" ]; then
-            echo "ERROR: export.sh no encontrado bajo $USER_HOME ni /opt"
-            find "$USER_HOME" -name "export.sh" 2>/dev/null | head -10 || true
+          EXPORT_SH="$USER_HOME/export-esp.sh"
+          if [ ! -f "$EXPORT_SH" ]; then
+            echo "ERROR: $EXPORT_SH no encontrado. Contenido de $USER_HOME:"
+            ls -la "$USER_HOME/" || true
             exit 1
           fi
-          echo "Found: $EXPORT_SH"
-          export IDF_PATH=$(dirname "$EXPORT_SH")
-          export IDF_TOOLS_PATH="$USER_HOME/.espressif"
+          echo "Sourcing: $EXPORT_SH"
           . "$EXPORT_SH"
           echo "PATH=$PATH" >> "$GITHUB_ENV"
-          echo "IDF_PATH=$IDF_PATH" >> "$GITHUB_ENV"
-          echo "IDF_TOOLS_PATH=$IDF_TOOLS_PATH" >> "$GITHUB_ENV"
 
       - name: Build gateway-node-mock (release)
         working-directory: firmware
