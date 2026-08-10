@@ -108,8 +108,8 @@ export default function WizardStep5_ChirpStack({ state, deviceType, onReset, bac
       );
       resolved = { ...resolved, appId: defaults.appId, profileId: defaults.profileId, tenantId: defaults.tenantId };
 
-      const allApps = result.applications.length > 0 ? result.applications : [{ id: defaults.appId, name: "Estación Meteorológica" }];
-      const allProfiles = result.deviceProfiles.length > 0 ? result.deviceProfiles : [{ id: defaults.profileId, name: "AU915 Node" }];
+      const allApps = result.applications.length > 0 ? result.applications : [{ id: defaults.appId, name: "weather-station" }];
+      const allProfiles = result.deviceProfiles.length > 0 ? result.deviceProfiles : [{ id: defaults.profileId, name: "esp32-sensor-au915" }];
       setApps(allApps);
       setProfiles(allProfiles);
 

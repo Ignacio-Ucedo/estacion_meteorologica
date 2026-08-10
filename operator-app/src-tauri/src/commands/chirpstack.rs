@@ -128,8 +128,8 @@ pub async fn ensure_chirpstack_defaults(
         }
     };
 
-    let app_id = chirpstack_api::create_application(&creds, &tid, "Estación Meteorológica").await?;
-    let profile_id = chirpstack_api::create_device_profile(&creds, &tid, "AU915 Node").await?;
+    let app_id = chirpstack_api::create_application(&creds, &tid, "weather-station").await?;
+    let profile_id = chirpstack_api::create_device_profile(&creds, &tid, "esp32-sensor-au915").await?;
 
     Ok(serde_json::json!({
         "appId": app_id,
