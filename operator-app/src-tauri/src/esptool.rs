@@ -21,7 +21,7 @@ pub async fn run(app: &AppHandle, args: &[&str], event_name: &str) -> Result<i32
 
     let (mut rx, _child) = app
         .shell()
-        .sidecar("binaries/esptool")
+        .sidecar("esptool")
         .map_err(|e| format!("Error preparando esptool sidecar: {e}"))?
         .args(args)
         .spawn()
