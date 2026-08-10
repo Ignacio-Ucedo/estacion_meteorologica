@@ -16,6 +16,7 @@ fn nvs_output_matches_reference_binary() {
         app_key_hex: "00112233445566778899AABBCCDDEEFF".to_string(),
         wifi_ssid:   "TestWiFi".to_string(),
         wifi_pass:   "password123".to_string(),
+        chirpstack_host: String::new(),
     };
 
     let generated = generate(&params).expect("Error generando NVS bin");

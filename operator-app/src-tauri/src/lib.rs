@@ -11,8 +11,8 @@ mod pool;
 mod state;
 
 use commands::chirpstack::{
-    discover_and_save_chirpstack_host, discover_chirpstack_ids, load_chirpstack_config,
-    register_device_chirpstack, save_chirpstack_config, sync_chirpstack,
+    detect_gateway_bridge_host, discover_and_save_chirpstack_host, discover_chirpstack_ids,
+    load_chirpstack_config, register_device_chirpstack, save_chirpstack_config, sync_chirpstack,
 };
 use commands::device_log::{export_devices_csv, list_devices, log_provisioning};
 use commands::firmware::{check_firmware_update, download_firmware};
@@ -37,6 +37,7 @@ pub fn run() {
             get_gateway_status,
             load_nvs_csv,
             sync_chirpstack,
+            detect_gateway_bridge_host,
             discover_and_save_chirpstack_host,
             register_device_chirpstack,
             discover_chirpstack_ids,

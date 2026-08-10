@@ -28,7 +28,7 @@ const TYPE_U8: u8 = 0x01;
 const TYPE_STR: u8 = 0x21;
 const TYPE_BLOB: u8 = 0x41;
 
-/// Parámetros para generar la partición NVS de un nodo sensor.
+/// Parámetros para generar la partición NVS.
 #[derive(Debug, serde::Deserialize)]
 pub struct NvsParams {
     /// Device EUI — 16 hex chars (ej: "70B3D5FFFE000001")
@@ -37,10 +37,13 @@ pub struct NvsParams {
     pub app_eui_hex: String,
     /// Application Key — 32 hex chars (ej: "00112233...")
     pub app_key_hex: String,
-    /// SSID de la red WiFi del gateway (string)
+    /// SSID de la red WiFi (string)
     pub wifi_ssid: String,
-    /// Contraseña WiFi del gateway (string)
+    /// Contraseña WiFi (string)
     pub wifi_pass: String,
+    /// Host del ChirpStack Gateway Bridge (ej: "192.168.1.10:1700").
+    /// Solo para gateways; vacío en nodos sensor.
+    pub chirpstack_host: String,
 }
 
 /// Genera el binario de partición NVS con los parámetros dados.
@@ -69,6 +72,13 @@ pub fn generate(params: &NvsParams) -> Result<Vec<u8>, String> {
     write_namespace_entry(&mut page, &mut entry_idx, "wifi", 2)?;
     write_var_entry(&mut page, &mut entry_idx, 2, TYPE_STR, "ssid", &ssid_bytes)?;
     write_var_entry(&mut page, &mut entry_idx, 2, TYPE_STR, "pass", &pass_bytes)?;
+
+    // Namespace: config (índice 3) — solo cuando hay host ChirpStack (gateways)
+    if !params.chirpstack_host.is_empty() {
+        let host_bytes = string_with_null(&params.chirpstack_host);
+        write_namespace_entry(&mut page, &mut entry_idx, "config", 3)?;
+        write_var_entry(&mut page, &mut entry_idx, 3, TYPE_STR, "gw_host", &host_bytes)?;
+    }
 
     // Resto del binario de partición: páginas 1..5 ya son 0xFF (sin datos)
     let mut partition = page;
@@ -255,6 +265,18 @@ mod tests {
             app_key_hex: "00112233445566778899AABBCCDDEEFF".to_string(),
             wifi_ssid: "TestWiFi".to_string(),
             wifi_pass: "password123".to_string(),
+            chirpstack_host: String::new(),
+        }
+    }
+
+    fn gateway_params() -> NvsParams {
+        NvsParams {
+            dev_eui_hex: "0000000000000000".to_string(),
+            app_eui_hex: "0000000000000000".to_string(),
+            app_key_hex: "00000000000000000000000000000000".to_string(),
+            wifi_ssid: "GwWiFi".to_string(),
+            wifi_pass: "gwpass".to_string(),
+            chirpstack_host: "192.168.1.10:1700".to_string(),
         }
     }
 
@@ -363,5 +385,27 @@ mod tests {
         (0..hex.len() / 2)
             .map(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap())
             .collect()
+    }
+
+    #[test]
+    fn test_gateway_gw_host_entry() {
+        let bin = generate(&gateway_params()).unwrap();
+        // Layout: lorawan(0) + dev_eui(1,2) + app_eui(3,4) + app_key(5,6)
+        //       + wifi(7) + ssid(8,9) + pass(10,11) + config(12) + gw_host(13,14)
+        let off_ns = ENTRIES_OFFSET + 12 * ENTRY_SIZE;
+        assert_eq!(bin[off_ns], 0x00, "namespace entry has ns_index = 0");
+        assert_eq!(bin[off_ns + 1], TYPE_U8);
+        assert_eq!(&bin[off_ns + 8..off_ns + 8 + 6], b"config");
+
+        let off_meta = ENTRIES_OFFSET + 13 * ENTRY_SIZE;
+        assert_eq!(bin[off_meta], 3, "ns_index = config (3)");
+        assert_eq!(bin[off_meta + 1], TYPE_STR);
+        assert_eq!(&bin[off_meta + 8..off_meta + 8 + 7], b"gw_host");
+        let data_size = u16::from_le_bytes(bin[off_meta + 24..off_meta + 26].try_into().unwrap());
+        // "192.168.1.10:1700" = 17 chars + 1 null = 18
+        assert_eq!(data_size, 18);
+
+        let off_data = ENTRIES_OFFSET + 14 * ENTRY_SIZE;
+        assert_eq!(&bin[off_data..off_data + 18], b"192.168.1.10:1700\0");
     }
 }

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 // ── Auto-descubrimiento de host ChirpStack ────────────────────────────────────
 
 /// Devuelve la IPv4 local determinando la ruta de salida via UDP sin enviar datos.
-fn get_local_ipv4() -> Option<std::net::Ipv4Addr> {
+pub fn get_local_ipv4() -> Option<std::net::Ipv4Addr> {
     let socket = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
     socket.connect("8.8.8.8:80").ok()?;
     match socket.local_addr().ok()?.ip() {

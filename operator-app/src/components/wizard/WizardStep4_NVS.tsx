@@ -46,6 +46,7 @@ export default function WizardStep4_NVS({ state, deviceType, onBack, onNext }: P
         app_key_hex: "00000000000000000000000000000000",
         wifi_ssid: state.wifiSsid,
         wifi_pass: state.wifiPass,
+        chirpstack_host: state.chirpstackHost,
       }
     : {
         dev_eui_hex: state.devEui,
@@ -53,6 +54,7 @@ export default function WizardStep4_NVS({ state, deviceType, onBack, onNext }: P
         app_key_hex: state.appKey,
         wifi_ssid: state.wifiSsid,
         wifi_pass: state.wifiPass,
+        chirpstack_host: "",
       };
 
   async function startNvsFlash() {
@@ -119,7 +121,7 @@ export default function WizardStep4_NVS({ state, deviceType, onBack, onNext }: P
         </h3>
         <p style={{ fontSize: 13, color: "#64748b" }}>
           {gateway
-            ? "Escribe las credenciales WiFi en la partición NVS del ESP32."
+            ? "Escribe las credenciales WiFi y el host ChirpStack en la partición NVS del ESP32."
             : "Escribe las claves OTAA y credenciales WiFi en la partición NVS del ESP32."}
         </p>
       </div>
@@ -131,6 +133,7 @@ export default function WizardStep4_NVS({ state, deviceType, onBack, onNext }: P
         {!gateway && <KV label="lorawan/app_key" value={state.appKey} />}
         <KV label="wifi/ssid" value={state.wifiSsid} />
         <KV label="wifi/pass" value={"•".repeat(Math.min(state.wifiPass.length, 12))} />
+        {gateway && <KV label="config/gw_host" value={state.chirpstackHost} />}
       </div>
 
       {/* Progress steps */}

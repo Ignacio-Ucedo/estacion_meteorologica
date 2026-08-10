@@ -15,6 +15,7 @@ export interface WizardState {
   port: string | null;
   wifiSsid: string;
   wifiPass: string;
+  chirpstackHost: string;
   devEui: string;
   appEui: string;
   appKey: string;
@@ -26,6 +27,7 @@ export const INITIAL_STATE: WizardState = {
   port: null,
   wifiSsid: "",
   wifiPass: "",
+  chirpstackHost: "",
   devEui: "",
   appEui: "0000000000000000",
   appKey: "",

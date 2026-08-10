@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use tauri::AppHandle;
 use tauri_plugin_store::StoreExt;
 
-use crate::chirpstack_api::{self, ChirpstackCreds};
+use crate::chirpstack_api::{self, get_local_ipv4, ChirpstackCreds};
 
 const GATEWAY_EUI: &str = "aabbccfffeddeeff";
 const STORE_FILE: &str = "operator-config.json";
@@ -128,6 +128,17 @@ pub fn save_chirpstack_config(
     store.set(KEY_APP_ID, serde_json::json!(app_id));
     store.set(KEY_PROFILE_ID, serde_json::json!(profile_id));
     store.save().map_err(|e| e.to_string())
+}
+
+/// Devuelve el host del ChirpStack Gateway Bridge inferido a partir de la IP local
+/// de la máquina (la misma donde corre el operator-app y ChirpStack).
+/// Formato: "<ip>:1700" (puerto UDP del Semtech Packet Forwarder).
+/// No hace conexión de red — usa el truco de UDP socket para obtener la IP de salida.
+#[tauri::command]
+pub fn detect_gateway_bridge_host() -> Result<String, String> {
+    let ip = get_local_ipv4()
+        .ok_or_else(|| "No se pudo determinar la IP local. Verifica la conectividad de red.".to_string())?;
+    Ok(format!("{ip}:1700"))
 }
 
 // 9.4: Carga las credenciales de ChirpStack persistidas (incluye el host descubierto).

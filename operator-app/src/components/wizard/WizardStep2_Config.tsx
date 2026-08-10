@@ -20,10 +20,25 @@ interface Props {
 export default function WizardStep2_Config({ state, deviceType, onUpdate, onBack, onNext }: Props) {
   const [keyError, setKeyError] = useState<string | null>(null);
   const [loadingKey, setLoadingKey] = useState(false);
+  const [bridgeDetecting, setBridgeDetecting] = useState(false);
+  const [bridgeError, setBridgeError] = useState<string | null>(null);
+  const [bridgeOverride, setBridgeOverride] = useState(false);
   const gateway = isGateway(deviceType);
 
   useEffect(() => {
-    if (gateway) return;
+    if (gateway) {
+      if (state.chirpstackHost) return;
+      setBridgeDetecting(true);
+      setBridgeError(null);
+      invoke<string>("detect_gateway_bridge_host")
+        .then((host) => {
+          onUpdate({ chirpstackHost: host });
+          setBridgeError(null);
+        })
+        .catch((err: string) => setBridgeError(err))
+        .finally(() => setBridgeDetecting(false));
+      return;
+    }
     if (state.devEui || state.appKey) return;
     setLoadingKey(true);
     invoke<KeyEntry>("next_available_key")
@@ -37,7 +52,9 @@ export default function WizardStep2_Config({ state, deviceType, onUpdate, onBack
   }, []);
 
   const valid = gateway
-    ? state.wifiSsid.trim().length > 0 && state.wifiPass.trim().length > 0
+    ? state.wifiSsid.trim().length > 0 &&
+      state.wifiPass.trim().length > 0 &&
+      state.chirpstackHost.trim().length > 0
     : state.wifiSsid.trim().length > 0 &&
       state.wifiPass.trim().length > 0 &&
       state.devEui.length === 16 &&
@@ -83,6 +100,66 @@ export default function WizardStep2_Config({ state, deviceType, onUpdate, onBack
           </div>
         </div>
       </fieldset>
+
+      {/* ChirpStack Gateway Bridge (solo para gateways) */}
+      {gateway && (
+        <fieldset style={{ border: "1px solid #2d3148", borderRadius: 8, padding: "16px 16px 12px" }}>
+          <legend style={{ fontSize: 12, color: "#64748b", padding: "0 6px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            ChirpStack Gateway Bridge
+          </legend>
+          {bridgeDetecting ? (
+            <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>Detectando host…</p>
+          ) : bridgeError ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <p style={{ fontSize: 12, color: "#f87171", margin: 0 }}>{bridgeError}</p>
+              <div className="field-row">
+                <label className="field-label">Host</label>
+                <input
+                  className="field-input"
+                  type="text"
+                  placeholder="192.168.1.10:1700"
+                  value={state.chirpstackHost}
+                  onChange={(e) => onUpdate({ chirpstackHost: e.target.value })}
+                />
+              </div>
+            </div>
+          ) : bridgeOverride ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div className="field-row">
+                <label className="field-label">Host</label>
+                <input
+                  className="field-input"
+                  type="text"
+                  placeholder="192.168.1.10:1700"
+                  value={state.chirpstackHost}
+                  onChange={(e) => onUpdate({ chirpstackHost: e.target.value })}
+                  autoFocus
+                />
+              </div>
+              <button
+                style={{ alignSelf: "flex-start", fontSize: 12, color: "#64748b", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                onClick={() => setBridgeOverride(false)}
+              >
+                ← Usar detectado
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 13, color: "#4ade80" }}>✓</span>
+                <code style={{ fontSize: 13, color: "#e2e8f0", fontFamily: "monospace" }}>{state.chirpstackHost}</code>
+                <span style={{ fontSize: 11, color: "#64748b" }}>detectado</span>
+              </div>
+              <button
+                style={{ fontSize: 12, color: "#64748b", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}
+                onClick={() => setBridgeOverride(true)}
+              >
+                Cambiar
+              </button>
+            </div>
+          )}
+        </fieldset>
+      )}
 
       {/* OTAA Keys (solo para nodos) */}
       {!gateway && (
