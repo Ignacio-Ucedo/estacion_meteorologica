@@ -85,6 +85,11 @@ jobs:
           echo "Sourcing: $EXPORT_SH"
           . "$EXPORT_SH"
           echo "PATH=$PATH" >> "$GITHUB_ENV"
+          # bindgen necesita el clang con soporte Xtensa de Espressif
+          [ -n "$LIBCLANG_PATH" ] && echo "LIBCLANG_PATH=$LIBCLANG_PATH" >> "$GITHUB_ENV"
+          [ -n "$CLANG_PATH" ]    && echo "CLANG_PATH=$CLANG_PATH"       >> "$GITHUB_ENV"
+          [ -n "$IDF_PATH" ]      && echo "IDF_PATH=$IDF_PATH"           >> "$GITHUB_ENV"
+          [ -n "$IDF_TOOLS_PATH" ] && echo "IDF_TOOLS_PATH=$IDF_TOOLS_PATH" >> "$GITHUB_ENV"
 
       - name: Build gateway-node-mock (release)
         working-directory: firmware
