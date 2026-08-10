@@ -55,7 +55,18 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-esp32-
 
       - name: Configure ESP Rust toolchain
-        run: rustup default esp
+        run: |
+          # espressif/idf-rust instala el toolchain para su usuario default.
+          # Buscamos el toolchain 'esp' y apuntamos RUSTUP_HOME al directorio correcto.
+          for candidate in /usr/local/rustup /root/.rustup /home/user/.rustup /home/esp/.rustup; do
+            if [ -d "$candidate/toolchains/esp" ]; then
+              export RUSTUP_HOME="$candidate"
+              echo "RUSTUP_HOME=$candidate" >> "$GITHUB_ENV"
+              echo "Found esp toolchain at: $candidate"
+              break
+            fi
+          done
+          rustup default esp
 
       - name: Install espflash
         run: cargo install espflash --locked
