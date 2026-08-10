@@ -29,6 +29,7 @@ interface FirmwareStatus {
   cached_tag: string | null;
   needs_update: boolean;
   bin_assets: AssetStatus[];
+  offline: boolean;
 }
 
 interface DownloadProgressEvent {
@@ -58,6 +59,7 @@ function formatBytes(n: number) {
 export default function WizardStep3_Flash({ state, deviceType, onUpdate, onBack, onNext }: Props) {
   const [phase, setPhase] = useState<Phase>("fetching");
   const [phaseLabel, setPhaseLabel] = useState("Verificando firmware…");
+  const [offline, setOffline] = useState(false);
   const [firmwareTag, setFirmwareTag] = useState<string | null>(null);
   const [dlProgress, setDlProgress] = useState<{ downloaded: number; total: number | null } | null>(null);
   const [logs, setLogs] = useState<LogLine[]>([]);
@@ -84,6 +86,7 @@ export default function WizardStep3_Flash({ state, deviceType, onUpdate, onBack,
     try {
       const info = await invoke<FirmwareStatus>("check_firmware_update");
       setFirmwareTag(info.latest_tag);
+      setOffline(info.offline);
 
       const targetName = FIRMWARE_ASSET[deviceType];
       const asset =
@@ -91,8 +94,11 @@ export default function WizardStep3_Flash({ state, deviceType, onUpdate, onBack,
       if (!asset) throw new Error("No se encontraron archivos .bin en el último release de GitHub.");
 
       if (!info.needs_update && asset.cached_path) {
-        // Ya tenemos la versión más reciente en caché.
-        setPhaseLabel(`Firmware ${info.latest_tag} en caché`);
+        setPhaseLabel(
+          info.offline
+            ? `Sin internet — usando caché ${info.latest_tag}`
+            : `Firmware ${info.latest_tag} en caché`
+        );
         firmwarePath = asset.cached_path;
       } else {
         // ── 2. Descargar ─────────────────────────────────────────────────
@@ -172,6 +178,28 @@ export default function WizardStep3_Flash({ state, deviceType, onUpdate, onBack,
         </p>
       </div>
 
+      {/* Banner offline */}
+      {offline && phase !== "error" && (
+        <div style={{
+          padding: "10px 14px",
+          background: "#1c1a0a",
+          border: "1px solid #854d0e",
+          borderRadius: 8,
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          fontSize: 12,
+        }}>
+          <span style={{ fontSize: 14, flexShrink: 0 }}>⚠</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <span style={{ color: "#fbbf24", fontWeight: 600 }}>Sin conexión a internet</span>
+            <span style={{ color: "#92400e" }}>
+              Usando firmware cacheado localmente. La versión puede no ser la última.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Estado principal */}
       <div style={{
         padding: "14px 16px",
@@ -196,7 +224,8 @@ export default function WizardStep3_Flash({ state, deviceType, onUpdate, onBack,
           {firmwareTag && phase !== "error" && (
             <span style={{
               fontSize: 11, padding: "1px 6px", borderRadius: 4,
-              background: "#1e3a5f", color: "#60a5fa",
+              background: offline ? "#292109" : "#1e3a5f",
+              color: offline ? "#fbbf24" : "#60a5fa",
             }}>
               {firmwareTag}
             </span>
@@ -205,7 +234,7 @@ export default function WizardStep3_Flash({ state, deviceType, onUpdate, onBack,
 
         {/* Mensaje de error */}
         {phase === "error" && errorMsg && !usbPermError && (
-          <p style={{ fontSize: 12, color: "#f87171", margin: 0, lineHeight: 1.6 }}>
+          <p style={{ fontSize: 12, color: "#f87171", margin: 0, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
             {errorMsg}
           </p>
         )}

@@ -23,6 +23,8 @@ pub struct FirmwareStatus {
     pub cached_tag: Option<String>,
     pub needs_update: bool,
     pub bin_assets: Vec<AssetStatus>,
+    /// true cuando GitHub no fue alcanzable y se usa el caché local como fallback.
+    pub offline: bool,
 }
 
 #[derive(serde::Serialize, Clone)]
@@ -63,34 +65,82 @@ fn sha256_asset_url(assets: &[ReleaseAsset], bin_name: &str) -> Option<String> {
 }
 
 // 11.1: Consulta GitHub y retorna el estado del firmware (última versión vs caché).
+// Si GitHub no es alcanzable y existe un caché local, retorna offline: true en vez de error.
 #[tauri::command]
 pub async fn check_firmware_update(app: AppHandle) -> Result<FirmwareStatus, String> {
-    let release = github::get_latest_release(DEFAULT_REPO).await?;
+    match github::get_latest_release(DEFAULT_REPO).await {
+        Ok(release) => {
+            let cached_tag = read_cached_tag(&app);
+            let needs_update = cached_tag.as_deref() != Some(&release.tag_name);
 
-    let cached_tag = read_cached_tag(&app);
-    let needs_update = cached_tag.as_deref() != Some(&release.tag_name);
+            let bin_assets: Vec<AssetStatus> = release
+                .assets
+                .iter()
+                .filter(|a| a.name.ends_with(".bin"))
+                .map(|a| AssetStatus {
+                    name: a.name.clone(),
+                    download_url: a.browser_download_url.clone(),
+                    sha256_url: sha256_asset_url(&release.assets, &a.name),
+                    size: a.size,
+                    cached_path: cached_bin_path(&app, &release.tag_name, &a.name)
+                        .map(|p| p.to_string_lossy().to_string()),
+                })
+                .collect();
 
-    let bin_assets: Vec<AssetStatus> = release
-        .assets
-        .iter()
-        .filter(|a| a.name.ends_with(".bin"))
-        .map(|a| AssetStatus {
-            name: a.name.clone(),
-            download_url: a.browser_download_url.clone(),
-            sha256_url: sha256_asset_url(&release.assets, &a.name),
-            size: a.size,
-            cached_path: cached_bin_path(&app, &release.tag_name, &a.name)
-                .map(|p| p.to_string_lossy().to_string()),
-        })
-        .collect();
+            Ok(FirmwareStatus {
+                latest_tag: release.tag_name,
+                html_url: release.html_url,
+                cached_tag,
+                needs_update,
+                bin_assets,
+                offline: false,
+            })
+        }
+        Err(net_err) => {
+            // Fallback offline: usar caché local si existe.
+            let cached_tag = read_cached_tag(&app).ok_or_else(|| {
+                format!("Sin conexión a internet y sin firmware cacheado. Conectate a internet para descargar el firmware por primera vez.\n\nDetalle: {net_err}")
+            })?;
 
-    Ok(FirmwareStatus {
-        latest_tag: release.tag_name,
-        html_url: release.html_url,
-        cached_tag,
-        needs_update,
-        bin_assets,
-    })
+            let tag_dir = firmware_dir(&app)?.join(&cached_tag);
+            let mut bin_assets: Vec<AssetStatus> = std::fs::read_dir(&tag_dir)
+                .map_err(|_| {
+                    format!("Sin conexión a internet y sin firmware cacheado en disco. Conectate a internet para descargar el firmware por primera vez.\n\nDetalle: {net_err}")
+                })?
+                .filter_map(|e| e.ok())
+                .filter(|e| e.file_name().to_string_lossy().ends_with(".bin"))
+                .map(|e| {
+                    let name = e.file_name().to_string_lossy().to_string();
+                    let path = e.path().to_string_lossy().to_string();
+                    let size = e.metadata().map(|m| m.len()).unwrap_or(0);
+                    AssetStatus {
+                        name,
+                        download_url: String::new(),
+                        sha256_url: None,
+                        size,
+                        cached_path: Some(path),
+                    }
+                })
+                .collect();
+
+            if bin_assets.is_empty() {
+                return Err(format!(
+                    "Sin conexión a internet y sin firmware cacheado. Conectate a internet para descargar el firmware por primera vez.\n\nDetalle: {net_err}"
+                ));
+            }
+
+            bin_assets.sort_by(|a, b| a.name.cmp(&b.name));
+
+            Ok(FirmwareStatus {
+                latest_tag: cached_tag.clone(),
+                html_url: String::new(),
+                cached_tag: Some(cached_tag),
+                needs_update: false,
+                bin_assets,
+                offline: true,
+            })
+        }
+    }
 }
 
 // 11.2 + 11.4: Descarga el .bin, verifica SHA256 y lo cachea localmente.
