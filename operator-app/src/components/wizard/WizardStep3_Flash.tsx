@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { WizardState } from "./types";
+import { FIRMWARE_ASSET, type DeviceType, type WizardState } from "./types";
 
 type Phase =
   | "fetching"   // consultando GitHub Releases
@@ -43,6 +43,7 @@ interface FlashLogEvent {
 
 interface Props {
   state: WizardState;
+  deviceType: DeviceType;
   onUpdate: (updates: Partial<WizardState>) => void;
   onBack: () => void;
   onNext: () => void;
@@ -54,7 +55,7 @@ function formatBytes(n: number) {
   return `${(n / 1048576).toFixed(2)} MB`;
 }
 
-export default function WizardStep3_Flash({ state, onUpdate, onBack, onNext }: Props) {
+export default function WizardStep3_Flash({ state, deviceType, onUpdate, onBack, onNext }: Props) {
   const [phase, setPhase] = useState<Phase>("fetching");
   const [phaseLabel, setPhaseLabel] = useState("Verificando firmware…");
   const [firmwareTag, setFirmwareTag] = useState<string | null>(null);
@@ -84,7 +85,9 @@ export default function WizardStep3_Flash({ state, onUpdate, onBack, onNext }: P
       const info = await invoke<FirmwareStatus>("check_firmware_update");
       setFirmwareTag(info.latest_tag);
 
-      const asset = info.bin_assets[0];
+      const targetName = FIRMWARE_ASSET[deviceType];
+      const asset =
+        info.bin_assets.find((a) => a.name === targetName) ?? info.bin_assets[0];
       if (!asset) throw new Error("No se encontraron archivos .bin en el último release de GitHub.");
 
       if (!info.needs_update && asset.cached_path) {

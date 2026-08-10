@@ -13,7 +13,7 @@ const ITEMS: SidebarItem[] = [
   { id: "users", label: "Usuarios", icon: "👤" },
   { id: "gateway", label: "Gateway Virtual", icon: "📡" },
   { id: "history", label: "Historial", icon: "📋" },
-  { id: "flash-gateway-mock", label: "Flash Gateway Mock", icon: "💾", comingSoon: true },
+  { id: "flash-gateway-mock", label: "Flash Gateway Mock", icon: "💾" },
   { id: "flash-gateway-real", label: "Flash Gateway Real", icon: "💾", comingSoon: true },
   { id: "flash-node-mock", label: "Flash Node Mock", icon: "💾", comingSoon: true },
   { id: "flash-node-real", label: "Flash Node Real", icon: "💾", comingSoon: true },

@@ -30,13 +30,13 @@ function App() {
       case "history":    return <HistoryPanel />;
       case "settings":   return <SettingsPanel onUrlChange={setBackendUrl} devEui={otaaKeys.devEui} appKey={otaaKeys.appKey} />;
       case "flash-gateway-mock":
-        return <FlashWizard title="Flash Gateway Mock" />;
+        return <FlashWizard title="Flash Gateway Mock" deviceType="gateway-mock" />;
       case "flash-gateway-real":
-        return <FlashWizard title="Flash Gateway Real" />;
+        return <FlashWizard title="Flash Gateway Real" deviceType="gateway-real" />;
       case "flash-node-mock":
-        return <FlashWizard title="Flash Node Mock" />;
+        return <FlashWizard title="Flash Node Mock" deviceType="node-mock" />;
       case "flash-node-real":
-        return <FlashWizard title="Flash Node Real" />;
+        return <FlashWizard title="Flash Node Real" deviceType="node-real" />;
     }
   };
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { WizardState } from "./types";
+import { isGateway, type DeviceType, type WizardState } from "./types";
 
 type Phase = "idle" | "flashing" | "verifying" | "ok" | "error";
 
@@ -18,11 +18,13 @@ interface FlashLogEvent {
 
 interface Props {
   state: WizardState;
+  deviceType: DeviceType;
   onBack: () => void;
   onNext: () => void;
 }
 
-export default function WizardStep4_NVS({ state, onBack, onNext }: Props) {
+export default function WizardStep4_NVS({ state, deviceType, onBack, onNext }: Props) {
+  const gateway = isGateway(deviceType);
   const [phase, setPhase] = useState<Phase>("idle");
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [verified, setVerified] = useState<boolean | null>(null);
@@ -37,13 +39,21 @@ export default function WizardStep4_NVS({ state, onBack, onNext }: Props) {
     setLogs((prev) => [...prev, { ts, text, level }]);
   }
 
-  const nvsParams = {
-    dev_eui_hex: state.devEui,
-    app_eui_hex: state.appEui,
-    app_key_hex: state.appKey,
-    wifi_ssid: state.wifiSsid,
-    wifi_pass: state.wifiPass,
-  };
+  const nvsParams = gateway
+    ? {
+        dev_eui_hex: "0000000000000000",
+        app_eui_hex: "0000000000000000",
+        app_key_hex: "00000000000000000000000000000000",
+        wifi_ssid: state.wifiSsid,
+        wifi_pass: state.wifiPass,
+      }
+    : {
+        dev_eui_hex: state.devEui,
+        app_eui_hex: state.appEui,
+        app_key_hex: state.appKey,
+        wifi_ssid: state.wifiSsid,
+        wifi_pass: state.wifiPass,
+      };
 
   async function startNvsFlash() {
     setPhase("flashing");
@@ -77,7 +87,9 @@ export default function WizardStep4_NVS({ state, onBack, onNext }: Props) {
 
   const steps = [
     {
-      label: `Generar partición NVS (${state.devEui})`,
+      label: gateway
+        ? "Generar partición NVS (WiFi)"
+        : `Generar partición NVS (${state.devEui})`,
       done: ["verifying", "ok", "error"].includes(phase) && phase !== "idle",
       active: phase === "flashing",
     },
@@ -106,15 +118,17 @@ export default function WizardStep4_NVS({ state, onBack, onNext }: Props) {
           Flash de partición NVS
         </h3>
         <p style={{ fontSize: 13, color: "#64748b" }}>
-          Escribe las claves OTAA y credenciales WiFi en la partición NVS del ESP32.
+          {gateway
+            ? "Escribe las credenciales WiFi en la partición NVS del ESP32."
+            : "Escribe las claves OTAA y credenciales WiFi en la partición NVS del ESP32."}
         </p>
       </div>
 
       {/* Parámetros */}
       <div style={{ background: "#1a1d2e", border: "1px solid #2d3148", borderRadius: 8, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 4, fontSize: 12, fontFamily: "monospace" }}>
-        <KV label="lorawan/dev_eui" value={state.devEui} />
-        <KV label="lorawan/app_eui" value={state.appEui} />
-        <KV label="lorawan/app_key" value={state.appKey} />
+        {!gateway && <KV label="lorawan/dev_eui" value={state.devEui} />}
+        {!gateway && <KV label="lorawan/app_eui" value={state.appEui} />}
+        {!gateway && <KV label="lorawan/app_key" value={state.appKey} />}
         <KV label="wifi/ssid" value={state.wifiSsid} />
         <KV label="wifi/pass" value={"•".repeat(Math.min(state.wifiPass.length, 12))} />
       </div>
@@ -201,7 +215,7 @@ export default function WizardStep4_NVS({ state, onBack, onNext }: Props) {
           )}
           {phase === "ok" && (
             <button className="btn btn-primary" onClick={onNext}>
-              Siguiente → ChirpStack
+              {gateway ? "Finalizar →" : "Siguiente → ChirpStack"}
             </button>
           )}
         </div>

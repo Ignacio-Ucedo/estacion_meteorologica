@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { INITIAL_STATE, type WizardState } from "./types";
+import { INITIAL_STATE, type DeviceType, type WizardState } from "./types";
 import WizardStep1_Port from "./WizardStep1_Port";
 import WizardStep2_Config from "./WizardStep2_Config";
 import WizardStep3_Flash from "./WizardStep3_Flash";
@@ -10,9 +10,10 @@ const STEPS = ["Puerto", "Config", "Firmware", "NVS", "ChirpStack"] as const;
 
 interface Props {
   title: string;
+  deviceType: DeviceType;
 }
 
-export default function FlashWizard({ title }: Props) {
+export default function FlashWizard({ title, deviceType }: Props) {
   const [state, setState] = useState<WizardState>(INITIAL_STATE);
 
   const patch = (updates: Partial<WizardState>) =>
@@ -30,17 +31,18 @@ export default function FlashWizard({ title }: Props) {
         return (
           <WizardStep2_Config
             state={state}
+            deviceType={deviceType}
             onUpdate={patch}
             onBack={() => goTo(1)}
             onNext={() => goTo(3)}
           />
         );
       case 3:
-        return <WizardStep3_Flash state={state} onUpdate={patch} onBack={() => goTo(2)} onNext={() => goTo(4)} />;
+        return <WizardStep3_Flash state={state} deviceType={deviceType} onUpdate={patch} onBack={() => goTo(2)} onNext={() => goTo(4)} />;
       case 4:
-        return <WizardStep4_NVS state={state} onBack={() => goTo(3)} onNext={() => goTo(5)} />;
+        return <WizardStep4_NVS state={state} deviceType={deviceType} onBack={() => goTo(3)} onNext={() => goTo(5)} />;
       case 5:
-        return <WizardStep5_ChirpStack state={state} onReset={reset} />;
+        return <WizardStep5_ChirpStack state={state} deviceType={deviceType} onReset={reset} />;
     }
   };
 

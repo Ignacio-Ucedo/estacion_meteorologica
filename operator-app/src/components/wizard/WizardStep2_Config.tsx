@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { WizardState } from "./types";
+import { isGateway, type DeviceType, type WizardState } from "./types";
 
 interface KeyEntry {
   dev_eui: string;
@@ -11,16 +11,19 @@ interface KeyEntry {
 
 interface Props {
   state: WizardState;
+  deviceType: DeviceType;
   onUpdate: (u: Partial<WizardState>) => void;
   onBack: () => void;
   onNext: () => void;
 }
 
-export default function WizardStep2_Config({ state, onUpdate, onBack, onNext }: Props) {
+export default function WizardStep2_Config({ state, deviceType, onUpdate, onBack, onNext }: Props) {
   const [keyError, setKeyError] = useState<string | null>(null);
   const [loadingKey, setLoadingKey] = useState(false);
+  const gateway = isGateway(deviceType);
 
   useEffect(() => {
+    if (gateway) return;
     if (state.devEui || state.appKey) return;
     setLoadingKey(true);
     invoke<KeyEntry>("next_available_key")
@@ -33,17 +36,18 @@ export default function WizardStep2_Config({ state, onUpdate, onBack, onNext }: 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const valid =
-    state.wifiSsid.trim().length > 0 &&
-    state.wifiPass.trim().length > 0 &&
-    state.devEui.length === 16 &&
-    state.appKey.length === 32;
+  const valid = gateway
+    ? state.wifiSsid.trim().length > 0 && state.wifiPass.trim().length > 0
+    : state.wifiSsid.trim().length > 0 &&
+      state.wifiPass.trim().length > 0 &&
+      state.devEui.length === 16 &&
+      state.appKey.length === 32;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 480 }}>
       <div>
         <h3 style={{ fontSize: 15, fontWeight: 600, color: "#e2e8f0", marginBottom: 4 }}>
-          Configuración del nodo
+          {gateway ? "Configuración del gateway" : "Configuración del nodo"}
         </h3>
         <p style={{ fontSize: 13, color: "#64748b" }}>
           Puerto seleccionado:{" "}
@@ -80,44 +84,46 @@ export default function WizardStep2_Config({ state, onUpdate, onBack, onNext }: 
         </div>
       </fieldset>
 
-      {/* OTAA Keys (solo lectura) */}
-      <fieldset style={{ border: "1px solid #2d3148", borderRadius: 8, padding: "16px 16px 12px" }}>
-        <legend style={{ fontSize: 12, color: "#64748b", padding: "0 6px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-          Claves OTAA
-        </legend>
-        {loadingKey ? (
-          <p style={{ fontSize: 13, color: "#64748b" }}>Asignando claves OTAA…</p>
-        ) : keyError ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <p style={{ fontSize: 13, color: "#f87171" }}>
-              Error al obtener claves: {keyError}
-            </p>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div className="field-row">
-              <label className="field-label">DevEUI</label>
-              <input
-                className="field-input"
-                type="text"
-                value={state.devEui}
-                readOnly
-                style={{ opacity: 0.7, cursor: "default", fontFamily: "monospace" }}
-              />
+      {/* OTAA Keys (solo para nodos) */}
+      {!gateway && (
+        <fieldset style={{ border: "1px solid #2d3148", borderRadius: 8, padding: "16px 16px 12px" }}>
+          <legend style={{ fontSize: 12, color: "#64748b", padding: "0 6px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Claves OTAA
+          </legend>
+          {loadingKey ? (
+            <p style={{ fontSize: 13, color: "#64748b" }}>Asignando claves OTAA…</p>
+          ) : keyError ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <p style={{ fontSize: 13, color: "#f87171" }}>
+                Error al obtener claves: {keyError}
+              </p>
             </div>
-            <div className="field-row">
-              <label className="field-label">AppKey</label>
-              <input
-                className="field-input"
-                type="text"
-                value={state.appKey}
-                readOnly
-                style={{ opacity: 0.7, cursor: "default", fontFamily: "monospace", fontSize: 11 }}
-              />
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="field-row">
+                <label className="field-label">DevEUI</label>
+                <input
+                  className="field-input"
+                  type="text"
+                  value={state.devEui}
+                  readOnly
+                  style={{ opacity: 0.7, cursor: "default", fontFamily: "monospace" }}
+                />
+              </div>
+              <div className="field-row">
+                <label className="field-label">AppKey</label>
+                <input
+                  className="field-input"
+                  type="text"
+                  value={state.appKey}
+                  readOnly
+                  style={{ opacity: 0.7, cursor: "default", fontFamily: "monospace", fontSize: 11 }}
+                />
+              </div>
             </div>
-          </div>
-        )}
-      </fieldset>
+          )}
+        </fieldset>
+      )}
 
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
         <button className="btn btn-secondary" onClick={onBack}>

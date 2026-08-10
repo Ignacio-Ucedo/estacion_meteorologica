@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { WizardState } from "./types";
+import { isGateway, type DeviceType, type WizardState } from "./types";
 
 type RegStatus = "idle" | "registering" | "ok" | "error";
 
@@ -23,10 +23,48 @@ interface DiscoverResult {
 
 interface Props {
   state: WizardState;
+  deviceType: DeviceType;
   onReset: () => void;
 }
 
-export default function WizardStep5_ChirpStack({ state, onReset }: Props) {
+export default function WizardStep5_ChirpStack({ state, deviceType, onReset }: Props) {
+  if (isGateway(deviceType)) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 520 }}>
+        <div style={{
+          padding: "24px 20px",
+          background: "#14532d",
+          border: "1px solid #166534",
+          borderRadius: 8,
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          alignItems: "center",
+        }}>
+          <div style={{ fontSize: 28 }}>✓</div>
+          <p style={{ fontSize: 15, color: "#4ade80", fontWeight: 600, textAlign: "center" }}>
+            Gateway configurado correctamente
+          </p>
+          <p style={{ fontSize: 12, color: "#86efac", textAlign: "center" }}>
+            Firmware y WiFi flasheados. El gateway se conectará automáticamente a ChirpStack al encenderse.
+          </p>
+        </div>
+        <div style={{
+          background: "#1a1d2e", border: "1px solid #2d3148", borderRadius: 8,
+          padding: "12px 14px", display: "flex", flexDirection: "column", gap: 4,
+          fontSize: 12, color: "#64748b",
+        }}>
+          <p style={{ fontWeight: 600, color: "#94a3b8", marginBottom: 4 }}>Resumen</p>
+          <p>Puerto: <code style={{ fontFamily: "monospace", color: "#e2e8f0" }}>{state.port}</code></p>
+          <p>WiFi SSID: <code style={{ fontFamily: "monospace", color: "#e2e8f0" }}>{state.wifiSsid}</code></p>
+          <p>Firmware: <code style={{ fontFamily: "monospace", color: "#e2e8f0" }}>{state.firmwarePath.split("/").pop() ?? state.firmwarePath}</code></p>
+        </div>
+        <button className="btn btn-primary" onClick={onReset}>
+          Nuevo aprovisionamiento
+        </button>
+      </div>
+    );
+  }
   const [status, setStatus] = useState<RegStatus>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [resultMsg, setResultMsg] = useState<string>("");
