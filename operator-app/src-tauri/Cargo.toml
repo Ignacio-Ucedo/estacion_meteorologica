@@ -32,6 +32,7 @@ serialport = "4"
 rusqlite = { version = "0.31", features = ["bundled"] }
 base64 = "0.21"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+prost = "0.13"
 sha2 = "0.10"
 rand = "0.8"
 weather-core = { path = "../../weather-core" }

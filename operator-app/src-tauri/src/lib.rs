@@ -12,8 +12,8 @@ mod state;
 
 use commands::chirpstack::{
     detect_gateway_bridge_host, discover_and_save_chirpstack_host, discover_chirpstack_ids,
-    load_chirpstack_config, register_device_chirpstack, register_gateway, reset_device_activation,
-    save_chirpstack_config, sync_chirpstack,
+    ensure_chirpstack_defaults, load_chirpstack_config, register_device_chirpstack,
+    register_gateway, reset_device_activation, save_chirpstack_config, sync_chirpstack,
 };
 use commands::customer::{associate_station_to_customer, fetch_customers};
 use commands::device_log::{export_devices_csv, list_devices, log_provisioning};
@@ -47,6 +47,7 @@ pub fn run() {
             register_gateway,
             reset_device_activation,
             discover_chirpstack_ids,
+            ensure_chirpstack_defaults,
             save_chirpstack_config,
             load_chirpstack_config,
             list_ports,

@@ -85,6 +85,7 @@ pub async fn register_device_chirpstack(
 }
 
 // 9.1: Descubre las aplicaciones, perfiles y tenants disponibles en ChirpStack.
+// Primero lista tenants, luego apps/profiles filtradas por el primer tenant.
 #[tauri::command]
 pub async fn discover_chirpstack_ids(
     host: String,
@@ -92,16 +93,48 @@ pub async fn discover_chirpstack_ids(
 ) -> Result<serde_json::Value, String> {
     let creds = ChirpstackCreds { host, api_token };
 
-    let (apps, profiles, tenants) = tokio::try_join!(
-        chirpstack_api::list_applications(&creds),
-        chirpstack_api::list_device_profiles(&creds),
-        chirpstack_api::list_tenants(&creds),
+    let tenants = chirpstack_api::list_tenants(&creds).await?;
+    let tenant_id = tenants.first().map(|t| t.id.as_str()).unwrap_or("");
+
+    let (apps, profiles) = tokio::try_join!(
+        chirpstack_api::list_applications(&creds, tenant_id),
+        chirpstack_api::list_device_profiles(&creds, tenant_id),
     )?;
 
     Ok(serde_json::json!({
         "applications": apps,
         "deviceProfiles": profiles,
         "tenants": tenants,
+    }))
+}
+
+/// Garantiza que existan una aplicación y un device profile por defecto en ChirpStack.
+/// Si no existen, los crea. Si no se pasa tenant_id, usa el primero disponible.
+#[tauri::command]
+pub async fn ensure_chirpstack_defaults(
+    host: String,
+    api_token: String,
+    tenant_id: Option<String>,
+) -> Result<serde_json::Value, String> {
+    let creds = ChirpstackCreds { host, api_token };
+
+    let tid = match tenant_id.filter(|s| !s.is_empty()) {
+        Some(t) => t,
+        None => {
+            let tenants = chirpstack_api::list_tenants(&creds).await?;
+            tenants.into_iter().next()
+                .map(|t| t.id)
+                .ok_or("No se encontró ningún tenant. Verificá el token de ChirpStack.")?
+        }
+    };
+
+    let app_id = chirpstack_api::create_application(&creds, &tid, "Estación Meteorológica").await?;
+    let profile_id = chirpstack_api::create_device_profile(&creds, &tid, "AU915 Node").await?;
+
+    Ok(serde_json::json!({
+        "appId": app_id,
+        "profileId": profile_id,
+        "tenantId": tid,
     }))
 }
 
@@ -150,12 +183,18 @@ pub async fn discover_and_save_chirpstack_host(app: AppHandle) -> Result<String,
 #[tauri::command]
 pub fn save_chirpstack_config(
     app: AppHandle,
+    host: Option<String>,
     api_token: String,
     app_id: String,
     profile_id: String,
     tenant_id: Option<String>,
 ) -> Result<(), String> {
     let store = app.store(STORE_FILE).map_err(|e| e.to_string())?;
+    if let Some(h) = host {
+        if !h.is_empty() {
+            store.set(KEY_HOST, serde_json::json!(h));
+        }
+    }
     store.set(KEY_TOKEN, serde_json::json!(api_token));
     store.set(KEY_APP_ID, serde_json::json!(app_id));
     store.set(KEY_PROFILE_ID, serde_json::json!(profile_id));
