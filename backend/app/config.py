@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     sensor_k_wind: float = 0.5
     sensor_k_rain: float = 0.2794
 
+    jwt_secret: str = "change-me-in-prod"
+    jwt_algorithm: str = "HS256"
+    users_db_path: str = "/data/users.db"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
