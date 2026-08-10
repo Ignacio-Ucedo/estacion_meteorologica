@@ -72,26 +72,28 @@ jobs:
         run: cargo install espflash --locked
 
       - name: Set up ESP environment for root
+        shell: bash
         run: |
-          # espressif/idf-rust usa espup, que genera ~/export-esp.sh
-          # (no el export.sh del esp-idf clásico).
           USER_HOME=$(dirname "$RUSTUP_HOME")
           EXPORT_SH="$USER_HOME/export-esp.sh"
           if [ ! -f "$EXPORT_SH" ]; then
-            echo "ERROR: $EXPORT_SH no encontrado. Contenido de $USER_HOME:"
-            ls -la "$USER_HOME/" || true
+            echo "ERROR: $EXPORT_SH no encontrado"
+            ls -la "$USER_HOME/"
             exit 1
           fi
-          echo "Sourcing: $EXPORT_SH"
-          set +e   # export-esp.sh tiene comandos non-zero no críticos; sh -e los abortaría
-          . "$EXPORT_SH"
-          set -e
-          echo "PATH=$PATH" >> "$GITHUB_ENV"
-          # bindgen necesita el clang con soporte Xtensa de Espressif
-          [ -n "$LIBCLANG_PATH" ] && echo "LIBCLANG_PATH=$LIBCLANG_PATH" >> "$GITHUB_ENV"
-          [ -n "$CLANG_PATH" ]    && echo "CLANG_PATH=$CLANG_PATH"       >> "$GITHUB_ENV"
-          [ -n "$IDF_PATH" ]      && echo "IDF_PATH=$IDF_PATH"           >> "$GITHUB_ENV"
-          [ -n "$IDF_TOOLS_PATH" ] && echo "IDF_TOOLS_PATH=$IDF_TOOLS_PATH" >> "$GITHUB_ENV"
+          echo "=== export-esp.sh ==="
+          cat "$EXPORT_SH"
+          echo "====================="
+          # Parseamos línea por línea sin sourcear (evita exit/errores internos del script)
+          while IFS= read -r line; do
+            case "$line" in
+              'export PATH='*)          eval "${line#export }" ; echo "PATH=$PATH"                     >> "$GITHUB_ENV" ;;
+              'export LIBCLANG_PATH='*) eval "${line#export }" ; echo "LIBCLANG_PATH=$LIBCLANG_PATH"   >> "$GITHUB_ENV" ;;
+              'export CLANG_PATH='*)    eval "${line#export }" ; echo "CLANG_PATH=$CLANG_PATH"         >> "$GITHUB_ENV" ;;
+              'export IDF_PATH='*)      eval "${line#export }" ; echo "IDF_PATH=$IDF_PATH"             >> "$GITHUB_ENV" ;;
+              'export IDF_TOOLS_PATH='*) eval "${line#export }" ; echo "IDF_TOOLS_PATH=$IDF_TOOLS_PATH" >> "$GITHUB_ENV" ;;
+            esac
+          done < "$EXPORT_SH"
 
       - name: Build gateway-node-mock (release)
         working-directory: firmware
