@@ -44,6 +44,7 @@ def ensure_station(dev_eui: str) -> None:
         Point("station_meta")
         .tag("dev_eui", dev_eui)
         .tag("station_id", station_id)
+        .tag("owner_id", "")
         .field("name", f"Auto {dev_eui[:8]}")
         .field("location", "Unknown")
         .time(datetime.now(UTC), WritePrecision.NS)
@@ -55,11 +56,46 @@ def ensure_station(dev_eui: str) -> None:
         log.error("station_create_error dev_eui=%s error=%s", dev_eui, e)
 
 
-def list_stations() -> list[dict]:
+def set_station_owner(station_id: str, owner_id: str) -> bool:
+    """Associate station with owner. Writes new station_meta point preserving name/location."""
     s = get_settings()
+    rows = query(f'''from(bucket: "{s.influxdb_bucket}")
+  |> range(start: -3650d)
+  |> filter(fn: (r) => r._measurement == "station_meta" and r.station_id == "{station_id}")
+  |> last()''')
+    if not rows:
+        return False
+
+    dev_eui = rows[0].get("dev_eui", "")
+    name = f"Auto {dev_eui[:8]}"
+    location = "Unknown"
+    for row in rows:
+        field = row.get("_field")
+        if field == "name":
+            name = str(row.get("_value", name))
+        elif field == "location":
+            location = str(row.get("_value", location))
+
+    point = (
+        Point("station_meta")
+        .tag("dev_eui", dev_eui)
+        .tag("station_id", station_id)
+        .tag("owner_id", owner_id)
+        .field("name", name)
+        .field("location", location)
+        .time(datetime.now(UTC), WritePrecision.NS)
+    )
+    write(point)
+    log.info("station_owner_set station_id=%s owner_id=%s", station_id, owner_id)
+    return True
+
+
+def list_stations(owner_filter: str | None = None) -> list[dict]:
+    s = get_settings()
+    owner_clause = f' and r.owner_id == "{owner_filter}"' if owner_filter else ""
     meta_rows = query(f'''from(bucket: "{s.influxdb_bucket}")
   |> range(start: -3650d)
-  |> filter(fn: (r) => r._measurement == "station_meta")
+  |> filter(fn: (r) => r._measurement == "station_meta"{owner_clause})
   |> last()''')
 
     # Last battery_mv per dev_eui for status + battery level

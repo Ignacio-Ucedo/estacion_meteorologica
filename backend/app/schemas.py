@@ -10,6 +10,29 @@ class ApiModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
 
+# ─── Auth / Users ─────────────────────────────────────────────────────────────
+
+class RegisterRequest(ApiModel):
+    username: str
+    password: str | None = None
+
+
+class LoginRequest(ApiModel):
+    username: str
+    password: str
+
+
+class TokenResponse(ApiModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class UserResponse(ApiModel):
+    id: str
+    username: str
+    created_at: str
+
+
 class StationResponse(ApiModel):
     id: str
     name: str

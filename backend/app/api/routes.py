@@ -1,7 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, status
+import jwt
+from fastapi import APIRouter, HTTPException, Query, Request, status
+from pydantic import BaseModel
 
+from app.config import get_settings
 from app.schemas import (
     CurrentReading,
     DailyMetricResponse,
@@ -15,19 +18,34 @@ from app.schemas import (
     StationResponse,
 )
 from app.services.metrics import METRICS, daily_summaries, get_metric, get_recent_metric, hourly_points, utc_now
-from app.services.stations import effective_status, get_station, latest_reading, list_stations
+from app.services.stations import effective_status, get_station, latest_reading, list_stations, set_station_owner
 
 router = APIRouter()
 
 _PAGE_SIZE = 6
 
 
+def _username_from_request(request: Request) -> str | None:
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return None
+    token = auth.removeprefix("Bearer ")
+    s = get_settings()
+    try:
+        payload = jwt.decode(token, s.jwt_secret, algorithms=[s.jwt_algorithm])
+        return payload.get("username")
+    except jwt.PyJWTError:
+        return None
+
+
 @router.get("/stations", response_model=StationPage)
 def get_stations(
+    request: Request,
     page: Annotated[int, Query(ge=1)] = 1,
     search: str | None = None,
 ) -> StationPage:
-    stations = list_stations()
+    owner = _username_from_request(request)
+    stations = list_stations(owner_filter=owner)
     if search:
         stations = [s for s in stations if search.lower() in s["name"].lower()]
     total = len(stations)
@@ -141,3 +159,14 @@ def get_daily_metric(
         days=days,
         summaries=[DailySummary(**s) for s in summaries],
     )
+
+
+class _OwnerBody(BaseModel):
+    owner_id: str
+
+
+@router.put("/stations/{station_id}/owner", status_code=status.HTTP_204_NO_CONTENT)
+def set_owner(station_id: str, body: _OwnerBody) -> None:
+    found = set_station_owner(station_id, body.owner_id)
+    if not found:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Station not found")

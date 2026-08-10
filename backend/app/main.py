@@ -151,7 +151,16 @@ def create_app() -> FastAPI:
     )
 
     from app.api.routes import router as api_router  # noqa: PLC0415
+    from app.api.auth_routes import router as auth_router  # noqa: PLC0415
+    app.include_router(auth_router)
     app.include_router(api_router, prefix="/api")
+
+    @app.on_event("startup")
+    def startup_db():
+        from app.db.users import init_db  # noqa: PLC0415
+        s = get_settings()
+        init_db(s.users_db_path)
+        log.info("users_db_initialized path=%s", s.users_db_path)
 
     @app.on_event("startup")
     def startup_mqtt():
