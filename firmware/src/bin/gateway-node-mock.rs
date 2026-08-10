@@ -34,11 +34,6 @@ use weather_firmware::{
         send_pull_data, send_push_data, send_tx_ack,
     },
 };
-
-const WIFI_SSID: &str = env!("WIFI_SSID");
-const WIFI_PASS: &str = env!("WIFI_PASS");
-const CHIRPSTACK_GW_BRIDGE_HOST: &str = env!("CHIRPSTACK_HOST");
-const CHIRPSTACK_GW_BRIDGE_PORT: u16 = 1700;
 const SEND_INTERVAL_MS: u32 = 30_000; // 30s para testing; producción: 10 * 60 * 1_000
 
 const DEVICE_ID: u8 = 3;
@@ -54,6 +49,17 @@ fn main() -> anyhow::Result<()> {
 
     info!("gateway-node-mock starting — WiFi+UDP synthetic gateway, no radio hardware");
     info!("channel=916.8MHz sf=7 bw=125kHz (AU915 sub-band 2, canal 8) device_id={}", DEVICE_ID);
+
+    // Cargar WiFi y host ChirpStack desde NVS (escritos por el operator-app)
+    let (wifi_ssid, wifi_pass) = nvs::load_wifi_credentials().map_err(|e| {
+        error!("nvs_wifi_load_failed={:?} — ejecutar nvs-provision con credenciales WiFi", e);
+        e
+    })?;
+    let chirpstack_host = nvs::load_gateway_host().map_err(|e| {
+        error!("nvs_gw_host_load_failed={:?} — ejecutar nvs-provision con host ChirpStack", e);
+        e
+    })?;
+    info!("wifi_ssid={} chirpstack_host={}", wifi_ssid, chirpstack_host);
 
     // Load OTAA keys before WiFi (both call EspDefaultNvsPartition::take internally,
     // which is Arc-based and safe to call multiple times)
@@ -76,14 +82,14 @@ fn main() -> anyhow::Result<()> {
         EspWifi::new(peripherals.modem, sysloop.clone(), Some(nvs_partition))?,
         sysloop,
     )?;
-    connect_wifi(&mut wifi)?;
+    connect_wifi(&mut wifi, &wifi_ssid, &wifi_pass)?;
 
     let mac = wifi.wifi().sta_netif().get_mac()?;
     let gateway_eui = compute_gateway_eui(&mac);
     info!("gateway_eui={}", eui_to_hex(&gateway_eui));
     info!("→ Registrar este EUI en ChirpStack como Gateway ID");
 
-    let target_addr = format!("{}:{}", CHIRPSTACK_GW_BRIDGE_HOST, CHIRPSTACK_GW_BRIDGE_PORT);
+    let target_addr = chirpstack_host.clone();
     let sock = UdpSocket::bind("0.0.0.0:0")?;
 
     // Send PULL_DATA early so ChirpStack GW Bridge records our UDP endpoint.
@@ -113,7 +119,7 @@ fn main() -> anyhow::Result<()> {
         // WiFi watchdog
         if !wifi.is_connected()? {
             warn!("wifi_disconnected — reconectando");
-            if let Err(e) = connect_wifi(&mut wifi) {
+            if let Err(e) = connect_wifi(&mut wifi, &wifi_ssid, &wifi_pass) {
                 error!("wifi_reconnect_failed={:?} — reintentando en 5s", e);
                 FreeRtos::delay_ms(5_000);
                 continue;
@@ -344,10 +350,10 @@ fn join_via_udp(
     anyhow::bail!("lorawan_join_failed after 5 attempts")
 }
 
-fn connect_wifi(wifi: &mut BlockingWifi<EspWifi<'static>>) -> anyhow::Result<()> {
+fn connect_wifi(wifi: &mut BlockingWifi<EspWifi<'static>>, ssid: &str, pass: &str) -> anyhow::Result<()> {
     wifi.set_configuration(&Configuration::Client(ClientConfiguration {
-        ssid: WIFI_SSID.try_into().unwrap(),
-        password: WIFI_PASS.try_into().unwrap(),
+        ssid: ssid.try_into().map_err(|_| anyhow::anyhow!("SSID inválido"))?,
+        password: pass.try_into().map_err(|_| anyhow::anyhow!("contraseña WiFi inválida"))?,
         auth_method: AuthMethod::WPA2Personal,
         ..Default::default()
     }))?;
@@ -357,7 +363,7 @@ fn connect_wifi(wifi: &mut BlockingWifi<EspWifi<'static>>) -> anyhow::Result<()>
     let (scan_results, _) = wifi.wifi_mut().scan_n::<10>()?;
     info!("wifi_scan found {} APs", scan_results.len());
     for ap in &scan_results {
-        if ap.ssid.as_str() == WIFI_SSID {
+        if ap.ssid.as_str() == ssid {
             info!("wifi_target_found ssid={} channel={} rssi={} auth={:?}",
                 ap.ssid, ap.channel, ap.signal_strength, ap.auth_method);
         }

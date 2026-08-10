@@ -53,6 +53,49 @@ pub fn store_otaa_keys(dev_eui: &[u8; 8], app_eui: &[u8; 8], app_key: &[u8; 16])
     Ok(())
 }
 
+/// Carga las credenciales WiFi desde NVS (namespace "wifi", claves "ssid" y "pass").
+/// Escrito por el operator-app durante el aprovisionamiento.
+pub fn load_wifi_credentials() -> Result<(String, String)> {
+    let partition = EspDefaultNvsPartition::take()
+        .context("no se pudo tomar la partición NVS")?;
+    let nvs = EspNvs::new(partition, "wifi", false)
+        .context("no se pudo abrir namespace NVS 'wifi'")?;
+
+    let mut buf = [0u8; 65];
+    let ssid = nvs
+        .get_str("ssid", &mut buf)
+        .context("error leyendo wifi/ssid")?
+        .ok_or_else(|| anyhow::anyhow!("wifi/ssid no encontrado en NVS — ejecutar nvs-provision primero"))?
+        .to_owned();
+
+    let mut buf2 = [0u8; 65];
+    let pass = nvs
+        .get_str("pass", &mut buf2)
+        .context("error leyendo wifi/pass")?
+        .ok_or_else(|| anyhow::anyhow!("wifi/pass no encontrado en NVS"))?
+        .to_owned();
+
+    Ok((ssid, pass))
+}
+
+/// Carga el host del ChirpStack Gateway Bridge desde NVS
+/// (namespace "config", clave "gw_host", formato "host:puerto").
+/// Escrito por el operator-app durante el aprovisionamiento del gateway.
+pub fn load_gateway_host() -> Result<String> {
+    let partition = EspDefaultNvsPartition::take()
+        .context("no se pudo tomar la partición NVS")?;
+    let nvs = EspNvs::new(partition, "config", false)
+        .context("no se pudo abrir namespace NVS 'config'")?;
+
+    let mut buf = [0u8; 128];
+    nvs.get_str("gw_host", &mut buf)
+        .context("error leyendo config/gw_host")?
+        .ok_or_else(|| anyhow::anyhow!(
+            "config/gw_host no encontrado en NVS — ejecutar nvs-provision del gateway primero"
+        ))
+        .map(|s| s.to_owned())
+}
+
 /// Deriva el DevEUI a partir de la MAC WiFi del ESP32 (EUI-48 → EUI-64).
 /// Útil cuando no se ha provisionado NVS aún (identificación inicial).
 pub fn dev_eui_from_mac(mac: &[u8; 6]) -> [u8; 8] {
