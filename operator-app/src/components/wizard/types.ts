@@ -20,6 +20,7 @@ export interface WizardState {
   appEui: string;
   appKey: string;
   firmwarePath: string;
+  gatewayEui: string;
 }
 
 export interface AssetStatus {
@@ -53,4 +54,5 @@ export const INITIAL_STATE: WizardState = {
   appEui: "0000000000000000",
   appKey: "",
   firmwarePath: "",
+  gatewayEui: "",
 };

@@ -12,13 +12,14 @@ mod state;
 
 use commands::chirpstack::{
     detect_gateway_bridge_host, discover_and_save_chirpstack_host, discover_chirpstack_ids,
-    load_chirpstack_config, register_device_chirpstack, save_chirpstack_config, sync_chirpstack,
+    load_chirpstack_config, register_device_chirpstack, register_gateway, reset_device_activation,
+    save_chirpstack_config, sync_chirpstack,
 };
 use commands::device_log::{export_devices_csv, list_devices, log_provisioning};
 use commands::firmware::{check_firmware_update, download_firmware};
 use commands::flash::{
     flash_firmware, flash_nvs, generate_nvs_bin, import_key_pool, key_pool_stats, list_ports,
-    next_available_key, start_usb_watcher, verify_nvs,
+    next_available_key, read_gateway_eui, start_usb_watcher, verify_nvs,
 };
 use commands::gateway::{get_gateway_status, load_nvs_csv, start_gateway, stop_gateway};
 use state::AppState;
@@ -40,6 +41,8 @@ pub fn run() {
             detect_gateway_bridge_host,
             discover_and_save_chirpstack_host,
             register_device_chirpstack,
+            register_gateway,
+            reset_device_activation,
             discover_chirpstack_ids,
             save_chirpstack_config,
             load_chirpstack_config,
@@ -48,6 +51,7 @@ pub fn run() {
             import_key_pool,
             key_pool_stats,
             generate_nvs_bin,
+            read_gateway_eui,
             flash_firmware,
             flash_nvs,
             verify_nvs,

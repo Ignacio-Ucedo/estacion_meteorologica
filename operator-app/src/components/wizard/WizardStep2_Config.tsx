@@ -27,16 +27,29 @@ export default function WizardStep2_Config({ state, deviceType, onUpdate, onBack
 
   useEffect(() => {
     if (gateway) {
-      if (state.chirpstackHost) return;
-      setBridgeDetecting(true);
-      setBridgeError(null);
-      invoke<string>("detect_gateway_bridge_host")
-        .then((host) => {
-          onUpdate({ chirpstackHost: host });
-          setBridgeError(null);
-        })
-        .catch((err: string) => setBridgeError(err))
-        .finally(() => setBridgeDetecting(false));
+      // Detectar host ChirpStack Gateway Bridge
+      if (!state.chirpstackHost) {
+        setBridgeDetecting(true);
+        setBridgeError(null);
+        invoke<string>("detect_gateway_bridge_host")
+          .then((host) => {
+            onUpdate({ chirpstackHost: host });
+            setBridgeError(null);
+          })
+          .catch((err: string) => setBridgeError(err))
+          .finally(() => setBridgeDetecting(false));
+      }
+      // Asignar OTAA keys del pool (igual que para nodos)
+      if (!state.devEui && !state.appKey) {
+        setLoadingKey(true);
+        invoke<KeyEntry>("next_available_key")
+          .then((entry) => {
+            onUpdate({ devEui: entry.dev_eui, appKey: entry.app_key });
+            setKeyError(null);
+          })
+          .catch((err: string) => setKeyError(err))
+          .finally(() => setLoadingKey(false));
+      }
       return;
     }
     if (state.devEui || state.appKey) return;
@@ -51,14 +64,12 @@ export default function WizardStep2_Config({ state, deviceType, onUpdate, onBack
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const valid = gateway
-    ? state.wifiSsid.trim().length > 0 &&
-      state.wifiPass.trim().length > 0 &&
-      state.chirpstackHost.trim().length > 0
-    : state.wifiSsid.trim().length > 0 &&
-      state.wifiPass.trim().length > 0 &&
-      state.devEui.length === 16 &&
-      state.appKey.length === 32;
+  const valid =
+    state.wifiSsid.trim().length > 0 &&
+    state.wifiPass.trim().length > 0 &&
+    state.devEui.length === 16 &&
+    state.appKey.length === 32 &&
+    (!gateway || state.chirpstackHost.trim().length > 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 480 }}>
@@ -161,46 +172,44 @@ export default function WizardStep2_Config({ state, deviceType, onUpdate, onBack
         </fieldset>
       )}
 
-      {/* OTAA Keys (solo para nodos) */}
-      {!gateway && (
-        <fieldset style={{ border: "1px solid #2d3148", borderRadius: 8, padding: "16px 16px 12px" }}>
-          <legend style={{ fontSize: 12, color: "#64748b", padding: "0 6px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            Claves OTAA
-          </legend>
-          {loadingKey ? (
-            <p style={{ fontSize: 13, color: "#64748b" }}>Asignando claves OTAA…</p>
-          ) : keyError ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <p style={{ fontSize: 13, color: "#f87171" }}>
-                Error al obtener claves: {keyError}
-              </p>
+      {/* OTAA Keys (nodos y gateways — read-only para ambos) */}
+      <fieldset style={{ border: "1px solid #2d3148", borderRadius: 8, padding: "16px 16px 12px" }}>
+        <legend style={{ fontSize: 12, color: "#64748b", padding: "0 6px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          Claves OTAA
+        </legend>
+        {loadingKey ? (
+          <p style={{ fontSize: 13, color: "#64748b" }}>Asignando claves OTAA…</p>
+        ) : keyError ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <p style={{ fontSize: 13, color: "#f87171" }}>
+              Error al obtener claves del pool: {keyError}
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="field-row">
+              <label className="field-label">DevEUI</label>
+              <input
+                className="field-input"
+                type="text"
+                value={state.devEui}
+                readOnly
+                style={{ opacity: 0.7, cursor: "default", fontFamily: "monospace" }}
+              />
             </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div className="field-row">
-                <label className="field-label">DevEUI</label>
-                <input
-                  className="field-input"
-                  type="text"
-                  value={state.devEui}
-                  readOnly
-                  style={{ opacity: 0.7, cursor: "default", fontFamily: "monospace" }}
-                />
-              </div>
-              <div className="field-row">
-                <label className="field-label">AppKey</label>
-                <input
-                  className="field-input"
-                  type="text"
-                  value={state.appKey}
-                  readOnly
-                  style={{ opacity: 0.7, cursor: "default", fontFamily: "monospace", fontSize: 11 }}
-                />
-              </div>
+            <div className="field-row">
+              <label className="field-label">AppKey</label>
+              <input
+                className="field-input"
+                type="text"
+                value={state.appKey}
+                readOnly
+                style={{ opacity: 0.7, cursor: "default", fontFamily: "monospace", fontSize: 11 }}
+              />
             </div>
-          )}
-        </fieldset>
-      )}
+          </div>
+        )}
+      </fieldset>
 
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
         <button className="btn btn-secondary" onClick={onBack}>

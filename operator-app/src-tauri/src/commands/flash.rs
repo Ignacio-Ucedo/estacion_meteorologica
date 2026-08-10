@@ -136,6 +136,96 @@ pub fn generate_nvs_bin(params: NvsParams) -> Result<String, String> {
     Ok(base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &bytes))
 }
 
+// ── Lectura de MAC y derivación EUI-64 ───────────────────────────────────────
+
+/// Convierte una MAC WiFi (EUI-48) al EUI-64 del gateway según el estándar IEEE:
+/// inserta 0xFF:0xFE en la posición 3-4.
+/// Ej: AA:BB:CC:DD:EE:FF → AA:BB:CC:FF:FE:DD:EE:FF
+fn mac_to_eui64(mac: [u8; 6]) -> [u8; 8] {
+    [mac[0], mac[1], mac[2], 0xFF, 0xFE, mac[3], mac[4], mac[5]]
+}
+
+/// Lee la MAC WiFi del ESP32 vía `esptool read_mac` y retorna el EUI-64 derivado
+/// como hex string lowercase de 16 caracteres (sin separadores).
+#[tauri::command]
+pub async fn read_gateway_eui(app: AppHandle, port: String) -> Result<String, String> {
+    use tauri_plugin_shell::ShellExt;
+    use tauri_plugin_shell::process::CommandEvent;
+
+    let (mut rx, _child) = app
+        .shell()
+        .sidecar("esptool")
+        .map_err(|e| format!("Error preparando esptool sidecar: {e}"))?
+        .args(["--port", &port, "read_mac"])
+        .spawn()
+        .map_err(|e| format!("No se pudo iniciar esptool: {e}"))?;
+
+    let mut output = String::new();
+    let mut exit_code = 0i32;
+
+    while let Some(event) = rx.recv().await {
+        match event {
+            CommandEvent::Stdout(bytes) => {
+                output.push_str(&String::from_utf8_lossy(&bytes));
+            }
+            CommandEvent::Stderr(bytes) => {
+                output.push_str(&String::from_utf8_lossy(&bytes));
+            }
+            CommandEvent::Terminated(payload) => {
+                exit_code = payload.code.unwrap_or(-1);
+                break;
+            }
+            _ => {}
+        }
+    }
+
+    if exit_code != 0 {
+        return Err(format!(
+            "esptool read_mac falló (código {exit_code}).\n\
+             Verificá que el ESP32 esté conectado y en modo normal (no flash)."
+        ));
+    }
+
+    // Parsear línea "MAC: aa:bb:cc:dd:ee:ff"
+    let mac_str = output
+        .lines()
+        .find(|l| l.trim().to_uppercase().starts_with("MAC:"))
+        .ok_or_else(|| format!("No se encontró línea MAC en la salida:\n{output}"))?
+        .trim()
+        .splitn(2, ':')
+        .nth(1)
+        .map(str::trim)
+        .ok_or("Formato de línea MAC inválido")?
+        .to_string();
+
+    let bytes: Vec<u8> = mac_str
+        .split(':')
+        .map(|s| u8::from_str_radix(s.trim(), 16))
+        .collect::<Result<_, _>>()
+        .map_err(|e| format!("Error al parsear MAC '{mac_str}': {e}"))?;
+
+    if bytes.len() != 6 {
+        return Err(format!("MAC con longitud inválida: {} bytes", bytes.len()));
+    }
+
+    let mac: [u8; 6] = bytes.try_into().unwrap();
+    let eui = mac_to_eui64(mac);
+
+    Ok(eui.iter().map(|b| format!("{b:02x}")).collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mac_to_eui64_known_vector() {
+        let mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
+        let eui = mac_to_eui64(mac);
+        assert_eq!(eui, [0xAA, 0xBB, 0xCC, 0xFF, 0xFE, 0xDD, 0xEE, 0xFF]);
+    }
+}
+
 // ── Flash vía esptool sidecar ─────────────────────────────────────────────────
 
 /// Verifica la conectividad del ESP32 y flashea el firmware en 0x0000.

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   INITIAL_STATE,
+  isGateway,
   type DeviceType,
   type FirmwareCheck,
   type FirmwareStatus,
@@ -12,8 +13,10 @@ import WizardStep2_Config from "./WizardStep2_Config";
 import WizardStep3_Flash from "./WizardStep3_Flash";
 import WizardStep4_NVS from "./WizardStep4_NVS";
 import WizardStep5_ChirpStack from "./WizardStep5_ChirpStack";
+import WizardStep5_Register from "./WizardStep5_Register";
 
-const STEPS = ["Puerto", "Config", "Firmware", "NVS", "ChirpStack"] as const;
+const STEPS_NODE    = ["Puerto", "Config", "Firmware", "NVS", "ChirpStack"] as const;
+const STEPS_GATEWAY = ["Puerto", "Config", "Firmware", "NVS", "Registro"]   as const;
 
 interface Props {
   title: string;
@@ -21,6 +24,7 @@ interface Props {
 }
 
 export default function FlashWizard({ title, deviceType }: Props) {
+  const gateway = isGateway(deviceType);
   const [state, setState] = useState<WizardState>(INITIAL_STATE);
   const [firmwareCheck, setFirmwareCheck] = useState<FirmwareCheck>({ state: "loading" });
 
@@ -40,7 +44,7 @@ export default function FlashWizard({ title, deviceType }: Props) {
   const renderStep = () => {
     switch (state.step) {
       case 1:
-        return <WizardStep1_Port state={state} onUpdate={patch} onNext={() => goTo(2)} />;
+        return <WizardStep1_Port state={state} deviceType={deviceType} onUpdate={patch} onNext={() => goTo(2)} />;
       case 2:
         return (
           <WizardStep2_Config
@@ -65,7 +69,9 @@ export default function FlashWizard({ title, deviceType }: Props) {
       case 4:
         return <WizardStep4_NVS state={state} deviceType={deviceType} onBack={() => goTo(3)} onNext={() => goTo(5)} />;
       case 5:
-        return <WizardStep5_ChirpStack state={state} deviceType={deviceType} onReset={reset} />;
+        return gateway
+          ? <WizardStep5_Register state={state} onReset={reset} />
+          : <WizardStep5_ChirpStack state={state} deviceType={deviceType} onReset={reset} />;
     }
   };
 
@@ -75,7 +81,7 @@ export default function FlashWizard({ title, deviceType }: Props) {
         <h2 className="panel-title">{title}</h2>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <FirmwareChip check={firmwareCheck} />
-          <StepIndicator current={state.step} />
+          <StepIndicator current={state.step} steps={gateway ? STEPS_GATEWAY : STEPS_NODE} />
         </div>
       </div>
       <div className="panel-body" style={{ flexDirection: "column" }}>
@@ -170,10 +176,10 @@ function Tag({ children, muted }: { children: React.ReactNode; muted?: boolean }
   );
 }
 
-function StepIndicator({ current }: { current: number }) {
+function StepIndicator({ current, steps }: { current: number; steps: readonly string[] }) {
   return (
     <div style={{ display: "flex", alignItems: "center" }}>
-      {STEPS.map((label, i) => {
+      {steps.map((label, i) => {
         const num = i + 1;
         const done = num < current;
         const active = num === current;

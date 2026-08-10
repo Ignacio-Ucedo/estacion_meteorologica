@@ -11,6 +11,7 @@ const KEY_HOST: &str = "chirpstack_host";
 const KEY_TOKEN: &str = "chirpstack_api_token";
 const KEY_APP_ID: &str = "chirpstack_app_id";
 const KEY_PROFILE_ID: &str = "chirpstack_profile_id";
+const KEY_TENANT_ID: &str = "chirpstack_tenant_id";
 
 #[tauri::command]
 pub async fn sync_chirpstack(
@@ -83,7 +84,7 @@ pub async fn register_device_chirpstack(
     })
 }
 
-// 9.1: Descubre las aplicaciones y perfiles disponibles en ChirpStack.
+// 9.1: Descubre las aplicaciones, perfiles y tenants disponibles en ChirpStack.
 #[tauri::command]
 pub async fn discover_chirpstack_ids(
     host: String,
@@ -91,15 +92,45 @@ pub async fn discover_chirpstack_ids(
 ) -> Result<serde_json::Value, String> {
     let creds = ChirpstackCreds { host, api_token };
 
-    let (apps, profiles) = tokio::try_join!(
+    let (apps, profiles, tenants) = tokio::try_join!(
         chirpstack_api::list_applications(&creds),
         chirpstack_api::list_device_profiles(&creds),
+        chirpstack_api::list_tenants(&creds),
     )?;
 
     Ok(serde_json::json!({
         "applications": apps,
         "deviceProfiles": profiles,
+        "tenants": tenants,
     }))
+}
+
+/// Registra el gateway (infraestructura LoRaWAN) en ChirpStack.
+/// El EUI se obtiene de la MAC WiFi del ESP32 (derivado en Step 1).
+/// Idempotente: 409 (ya registrado) se trata como éxito.
+#[tauri::command]
+pub async fn register_gateway(
+    eui: String,
+    name: String,
+    host: String,
+    api_token: String,
+    tenant_id: String,
+) -> Result<(), String> {
+    let creds = ChirpstackCreds { host, api_token };
+    chirpstack_api::create_gateway(&creds, &eui, &name, &tenant_id).await
+}
+
+/// Borra la sesión OTAA activa del device, reseteando el FCnt.
+/// Idempotente: 404 (sin sesión activa) se trata como éxito.
+/// El próximo join OTAA arranca con FCnt = 0.
+#[tauri::command]
+pub async fn reset_device_activation(
+    dev_eui: String,
+    host: String,
+    api_token: String,
+) -> Result<(), String> {
+    let creds = ChirpstackCreds { host, api_token };
+    chirpstack_api::delete_device_activation(&creds, &dev_eui).await
 }
 
 /// Escanea la red local buscando ChirpStack v4 en el puerto 8080.
@@ -122,11 +153,15 @@ pub fn save_chirpstack_config(
     api_token: String,
     app_id: String,
     profile_id: String,
+    tenant_id: Option<String>,
 ) -> Result<(), String> {
     let store = app.store(STORE_FILE).map_err(|e| e.to_string())?;
     store.set(KEY_TOKEN, serde_json::json!(api_token));
     store.set(KEY_APP_ID, serde_json::json!(app_id));
     store.set(KEY_PROFILE_ID, serde_json::json!(profile_id));
+    if let Some(tid) = tenant_id {
+        store.set(KEY_TENANT_ID, serde_json::json!(tid));
+    }
     store.save().map_err(|e| e.to_string())
 }
 
@@ -151,5 +186,6 @@ pub fn load_chirpstack_config(app: AppHandle) -> Result<serde_json::Value, Strin
         "apiToken":  get(KEY_TOKEN),
         "appId":     get(KEY_APP_ID),
         "profileId": get(KEY_PROFILE_ID),
+        "tenantId":  get(KEY_TENANT_ID),
     }))
 }

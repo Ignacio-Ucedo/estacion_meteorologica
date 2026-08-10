@@ -86,6 +86,12 @@ pub struct DeviceProfile {
     pub name: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Tenant {
+    pub id: String,
+    pub name: String,
+}
+
 impl ChirpstackCreds {
     fn client(&self) -> Client {
         Client::new()
@@ -234,6 +240,86 @@ pub async fn list_applications(creds: &ChirpstackCreds) -> Result<Vec<Applicatio
         .iter()
         .filter_map(|v| {
             Some(Application {
+                id: v["id"].as_str()?.to_string(),
+                name: v["name"].as_str().unwrap_or("").to_string(),
+            })
+        })
+        .collect())
+}
+
+pub async fn create_gateway(
+    creds: &ChirpstackCreds,
+    eui: &str,
+    name: &str,
+    tenant_id: &str,
+) -> Result<(), String> {
+    let body = serde_json::json!({
+        "gateway": {
+            "gatewayId": eui,
+            "name": name,
+            "tenantId": tenant_id
+        }
+    });
+
+    let resp = creds
+        .client()
+        .post(creds.url("gateways"))
+        .header("Authorization", creds.auth())
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Error de red al registrar gateway: {e}"))?;
+
+    match resp.status().as_u16() {
+        200 | 201 | 409 => Ok(()),
+        code => {
+            let body = resp.text().await.unwrap_or_default();
+            Err(format!("HTTP {code} al registrar gateway: {body}"))
+        }
+    }
+}
+
+pub async fn delete_device_activation(creds: &ChirpstackCreds, dev_eui: &str) -> Result<(), String> {
+    let resp = creds
+        .client()
+        .delete(creds.url(&format!("devices/{dev_eui}/activation")))
+        .header("Authorization", creds.auth())
+        .send()
+        .await
+        .map_err(|e| format!("Error de red al resetear activación: {e}"))?;
+
+    match resp.status().as_u16() {
+        200 | 204 | 404 => Ok(()),
+        code => {
+            let body = resp.text().await.unwrap_or_default();
+            Err(format!("HTTP {code} al resetear activación OTAA: {body}"))
+        }
+    }
+}
+
+pub async fn list_tenants(creds: &ChirpstackCreds) -> Result<Vec<Tenant>, String> {
+    let resp = creds
+        .client()
+        .get(creds.url("tenants?limit=100"))
+        .header("Authorization", creds.auth())
+        .send()
+        .await
+        .map_err(|e| format!("Error de red: {e}"))?;
+
+    if !resp.status().is_success() {
+        return Err(format!(
+            "HTTP {} al listar tenants",
+            resp.status().as_u16()
+        ));
+    }
+
+    let data: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    Ok(data["result"]
+        .as_array()
+        .unwrap_or(&vec![])
+        .iter()
+        .filter_map(|v| {
+            Some(Tenant {
                 id: v["id"].as_str()?.to_string(),
                 name: v["name"].as_str().unwrap_or("").to_string(),
             })
