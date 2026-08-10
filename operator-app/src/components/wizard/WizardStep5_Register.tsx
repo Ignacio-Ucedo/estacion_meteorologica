@@ -80,19 +80,18 @@ export default function WizardStep5_Register({ state, onReset, backendUrl = "", 
       if (knownTenantId && !resolved.tenantId) resolved.tenantId = knownTenantId;
       setTenants(result.tenants);
 
-      if (result.applications.length === 0 || result.deviceProfiles.length === 0) {
-        const defaults = await invoke<{ appId: string; profileId: string; tenantId: string }>(
-          "ensure_chirpstack_defaults", { host: cfg.host, apiToken: cfg.apiToken, tenantId: knownTenantId }
-        );
-        resolved = { ...resolved, appId: defaults.appId, profileId: defaults.profileId, tenantId: defaults.tenantId };
-        setApps([{ id: defaults.appId, name: "Estación Meteorológica" }]);
-        setProfiles([{ id: defaults.profileId, name: "AU915 Node" }]);
-      } else {
-        setApps(result.applications);
-        setProfiles(result.deviceProfiles);
-        if (!resolved.appId && result.applications.length === 1) resolved.appId = result.applications[0].id;
-        if (!resolved.profileId && result.deviceProfiles.length === 1) resolved.profileId = result.deviceProfiles[0].id;
-      }
+      // Siempre asegurar que existan los recursos canónicos; ensure_chirpstack_defaults
+      // es idempotente (devuelve el ID existente si el nombre ya existe).
+      const defaults = await invoke<{ appId: string; profileId: string; tenantId: string }>(
+        "ensure_chirpstack_defaults", { host: cfg.host, apiToken: cfg.apiToken, tenantId: knownTenantId }
+      );
+      resolved = { ...resolved, appId: defaults.appId, profileId: defaults.profileId, tenantId: defaults.tenantId };
+
+      // Mostrar en el dropdown todas las opciones pero pre-seleccionar las canónicas.
+      const allApps = result.applications.length > 0 ? result.applications : [{ id: defaults.appId, name: "Estación Meteorológica" }];
+      const allProfiles = result.deviceProfiles.length > 0 ? result.deviceProfiles : [{ id: defaults.profileId, name: "AU915 Node" }];
+      setApps(allApps);
+      setProfiles(allProfiles);
 
       setConfig(resolved);
       const allReady = resolved.host && resolved.apiToken && resolved.appId && resolved.profileId && resolved.tenantId;
