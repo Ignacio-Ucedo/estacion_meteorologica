@@ -22,6 +22,27 @@ export interface WizardState {
   firmwarePath: string;
 }
 
+export interface AssetStatus {
+  name: string;
+  download_url: string;
+  sha256_url: string | null;
+  size: number;
+  cached_path: string | null;
+}
+
+export interface FirmwareStatus {
+  latest_tag: string;
+  cached_tag: string | null;
+  needs_update: boolean;
+  bin_assets: AssetStatus[];
+  offline: boolean;
+}
+
+export type FirmwareCheck =
+  | { state: "loading" }
+  | { state: "ready"; status: FirmwareStatus }
+  | { state: "error"; msg: string };
+
 export const INITIAL_STATE: WizardState = {
   step: 1,
   port: null,

@@ -1,5 +1,12 @@
-import { useState } from "react";
-import { INITIAL_STATE, type DeviceType, type WizardState } from "./types";
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import {
+  INITIAL_STATE,
+  type DeviceType,
+  type FirmwareCheck,
+  type FirmwareStatus,
+  type WizardState,
+} from "./types";
 import WizardStep1_Port from "./WizardStep1_Port";
 import WizardStep2_Config from "./WizardStep2_Config";
 import WizardStep3_Flash from "./WizardStep3_Flash";
@@ -15,6 +22,13 @@ interface Props {
 
 export default function FlashWizard({ title, deviceType }: Props) {
   const [state, setState] = useState<WizardState>(INITIAL_STATE);
+  const [firmwareCheck, setFirmwareCheck] = useState<FirmwareCheck>({ state: "loading" });
+
+  useEffect(() => {
+    invoke<FirmwareStatus>("check_firmware_update")
+      .then((status) => setFirmwareCheck({ state: "ready", status }))
+      .catch((err: string) => setFirmwareCheck({ state: "error", msg: err }));
+  }, []);
 
   const patch = (updates: Partial<WizardState>) =>
     setState((prev) => ({ ...prev, ...updates }));
@@ -38,7 +52,16 @@ export default function FlashWizard({ title, deviceType }: Props) {
           />
         );
       case 3:
-        return <WizardStep3_Flash state={state} deviceType={deviceType} onUpdate={patch} onBack={() => goTo(2)} onNext={() => goTo(4)} />;
+        return (
+          <WizardStep3_Flash
+            state={state}
+            deviceType={deviceType}
+            firmwareCheck={firmwareCheck}
+            onUpdate={patch}
+            onBack={() => goTo(2)}
+            onNext={() => goTo(4)}
+          />
+        );
       case 4:
         return <WizardStep4_NVS state={state} deviceType={deviceType} onBack={() => goTo(3)} onNext={() => goTo(5)} />;
       case 5:
@@ -50,12 +73,100 @@ export default function FlashWizard({ title, deviceType }: Props) {
     <div className="panel">
       <div className="panel-header">
         <h2 className="panel-title">{title}</h2>
-        <StepIndicator current={state.step} />
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <FirmwareChip check={firmwareCheck} />
+          <StepIndicator current={state.step} />
+        </div>
       </div>
       <div className="panel-body" style={{ flexDirection: "column" }}>
         {renderStep()}
       </div>
     </div>
+  );
+}
+
+function FirmwareChip({ check }: { check: FirmwareCheck }) {
+  if (check.state === "loading") {
+    return (
+      <div style={chip("#1a1d2e", "#2d3148")}>
+        <Dot color="#475569" />
+        <span style={{ color: "#64748b" }}>Verificando firmware…</span>
+      </div>
+    );
+  }
+
+  if (check.state === "error") {
+    return (
+      <div style={chip("#1c1a0a", "#854d0e")}>
+        <Dot color="#f59e0b" />
+        <span style={{ color: "#fbbf24" }}>Sin caché · Sin internet</span>
+      </div>
+    );
+  }
+
+  const { status } = check;
+
+  if (!status.needs_update && status.cached_tag) {
+    return (
+      <div style={chip("#0a1f0a", "#166534")}>
+        <Dot color="#4ade80" />
+        <span style={{ color: "#4ade80" }}>Flash offline disponible</span>
+        <Tag>{status.cached_tag}</Tag>
+      </div>
+    );
+  }
+
+  if (status.needs_update && status.cached_tag) {
+    return (
+      <div style={chip("#0a1120", "#1d4ed8")}>
+        <Dot color="#60a5fa" />
+        <span style={{ color: "#93c5fd" }}>Actualización disponible</span>
+        <Tag muted>{status.cached_tag}</Tag>
+        <span style={{ color: "#475569", fontSize: 10 }}>→</span>
+        <Tag>{status.latest_tag}</Tag>
+      </div>
+    );
+  }
+
+  return (
+    <div style={chip("#0a1120", "#1d4ed8")}>
+      <Dot color="#60a5fa" />
+      <span style={{ color: "#93c5fd" }}>Requiere descarga</span>
+      <Tag>{status.latest_tag}</Tag>
+    </div>
+  );
+}
+
+function chip(bg: string, border: string): React.CSSProperties {
+  return {
+    display: "flex",
+    alignItems: "center",
+    gap: 5,
+    padding: "3px 8px",
+    background: bg,
+    border: `1px solid ${border}`,
+    borderRadius: 6,
+    fontSize: 11,
+    whiteSpace: "nowrap",
+  };
+}
+
+function Dot({ color }: { color: string }) {
+  return <span style={{ fontSize: 7, color, lineHeight: 1 }}>●</span>;
+}
+
+function Tag({ children, muted }: { children: React.ReactNode; muted?: boolean }) {
+  return (
+    <code style={{
+      fontSize: 10,
+      padding: "1px 4px",
+      borderRadius: 3,
+      background: muted ? "#1e293b" : "#1e3a5f",
+      color: muted ? "#64748b" : "#60a5fa",
+      fontFamily: "monospace",
+    }}>
+      {children}
+    </code>
   );
 }
 
@@ -69,48 +180,36 @@ function StepIndicator({ current }: { current: number }) {
         return (
           <div key={num} style={{ display: "flex", alignItems: "center" }}>
             {i > 0 && (
-              <div
-                style={{
-                  width: 20,
-                  height: 1,
-                  background: done ? "#2563eb" : "#2d3148",
-                }}
-              />
+              <div style={{ width: 20, height: 1, background: done ? "#2563eb" : "#2d3148" }} />
             )}
-            <div
-              style={{
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "3px 8px",
+              borderRadius: 6,
+              background: active ? "#1e3a5f" : "transparent",
+            }}>
+              <div style={{
+                width: 18,
+                height: 18,
+                borderRadius: "50%",
                 display: "flex",
                 alignItems: "center",
-                gap: 5,
-                padding: "3px 8px",
-                borderRadius: 6,
-                background: active ? "#1e3a5f" : "transparent",
-              }}
-            >
-              <div
-                style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 10,
-                  fontWeight: 700,
-                  flexShrink: 0,
-                  background: done ? "#1d4ed8" : active ? "#3b82f6" : "#2d3148",
-                  color: done || active ? "#fff" : "#64748b",
-                }}
-              >
+                justifyContent: "center",
+                fontSize: 10,
+                fontWeight: 700,
+                flexShrink: 0,
+                background: done ? "#1d4ed8" : active ? "#3b82f6" : "#2d3148",
+                color: done || active ? "#fff" : "#64748b",
+              }}>
                 {done ? "✓" : num}
               </div>
-              <span
-                style={{
-                  fontSize: 11,
-                  color: active ? "#93c5fd" : done ? "#60a5fa" : "#64748b",
-                  fontWeight: active ? 600 : 400,
-                }}
-              >
+              <span style={{
+                fontSize: 11,
+                color: active ? "#93c5fd" : done ? "#60a5fa" : "#64748b",
+                fontWeight: active ? 600 : 400,
+              }}>
                 {label}
               </span>
             </div>

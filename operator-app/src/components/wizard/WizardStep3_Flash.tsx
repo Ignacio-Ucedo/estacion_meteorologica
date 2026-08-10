@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { FIRMWARE_ASSET, type DeviceType, type WizardState } from "./types";
+import { FIRMWARE_ASSET, type DeviceType, type FirmwareCheck, type WizardState } from "./types";
 
 type Phase =
-  | "fetching"   // consultando GitHub Releases
-  | "downloading" // bajando el .bin
-  | "flashing"   // corriendo esptool
+  | "waiting"    // esperando que el check de firmware termine
+  | "fetching"   // consultando GitHub Releases (ya no ocurre aquí, legado)
+  | "downloading"
+  | "flashing"
   | "ok"
   | "error";
 
@@ -14,22 +15,6 @@ interface LogLine {
   ts: string;
   text: string;
   level: "info" | "ok" | "err";
-}
-
-interface AssetStatus {
-  name: string;
-  download_url: string;
-  sha256_url: string | null;
-  size: number;
-  cached_path: string | null;
-}
-
-interface FirmwareStatus {
-  latest_tag: string;
-  cached_tag: string | null;
-  needs_update: boolean;
-  bin_assets: AssetStatus[];
-  offline: boolean;
 }
 
 interface DownloadProgressEvent {
@@ -45,6 +30,7 @@ interface FlashLogEvent {
 interface Props {
   state: WizardState;
   deviceType: DeviceType;
+  firmwareCheck: FirmwareCheck;
   onUpdate: (updates: Partial<WizardState>) => void;
   onBack: () => void;
   onNext: () => void;
@@ -56,10 +42,9 @@ function formatBytes(n: number) {
   return `${(n / 1048576).toFixed(2)} MB`;
 }
 
-export default function WizardStep3_Flash({ state, deviceType, onUpdate, onBack, onNext }: Props) {
-  const [phase, setPhase] = useState<Phase>("fetching");
-  const [phaseLabel, setPhaseLabel] = useState("Verificando firmware…");
-  const [offline, setOffline] = useState(false);
+export default function WizardStep3_Flash({ state, deviceType, firmwareCheck, onUpdate, onBack, onNext }: Props) {
+  const [phase, setPhase] = useState<Phase>("waiting");
+  const [phaseLabel, setPhaseLabel] = useState("Esperando verificación de firmware…");
   const [firmwareTag, setFirmwareTag] = useState<string | null>(null);
   const [dlProgress, setDlProgress] = useState<{ downloaded: number; total: number | null } | null>(null);
   const [logs, setLogs] = useState<LogLine[]>([]);
@@ -76,58 +61,57 @@ export default function WizardStep3_Flash({ state, deviceType, onUpdate, onBack,
     setLogs((p) => [...p, { ts, text, level }]);
   }
 
-  async function run() {
-    // ── 1. Verificar firmware ──────────────────────────────────────────────
-    setPhase("fetching");
-    setPhaseLabel("Verificando firmware…");
-
-    let firmwarePath: string;
-
-    try {
-      const info = await invoke<FirmwareStatus>("check_firmware_update");
-      setFirmwareTag(info.latest_tag);
-      setOffline(info.offline);
-
-      const targetName = FIRMWARE_ASSET[deviceType];
-      const asset =
-        info.bin_assets.find((a) => a.name === targetName) ?? info.bin_assets[0];
-      if (!asset) throw new Error("No se encontraron archivos .bin en el último release de GitHub.");
-
-      if (!info.needs_update && asset.cached_path) {
-        setPhaseLabel(
-          info.offline
-            ? `Sin internet — usando caché ${info.latest_tag}`
-            : `Firmware ${info.latest_tag} en caché`
-        );
-        firmwarePath = asset.cached_path;
-      } else {
-        // ── 2. Descargar ─────────────────────────────────────────────────
-        setPhase("downloading");
-        setPhaseLabel(`Descargando firmware ${info.latest_tag}…`);
-        setDlProgress({ downloaded: 0, total: asset.size || null });
-
-        const unlisten = await listen<DownloadProgressEvent>("download-progress", (e) => {
-          setDlProgress({ downloaded: e.payload.downloaded, total: e.payload.total });
-        });
-
-        try {
-          firmwarePath = await invoke<string>("download_firmware", {
-            tag: info.latest_tag,
-            assetName: asset.name,
-            downloadUrl: asset.download_url,
-            sha256Url: asset.sha256_url,
-          });
-        } finally {
-          unlisten();
-        }
-      }
-    } catch (err: unknown) {
+  async function run(check: FirmwareCheck) {
+    if (check.state === "error") {
       setPhase("error");
-      setErrorMsg(typeof err === "string" ? err : String(err));
+      setErrorMsg(check.msg);
+      return;
+    }
+    if (check.state === "loading") return;
+
+    const { status } = check;
+    setFirmwareTag(status.latest_tag);
+
+    const targetName = FIRMWARE_ASSET[deviceType];
+    const asset = status.bin_assets.find((a) => a.name === targetName) ?? status.bin_assets[0];
+    if (!asset) {
+      setPhase("error");
+      setErrorMsg("No se encontraron archivos .bin en el release.");
       return;
     }
 
-    // ── 3. Flashear ────────────────────────────────────────────────────────
+    let firmwarePath: string;
+
+    if (!status.needs_update && asset.cached_path) {
+      setPhase("flashing");
+      setPhaseLabel(`Usando firmware cacheado ${status.latest_tag}…`);
+      firmwarePath = asset.cached_path;
+    } else {
+      setPhase("downloading");
+      setPhaseLabel(`Descargando firmware ${status.latest_tag}…`);
+      setDlProgress({ downloaded: 0, total: asset.size || null });
+
+      const unlisten = await listen<DownloadProgressEvent>("download-progress", (e) => {
+        setDlProgress({ downloaded: e.payload.downloaded, total: e.payload.total });
+      });
+
+      try {
+        firmwarePath = await invoke<string>("download_firmware", {
+          tag: status.latest_tag,
+          assetName: asset.name,
+          downloadUrl: asset.download_url,
+          sha256Url: asset.sha256_url,
+        });
+      } catch (err: unknown) {
+        setPhase("error");
+        setErrorMsg(typeof err === "string" ? err : String(err));
+        unlisten();
+        return;
+      } finally {
+        unlisten();
+      }
+    }
+
     setPhase("flashing");
     setPhaseLabel("Flasheando firmware…");
     setDlProgress(null);
@@ -153,11 +137,12 @@ export default function WizardStep3_Flash({ state, deviceType, onUpdate, onBack,
   }
 
   useEffect(() => {
+    if (firmwareCheck.state === "loading") return;
     if (ranRef.current) return;
     ranRef.current = true;
-    run();
+    run(firmwareCheck);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [firmwareCheck]);
 
   const dlPercent =
     dlProgress?.total ? Math.round((dlProgress.downloaded / dlProgress.total) * 100) : null;
@@ -177,28 +162,6 @@ export default function WizardStep3_Flash({ state, deviceType, onUpdate, onBack,
           Puerto: <code style={{ fontFamily: "monospace", color: "#60a5fa" }}>{state.port}</code>
         </p>
       </div>
-
-      {/* Banner offline */}
-      {offline && phase !== "error" && (
-        <div style={{
-          padding: "10px 14px",
-          background: "#1c1a0a",
-          border: "1px solid #854d0e",
-          borderRadius: 8,
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          fontSize: 12,
-        }}>
-          <span style={{ fontSize: 14, flexShrink: 0 }}>⚠</span>
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <span style={{ color: "#fbbf24", fontWeight: 600 }}>Sin conexión a internet</span>
-            <span style={{ color: "#92400e" }}>
-              Usando firmware cacheado localmente. La versión puede no ser la última.
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Estado principal */}
       <div style={{
@@ -224,8 +187,7 @@ export default function WizardStep3_Flash({ state, deviceType, onUpdate, onBack,
           {firmwareTag && phase !== "error" && (
             <span style={{
               fontSize: 11, padding: "1px 6px", borderRadius: 4,
-              background: offline ? "#292109" : "#1e3a5f",
-              color: offline ? "#fbbf24" : "#60a5fa",
+              background: "#1e3a5f", color: "#60a5fa",
             }}>
               {firmwareTag}
             </span>
@@ -317,7 +279,12 @@ export default function WizardStep3_Flash({ state, deviceType, onUpdate, onBack,
           {phase === "error" && (
             <button
               className="btn btn-secondary"
-              onClick={() => { setPhase("fetching"); setLogs([]); setErrorMsg(null); ranRef.current = false; run(); }}
+              onClick={() => {
+                setPhase("waiting");
+                setLogs([]);
+                setErrorMsg(null);
+                ranRef.current = false;
+              }}
             >
               Reintentar
             </button>
