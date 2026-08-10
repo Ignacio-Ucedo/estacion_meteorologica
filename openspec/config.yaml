@@ -38,9 +38,14 @@ context: |
     Crate driver: `lr1121-transceiver` (FFI → lr11xx_driver SWDR001 C SDK).
   - Opera como single-channel UDP packet forwarder en 916.8 MHz SF7BW125
     (AU915 sub-band 2, canal 8) usando el protocolo Semtech UDP hacia ChirpStack.
-  - Limitación de prototipo documentada: canal único fijo, no spec-compliant
-    con LoRaWAN completo; suficiente para un nodo en canal fijo.
-  - Para producción: reemplazar con gateway multi-canal o hardware dedicado.
+  - Limitación de PoC documentada y deliberada: canal único fijo, no
+    spec-compliant con LoRaWAN completo; suficiente para un nodo en canal fijo.
+    La yagi del nodo exige apuntado; sin channel mask se pierden canales fuera
+    del fijo. Aceptable para validar enlace y pipeline, no para fabricación.
+  - Versión de campo (objetivo futuro, no trackeado en changes activos):
+    migrar a concentrador SX130x multi-canal; antenas propias (parche
+    suspendido air-gap en nodo, colineal impresa en gateway); backhaul
+    configurable (Ethernet/W5500, celular/SIM7000G, BLE por proximidad).
   - ChirpStack (Docker, self-hosted, band plan AU915 sub-band 2) es intermediario
     obligatorio entre gateway y backend.
 
@@ -49,13 +54,15 @@ context: |
   - Justificación: genera spec OpenAPI automáticamente a partir del código,
     alineado con la metodología spec-driven; soporte async para recibir el
     flujo del gateway; pandas reutilizable para el análisis del informe final
-  - REST API (implementada, change `implement-backend-rest-api`):
-    PostgreSQL + TimescaleDB vía SQLAlchemy async y Alembic.
-    Gestión de estaciones, historial de lecturas y series horarias/diarias.
-  - Ingesta LoRaWAN (pendiente, change `backend-lorawan-ingestion`):
+  - Ingesta LoRaWAN (implementada, change `backend-lorawan-ingestion`):
     cliente paho-mqtt suscrito a ChirpStack; escritura en InfluxDB
     (measurement `weather_reading`) como serie temporal de lecturas brutas.
-  - Las dos responsabilidades coexisten en `backend/` como módulos independientes.
+  - REST API (implementada, change `implement-backend-rest-api`):
+    actualmente lee desde PostgreSQL + SQLAlchemy; desconectada de los datos
+    reales en InfluxDB. El change activo `migrate-backend-influxdb` (0/16)
+    consolida ambas capas en una sola app FastAPI, migra la lectura a Flux
+    queries sobre InfluxDB y elimina PostgreSQL/SQLAlchemy, habilitando el
+    ciclo completo gateway-node-mock → ChirpStack → backend → frontend.
 
   ### Frontend web
   - React + Recharts (o Chart.js), consumiendo la API REST del backend
