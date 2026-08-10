@@ -85,17 +85,20 @@ services:
       - DOCKER_INFLUXDB_INIT_RETENTION=30d
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=weather-station-token
 
-  # Backend WeatherOS — REST API + subscriber MQTT → PostgreSQL
+  # Backend WeatherOS — REST API + subscriber MQTT → InfluxDB
   backend:
     build: ../backend
     restart: unless-stopped
     depends_on:
       - mosquitto
-      - postgres
+      - influxdb
     environment:
-      - DATABASE_URL=postgresql+asyncpg://weatheros:weatheros@postgres:5432/weatheros
       - CHIRPSTACK_MQTT_BROKER=mosquitto:1883
       - CHIRPSTACK_APP_ID=${CHIRPSTACK_APP_ID:-1}
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_TOKEN=${INFLUXDB_TOKEN:-weather-station-token}
+      - INFLUXDB_ORG=${INFLUXDB_ORG:-weather-station}
+      - INFLUXDB_BUCKET=${INFLUXDB_BUCKET:-weather}
       - SENSOR_K_WIND=${SENSOR_K_WIND:-0.5}
       - SENSOR_K_RAIN=${SENSOR_K_RAIN:-0.2794}
     ports:

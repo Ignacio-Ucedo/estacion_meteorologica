@@ -1,24 +1,21 @@
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 
-import pandas as pd
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.db.models import Reading
+from app.config import get_settings
+from app.services.influx import query
 
 
 @dataclass(frozen=True)
 class MetricConfig:
-    column_name: str
+    field: str   # campo en weather_reading (InfluxDB)
     unit: str
 
 
 METRICS: dict[str, MetricConfig] = {
-    "temperature": MetricConfig("temperature", "C"),
-    "humidity": MetricConfig("humidity", "%"),
-    "windSpeed": MetricConfig("wind_speed", "km/h"),
-    "precipitation": MetricConfig("precipitation", "mm"),
+    "temperature": MetricConfig("temp_c", "°C"),
+    "humidity": MetricConfig("humidity_pct", "%"),
+    "windSpeed": MetricConfig("wind_pulses", "m/s"),
+    "precipitation": MetricConfig("rain_pulses", "mm"),
 }
 
 
@@ -26,101 +23,113 @@ def get_metric(metric: str) -> MetricConfig | None:
     return METRICS.get(metric)
 
 
+def _scale_for(metric: str) -> float:
+    s = get_settings()
+    if metric == "windSpeed":
+        return s.sensor_k_wind
+    if metric == "precipitation":
+        return s.sensor_k_rain
+    return 1.0
+
+
 def utc_now() -> datetime:
     return datetime.now(UTC)
 
 
-async def hourly_points(
-    session: AsyncSession,
-    station_id: str,
-    metric: str,
-    target_date: date | None = None,
-) -> list[dict[str, float | int | None]]:
+def get_recent_metric(dev_eui: str, metric: str, minutes: int) -> list[dict]:
     config = METRICS[metric]
+    s = get_settings()
+    flux = f'''from(bucket: "{s.influxdb_bucket}")
+  |> range(start: -{minutes}m)
+  |> filter(fn: (r) => r._measurement == "weather_reading" and r.dev_eui == "{dev_eui}"
+      and (r._field == "{config.field}" or r._field == "seq"))
+  |> pivot(rowKey: ["_time", "dev_eui"], columnKey: ["_field"], valueColumn: "_value")
+  |> sort(columns: ["_time"])'''
+    rows = query(flux)
+    scale = _scale_for(metric)
+    result = []
+    for row in rows:
+        raw_val = row.get(config.field)
+        if raw_val is None:
+            continue
+        seq_raw = row.get("seq")
+        result.append({
+            "timestamp": row.get("_time"),
+            "value": float(raw_val) * scale,
+            "seq": int(seq_raw) if seq_raw is not None else None,
+        })
+    return result
+
+
+def hourly_points(dev_eui: str, metric: str, target_date: date | None = None) -> list[dict]:
+    config = METRICS[metric]
+    s = get_settings()
     day = target_date or utc_now().date()
-    start = datetime.combine(day, time.min, tzinfo=UTC)
-    end = start + timedelta(days=1)
-    column = getattr(Reading, config.column_name)
-    result = await session.execute(
-        select(Reading.timestamp, column)
-        .where(Reading.station_id == station_id)
-        .where(Reading.timestamp >= start)
-        .where(Reading.timestamp <= end)
-        .order_by(Reading.timestamp.asc())
-    )
-    values: dict[int, float] = {}
-    for timestamp, value in result.all():
-        if timestamp.tzinfo is None:
-            timestamp = timestamp.replace(tzinfo=UTC)
-        values[timestamp.hour] = float(value)
-    return [{"hour": hour, "value": values.get(hour)} for hour in range(25)]
+    start = datetime.combine(day, time.min, tzinfo=UTC).isoformat()
+    stop = datetime.combine(day + timedelta(days=1), time.min, tzinfo=UTC).isoformat()
+    flux = f'''from(bucket: "{s.influxdb_bucket}")
+  |> range(start: {start}, stop: {stop})
+  |> filter(fn: (r) => r._measurement == "weather_reading" and r.dev_eui == "{dev_eui}"
+      and r._field == "{config.field}")
+  |> aggregateWindow(every: 1h, fn: mean, createEmpty: true)'''
+    rows = query(flux)
+    scale = _scale_for(metric)
+    by_hour: dict[int, float | None] = {}
+    for row in rows:
+        ts = row.get("_time")
+        val = row.get("_value")
+        if isinstance(ts, datetime):
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=UTC)
+            by_hour[ts.hour] = float(val) * scale if val is not None else None
+    return [{"hour": h, "value": by_hour.get(h)} for h in range(25)]
 
 
-async def get_recent_metric(
-    session: AsyncSession,
-    station_id: str,
-    metric: str,
-    minutes: int,
-) -> list[dict[str, object]]:
+def daily_summaries(dev_eui: str, metric: str, days: int) -> list[dict]:
     config = METRICS[metric]
-    since = utc_now() - timedelta(minutes=minutes)
-    column = getattr(Reading, config.column_name)
-    result = await session.execute(
-        select(Reading.timestamp, column)
-        .where(Reading.station_id == station_id)
-        .where(Reading.timestamp >= since)
-        .order_by(Reading.timestamp.asc())
-    )
-    points = []
-    for timestamp, value in result.all():
-        if timestamp.tzinfo is None:
-            timestamp = timestamp.replace(tzinfo=UTC)
-        points.append({"timestamp": timestamp, "value": float(value)})
-    return points
+    s = get_settings()
+    flux = f'''
+data = from(bucket: "{s.influxdb_bucket}")
+  |> range(start: -{days}d)
+  |> filter(fn: (r) => r._measurement == "weather_reading" and r.dev_eui == "{dev_eui}"
+      and r._field == "{config.field}")
 
+data |> aggregateWindow(every: 1d, fn: mean, createEmpty: false) |> yield(name: "mean")
+data |> aggregateWindow(every: 1d, fn: min, createEmpty: false) |> yield(name: "min")
+data |> aggregateWindow(every: 1d, fn: max, createEmpty: false) |> yield(name: "max")
+'''
+    rows = query(flux)
+    scale = _scale_for(metric)
 
-async def daily_summaries(
-    session: AsyncSession,
-    station_id: str,
-    metric: str,
-    days: int,
-    end_date: date | None = None,
-) -> list[dict[str, object]]:
-    config = METRICS[metric]
-    last_day = end_date or utc_now().date()
+    by_date: dict[date, dict] = {}
+    for row in rows:
+        ts = row.get("_time")
+        val = row.get("_value")
+        agg = row.get("result", "mean")
+        if not isinstance(ts, datetime):
+            continue
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=UTC)
+        d = ts.date()
+        if d not in by_date:
+            by_date[d] = {}
+        if val is not None:
+            by_date[d][agg] = float(val) * scale
+
+    last_day = utc_now().date()
     first_day = last_day - timedelta(days=days - 1)
-    start = datetime.combine(first_day, time.min, tzinfo=UTC)
-    end = datetime.combine(last_day + timedelta(days=1), time.min, tzinfo=UTC)
-    column = getattr(Reading, config.column_name)
-    result = await session.execute(
-        select(Reading.timestamp, column)
-        .where(Reading.station_id == station_id)
-        .where(Reading.timestamp >= start)
-        .where(Reading.timestamp < end)
-    )
-    rows = result.all()
-    frame = pd.DataFrame(rows, columns=["timestamp", "value"])
-    if not frame.empty:
-        frame["date"] = pd.to_datetime(frame["timestamp"], utc=True).dt.date
-        grouped = frame.groupby("date")["value"].agg(["min", "max", "mean"])
-    else:
-        grouped = pd.DataFrame(columns=["min", "max", "mean"])
-
-    summaries: list[dict[str, object]] = []
+    result = []
     for offset in range(days):
         current = first_day + timedelta(days=offset)
-        stats = grouped.loc[current] if current in grouped.index else None
-        summaries.append(
-            {
-                "date": current,
-                "day_label": current.strftime("%a"),
-                "date_label": f"{current.day} {current.strftime('%b').lower()}",
-                "month_label": current.strftime("%b"),
-                "is_month_start": current.day == 1,
-                "min": None if stats is None else float(stats["min"]),
-                "max": None if stats is None else float(stats["max"]),
-                "mean": None if stats is None else float(stats["mean"]),
-            }
-        )
-    return summaries
-
+        stats = by_date.get(current, {})
+        result.append({
+            "date": current,
+            "day_label": current.strftime("%a"),
+            "date_label": f"{current.day} {current.strftime('%b').lower()}",
+            "month_label": current.strftime("%b"),
+            "is_month_start": current.day == 1,
+            "min": stats.get("min"),
+            "max": stats.get("max"),
+            "mean": stats.get("mean"),
+        })
+    return result
