@@ -32,9 +32,11 @@ interface LogStep {
 interface Props {
   state: WizardState;
   onReset: () => void;
+  backendUrl?: string;
+  selectedCustomerId?: string;
 }
 
-export default function WizardStep5_Register({ state, onReset }: Props) {
+export default function WizardStep5_Register({ state, onReset, backendUrl = "", selectedCustomerId = "" }: Props) {
   const [config, setConfig] = useState<ChirpstackConfig>({
     host: "",
     apiToken: "",
@@ -51,6 +53,8 @@ export default function WizardStep5_Register({ state, onReset }: Props) {
   const [apps, setApps] = useState<DiscoveredOption[]>([]);
   const [profiles, setProfiles] = useState<DiscoveredOption[]>([]);
   const [tenants, setTenants] = useState<DiscoveredOption[]>([]);
+  const [assocStatus, setAssocStatus] = useState<"none" | "ok" | "warn">("none");
+  const [assocMsg, setAssocMsg] = useState<string>("");
 
   useEffect(() => {
     invoke<ChirpstackConfig>("load_chirpstack_config")
@@ -180,6 +184,21 @@ export default function WizardStep5_Register({ state, onReset }: Props) {
     }).catch(() => {});
 
     setPhase("done");
+
+    // Asociar station al cliente seleccionado (no-bloqueante)
+    if (backendUrl && selectedCustomerId) {
+      const stationId = `dev-${state.devEui.slice(0, 8).toLowerCase()}`;
+      invoke("associate_station_to_customer", {
+        backendUrl,
+        stationId,
+        ownerId: selectedCustomerId,
+      })
+        .then(() => { setAssocStatus("ok"); setAssocMsg("Dispositivo asociado al cliente"); })
+        .catch((err: unknown) => {
+          setAssocStatus("warn");
+          setAssocMsg(typeof err === "string" ? err : "No se pudo asociar el dispositivo");
+        });
+    }
   }
 
   function formatEui(eui: string): string {
@@ -222,6 +241,22 @@ export default function WizardStep5_Register({ state, onReset }: Props) {
           <InfoRow label="ChirpStack" value={config.host} />
         </div>
         <StepLog steps={steps} />
+        {assocStatus === "ok" && (
+          <div style={{
+            padding: "8px 14px", background: "#14532d", border: "1px solid #166534",
+            borderRadius: 8, fontSize: 12, color: "#4ade80", display: "flex", alignItems: "center", gap: 8,
+          }}>
+            ✓ {assocMsg}
+          </div>
+        )}
+        {assocStatus === "warn" && (
+          <div style={{
+            padding: "8px 14px", background: "#1c1a0a", border: "1px solid #854d0e",
+            borderRadius: 8, fontSize: 12, color: "#fbbf24", display: "flex", alignItems: "center", gap: 8,
+          }}>
+            ⚠ {assocMsg}
+          </div>
+        )}
         <button className="btn btn-primary" onClick={onReset}>
           Nuevo aprovisionamiento
         </button>

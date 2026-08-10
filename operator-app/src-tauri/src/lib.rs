@@ -15,6 +15,7 @@ use commands::chirpstack::{
     load_chirpstack_config, register_device_chirpstack, register_gateway, reset_device_activation,
     save_chirpstack_config, sync_chirpstack,
 };
+use commands::customer::{associate_station_to_customer, fetch_customers};
 use commands::device_log::{export_devices_csv, list_devices, log_provisioning};
 use commands::firmware::{check_firmware_update, download_firmware};
 use commands::flash::{
@@ -33,6 +34,8 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .manage(Arc::new(AppState::default()))
         .invoke_handler(tauri::generate_handler![
+            fetch_customers,
+            associate_station_to_customer,
             start_gateway,
             stop_gateway,
             get_gateway_status,

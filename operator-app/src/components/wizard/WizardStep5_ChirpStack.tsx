@@ -25,9 +25,11 @@ interface Props {
   state: WizardState;
   deviceType: DeviceType;
   onReset: () => void;
+  backendUrl?: string;
+  selectedCustomerId?: string;
 }
 
-export default function WizardStep5_ChirpStack({ state, deviceType, onReset }: Props) {
+export default function WizardStep5_ChirpStack({ state, deviceType, onReset, backendUrl = "", selectedCustomerId = "" }: Props) {
   if (isGateway(deviceType)) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 520 }}>
@@ -68,6 +70,8 @@ export default function WizardStep5_ChirpStack({ state, deviceType, onReset }: P
   const [status, setStatus] = useState<RegStatus>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [resultMsg, setResultMsg] = useState<string>("");
+  const [assocStatus, setAssocStatus] = useState<"none" | "ok" | "warn">("none");
+  const [assocMsg, setAssocMsg] = useState<string>("");
 
   const [config, setConfig] = useState<ChirpstackConfig>({
     host: "",
@@ -176,6 +180,21 @@ export default function WizardStep5_ChirpStack({ state, deviceType, onReset }: P
       });
       setResultMsg(msg);
       setStatus("ok");
+
+      // Asociar station al cliente seleccionado (no-bloqueante)
+      if (backendUrl && selectedCustomerId) {
+        const stationId = `dev-${state.devEui.slice(0, 8).toLowerCase()}`;
+        invoke("associate_station_to_customer", {
+          backendUrl,
+          stationId,
+          ownerId: selectedCustomerId,
+        })
+          .then(() => { setAssocStatus("ok"); setAssocMsg("Dispositivo asociado al cliente"); })
+          .catch((err: unknown) => {
+            setAssocStatus("warn");
+            setAssocMsg(typeof err === "string" ? err : "No se pudo asociar el dispositivo");
+          });
+      }
     } catch (err: unknown) {
       const msg = typeof err === "string" ? err : String(err);
       await invoke("log_provisioning", {
@@ -415,6 +434,23 @@ export default function WizardStep5_ChirpStack({ state, deviceType, onReset }: P
             </p>
             <p style={{ fontSize: 12, color: "#86efac", textAlign: "center" }}>{resultMsg}</p>
           </div>
+
+          {assocStatus === "ok" && (
+            <div style={{
+              padding: "8px 14px", background: "#14532d", border: "1px solid #166534",
+              borderRadius: 8, fontSize: 12, color: "#4ade80", display: "flex", alignItems: "center", gap: 8,
+            }}>
+              ✓ {assocMsg}
+            </div>
+          )}
+          {assocStatus === "warn" && (
+            <div style={{
+              padding: "8px 14px", background: "#1c1a0a", border: "1px solid #854d0e",
+              borderRadius: 8, fontSize: 12, color: "#fbbf24", display: "flex", alignItems: "center", gap: 8,
+            }}>
+              ⚠ {assocMsg}
+            </div>
+          )}
 
           <div style={{
             background: "#1a1d2e",

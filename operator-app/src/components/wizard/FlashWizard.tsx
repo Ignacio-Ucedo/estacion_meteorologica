@@ -21,9 +21,11 @@ const STEPS_GATEWAY = ["Puerto", "Config", "Firmware", "NVS", "Registro"]   as c
 interface Props {
   title: string;
   deviceType: DeviceType;
+  backendUrl?: string;
+  selectedCustomerId?: string;
 }
 
-export default function FlashWizard({ title, deviceType }: Props) {
+export default function FlashWizard({ title, deviceType, backendUrl = "", selectedCustomerId = "" }: Props) {
   const gateway = isGateway(deviceType);
   const [state, setState] = useState<WizardState>(INITIAL_STATE);
   const [firmwareCheck, setFirmwareCheck] = useState<FirmwareCheck>({ state: "loading" });
@@ -70,8 +72,8 @@ export default function FlashWizard({ title, deviceType }: Props) {
         return <WizardStep4_NVS state={state} deviceType={deviceType} onBack={() => goTo(3)} onNext={() => goTo(5)} />;
       case 5:
         return gateway
-          ? <WizardStep5_Register state={state} onReset={reset} />
-          : <WizardStep5_ChirpStack state={state} deviceType={deviceType} onReset={reset} />;
+          ? <WizardStep5_Register state={state} onReset={reset} backendUrl={backendUrl} selectedCustomerId={selectedCustomerId} />
+          : <WizardStep5_ChirpStack state={state} deviceType={deviceType} onReset={reset} backendUrl={backendUrl} selectedCustomerId={selectedCustomerId} />;
     }
   };
 
