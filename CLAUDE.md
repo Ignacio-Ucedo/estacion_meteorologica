@@ -152,15 +152,14 @@ and the archived `migrate-lorawan-sx1276` change (SX1276/AU915 hardware not acqu
 
 ## Frontend (`frontend/`)
 
-React 19 + TypeScript + Vite. Package manager: pnpm (see
-`pnpm-lock.yaml`/`pnpm-workspace.yaml`).
+React 19 + TypeScript + Vite. Package manager: npm (see `package-lock.json`).
 
 ```bash
 cd frontend
-pnpm install
-pnpm dev        # vite dev server on 127.0.0.1
-pnpm build      # tsc -b && vite build
-pnpm preview    # preview production build
+npm install
+npm run dev     # vite dev server on 127.0.0.1
+npm run build   # tsc -b && vite build
+npm run preview # preview production build
 ```
 
 There is no test or lint script configured yet. `App.tsx` currently renders
