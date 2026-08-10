@@ -71,6 +71,17 @@ jobs:
       - name: Install espflash
         run: cargo install espflash --locked
 
+      - name: Set up ESP-IDF environment for root
+        run: |
+          # espressif/idf-rust instala las herramientas de IDF para su usuario default,
+          # no para root. Buscamos donde están los tools y soureamos export.sh.
+          for d in /home/user/.espressif /home/esp/.espressif /opt/.espressif; do
+            [ -d "$d/tools" ] && export IDF_TOOLS_PATH="$d" && echo "IDF_TOOLS_PATH=$d" && break
+          done
+          . "$IDF_PATH/export.sh"
+          echo "PATH=$PATH" >> "$GITHUB_ENV"
+          echo "IDF_TOOLS_PATH=${IDF_TOOLS_PATH}" >> "$GITHUB_ENV"
+
       - name: Build gateway-node-mock (release)
         working-directory: firmware
         run: cargo build --release --bin gateway-node-mock
