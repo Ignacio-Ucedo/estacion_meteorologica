@@ -83,7 +83,9 @@ jobs:
             exit 1
           fi
           echo "Sourcing: $EXPORT_SH"
+          set +e   # export-esp.sh tiene comandos non-zero no críticos; sh -e los abortaría
           . "$EXPORT_SH"
+          set -e
           echo "PATH=$PATH" >> "$GITHUB_ENV"
           # bindgen necesita el clang con soporte Xtensa de Espressif
           [ -n "$LIBCLANG_PATH" ] && echo "LIBCLANG_PATH=$LIBCLANG_PATH" >> "$GITHUB_ENV"
