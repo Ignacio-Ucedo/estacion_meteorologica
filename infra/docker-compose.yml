@@ -101,6 +101,10 @@ services:
       - INFLUXDB_BUCKET=${INFLUXDB_BUCKET:-weather}
       - SENSOR_K_WIND=${SENSOR_K_WIND:-0.5}
       - SENSOR_K_RAIN=${SENSOR_K_RAIN:-0.2794}
+      - USERS_DB_PATH=/data/users.db
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-prod}
+    volumes:
+      - users-data:/data
     ports:
       - "8000:8000"
 
@@ -121,3 +125,4 @@ volumes:
   chirpstack-postgres-data:
   chirpstack-redis-data:
   influxdb-data:
+  users-data:
