@@ -54,6 +54,9 @@ jobs:
           key: ${{ runner.os }}-cargo-esp32-${{ hashFiles('firmware/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-esp32-
 
+      - name: Configure ESP Rust toolchain
+        run: rustup default esp
+
       - name: Install espflash
         run: cargo install espflash --locked
 
