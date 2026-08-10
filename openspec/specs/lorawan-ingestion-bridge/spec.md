@@ -55,16 +55,23 @@ Tags: `dev_eui`, `device_id`.
 
 El backend SHALL crear automáticamente un punto en `station_meta` la primera vez que recibe un uplink de un `dev_eui` no registrado:
 
-- `station_id` (tag y field): `"dev-{dev_eui[:8]}"`
+- `station_id` (tag): `"dev-{dev_eui[:8]}"`
+- `owner_id` (tag): `""` (string vacío; indica que la station aún no tiene propietario asignado)
 - `name` (field): `"Auto {dev_eui[:8]}"`
 - `location` (field): `"Unknown"`
 
-La operación SHALL ser idempotente.
+La operación SHALL ser idempotente. El `owner_id` vacío indica que la station aún no fue asociada a ningún cliente. El wizard del operator-app es responsable de llamar a `PUT /api/stations/{station_id}/owner` para completar la asociación.
 
-#### Scenario: Primer uplink de dev_eui nuevo crea station_meta
+#### Scenario: Primer uplink de dev_eui nuevo crea station_meta con owner_id vacío
 
 - **WHEN** llega el primer uplink de un `dev_eui` que no existe en `station_meta`
-- **THEN** se crea un punto en `station_meta` con los valores por defecto y el log incluye `station_created dev_eui=...`
+- **THEN** se crea un punto en `station_meta` con tag `owner_id=""` y el log incluye `station_created dev_eui=...`
+
+#### Scenario: Station sin owner no bloquea la ingesta
+
+- **GIVEN** una station con `owner_id=""`
+- **WHEN** llegan uplinks posteriores del mismo `dev_eui`
+- **THEN** los datos se escriben en `weather_reading` normalmente; `owner_id` del punto de ingesta no se modifica
 
 ### Requirement: Health check con liveness MQTT
 
