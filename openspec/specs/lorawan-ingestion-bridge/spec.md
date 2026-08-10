@@ -1,103 +1,89 @@
 # lorawan-ingestion-bridge/spec.md
 
-# Especificación: LoRaWAN Ingestion Bridge
-
 ## Overview
 
-Módulo del backend que recibe uplinks LoRaWAN vía webhook HTTP desde ChirpStack, parsea el payload binario, aplica el field mapping al modelo `Reading` de PostgreSQL, y auto-provisiona `Station` para dispositivos nuevos.
+Módulo del backend que recibe uplinks LoRaWAN vía MQTT desde ChirpStack, parsea el payload binario (14 bytes, CRC-8/MAXIM), y escribe series temporales en InfluxDB. Auto-provisiona metadatos de station la primera vez que aparece un `dev_eui` nuevo.
+
+Migrado en `migrate-backend-influxdb` (supersede la integración HTTP webhook).
 
 ---
 
 ## Requirements
 
-### Requirement: Webhook HTTP como mecanismo de ingesta de uplinks
+### Requirement: MQTT como único mecanismo de ingesta
 
-El backend FastAPI SHALL exponer el endpoint `POST /integrations/chirpstack/uplink` que recibe eventos de uplink LoRaWAN desde la integración HTTP nativa de ChirpStack. El endpoint SHALL procesar el payload JSON con la misma lógica de parseo, field mapping y auto-provisión de Station que el subscriber MQTT anterior. El backend SHALL arrancar sin necesidad de configurar variables de entorno MQTT; si no llegan webhooks, el REST API SHALL continuar funcionando normalmente.
+El backend SHALL suscribirse al topic MQTT de ChirpStack como único mecanismo de ingesta. No SHALL existir un endpoint HTTP de webhook.
 
-#### Scenario: Uplink válido recibido por webhook genera Reading en PostgreSQL
+El subscriber MQTT SHALL usar QoS 1 y `clean_session=False` con `client_id` fijo (`"weather-backend"`). Mosquitto SHALL tener persistencia habilitada para garantizar entrega de mensajes acumulados durante reinicios del backend.
 
-- **WHEN** ChirpStack hace `POST /integrations/chirpstack/uplink` con un evento JSON de uplink con payload CRC válido
-- **THEN** el backend persiste un `Reading` en PostgreSQL con los campos convertidos correctamente y retorna `200 OK`
+#### Scenario: Backend reinicia durante uplinks
 
-#### Scenario: Backend arranca sin configuración MQTT
+- **GIVEN** el broker Mosquitto tiene persistencia habilitada
+- **WHEN** el backend se reinicia mientras ChirpStack publica uplinks
+- **THEN** al reconectar, el broker entrega los mensajes acumulados y se escriben en InfluxDB sin pérdida
 
-- **WHEN** el backend inicia sin variables `CHIRPSTACK_MQTT_BROKER` ni `CHIRPSTACK_APP_ID` en el entorno
-- **THEN** el backend arranca sin warnings MQTT y el REST API responde normalmente en `/api/health`
+### Requirement: Storage en InfluxDB exclusivo
+
+El backend SHALL leer y escribir exclusivamente en InfluxDB. No SHALL existir dependencia de PostgreSQL para los datos del backend (PostgreSQL es usado internamente por ChirpStack).
+
+Las stations SHALL derivarse de los tags `dev_eui` en la measurement `weather_reading`. Los metadatos de station SHALL persistirse en la measurement `station_meta`.
+
+Por cada uplink válido, el backend SHALL escribir un punto en `weather_reading` con los siguientes fields:
+
+| Campo payload (LoRaWAN) | Field InfluxDB | Conversión |
+|---|---|---|
+| `temp_c` | `temp_c` | directo (float, °C) |
+| `humidity_pct` | `humidity_pct` | directo (float, %RH) |
+| `wind_pulses` | `wind_pulses` | directo (int, pulsos crudos) |
+| `rain_pulses` | `rain_pulses` | directo (int, pulsos crudos) |
+| `battery_mv` | `battery_mv` | directo (int, mV) |
+| `seq` | `seq` | directo (int, contador de secuencia) |
+
+Tags: `dev_eui`, `device_id`.
+
+#### Scenario: Uplink válido se escribe en InfluxDB
+
+- **WHEN** ChirpStack publica un uplink MQTT con payload CRC válido
+- **THEN** aparece un nuevo punto en `weather_reading` con los fields correctos y el log incluye `influx_write_ok dev_eui=...`
 
 #### Scenario: Payload con CRC inválido es descartado
 
-- **WHEN** ChirpStack envía un webhook con payload cuyo CRC-8/MAXIM no coincide
-- **THEN** el endpoint retorna `422 Unprocessable Entity`, el log incluye `payload_invalid` con el hex del payload, y no se persiste ningún `Reading`
+- **WHEN** llega un uplink con CRC-8/MAXIM inválido
+- **THEN** no se escribe en InfluxDB y el log incluye `payload_invalid dev_eui=...`
 
-#### Scenario: Uplink sin campo `data` es ignorado
+### Requirement: Auto-provisioning de station_meta
 
-- **WHEN** el webhook llega sin campo `data` o con `data` vacío
-- **THEN** el endpoint retorna `422 Unprocessable Entity` y el log incluye `uplink_no_data`
+El backend SHALL crear automáticamente un punto en `station_meta` la primera vez que recibe un uplink de un `dev_eui` no registrado:
 
-### Requirement: Field mapping de payload LoRaWAN a Reading de PostgreSQL
+- `station_id` (tag y field): `"dev-{dev_eui[:8]}"`
+- `name` (field): `"Auto {dev_eui[:8]}"`
+- `location` (field): `"Unknown"`
 
-Por cada webhook de uplink válido, el backend SHALL parsear el payload binario de 14 bytes y persistir un `Reading` en PostgreSQL aplicando el siguiente mapping:
+La operación SHALL ser idempotente.
 
-| Campo payload (LoRaWAN) | Campo `Reading` (PostgreSQL) | Conversión |
-|---|---|---|
-| `temp_c` | `temperature` | directo (float, °C, rango −40 a +85, resolución 0.01) |
-| `humidity_pct` | `humidity` | directo (float, %RH, rango 0–100, resolución 0.01) |
-| `wind_pulses` | `wind_speed` | `wind_pulses × K_WIND` (m/s; K_WIND configurable, default 0.5) |
-| `rain_pulses` | `precipitation` | `rain_pulses × K_RAIN` (mm; K_RAIN configurable, default 0.2794) |
-| *(no existe)* | `wind_direction` | constante `"N/A"` |
+#### Scenario: Primer uplink de dev_eui nuevo crea station_meta
 
-El `timestamp` del `Reading` SHALL ser el campo `time` del evento ChirpStack (ISO 8601). Si `time` está ausente o inválido, SHALL usarse `datetime.now(UTC)`.
+- **WHEN** llega el primer uplink de un `dev_eui` que no existe en `station_meta`
+- **THEN** se crea un punto en `station_meta` con los valores por defecto y el log incluye `station_created dev_eui=...`
 
-#### Scenario: Uplink válido genera Reading en PostgreSQL
+### Requirement: Health check con liveness MQTT
 
-- **WHEN** ChirpStack envía un webhook con payload CRC válido
-- **THEN** aparece un nuevo `Reading` en PostgreSQL con `temperature`, `humidity`, `wind_speed` y `precipitation` convertidos correctamente, y el log incluye `reading_persisted dev_eui=... seq=...`
+El endpoint `GET /health` SHALL retornar:
+```json
+{
+  "status": "ok" | "degraded",
+  "mqtt": "connected" | "disconnected",
+  "last_msg_ago_s": N
+}
+```
 
-#### Scenario: Constantes configurables via entorno
+SHALL retornar `"degraded"` si el subscriber MQTT está desconectado o el último mensaje fue hace más de 600 segundos.
 
-- **WHEN** el backend inicia con `SENSOR_K_WIND=1.0` y `SENSOR_K_RAIN=0.5` en el entorno
-- **THEN** los valores de `wind_speed` y `precipitation` de los uplinks subsiguientes reflejan las nuevas constantes
+#### Scenario: Thread MQTT muere silenciosamente
 
-#### Scenario: Campo time ausente en el evento ChirpStack
+- **WHEN** el thread paho-mqtt se desconecta sin que uvicorn reinicie
+- **THEN** `GET /health` retorna `{"status": "degraded", "mqtt": "disconnected"}`
 
-- **WHEN** llega un uplink sin el campo `time`
-- **THEN** el `Reading` se persiste con `timestamp = datetime.now(UTC)` sin error
+### Requirement: Campo `seq` en responses de lecturas
 
-### Requirement: Auto-provisioning de Station por dev_eui desconocido
-
-El backend SHALL crear automáticamente una `Station` en PostgreSQL la primera vez que recibe un uplink de un `dev_eui` no registrado, con los siguientes valores por defecto:
-
-- `id`: `"dev-{dev_eui[:8]}"` (primeros 8 caracteres del devEUI en minúsculas)
-- `name`: `"Auto {dev_eui[:8]}"`
-- `location`: `"Unknown"`
-- `status`: `"online"`
-
-Si la Station ya existe, SHALL usarse la existente sin modificarla. La operación SHALL ser idempotente ante concurrencia.
-
-#### Scenario: Primer uplink de dev_eui nuevo crea Station automáticamente
-
-- **WHEN** llega el primer uplink de un `dev_eui` que no existe en PostgreSQL
-- **THEN** se crea una `Station` con id `dev-{dev_eui[:8]}`, el log incluye `station_auto_created dev_eui=...`, y el `Reading` se asocia a esa Station
-
-#### Scenario: Uplinks subsiguientes del mismo dev_eui no duplican Station
-
-- **WHEN** llegan múltiples uplinks del mismo `dev_eui`
-- **THEN** solo existe una `Station` para ese `dev_eui` y todos los `Reading` se asocian a ella
-
-### Requirement: Calibration constants configurables por variable de entorno
-
-El backend SHALL leer `SENSOR_K_WIND` y `SENSOR_K_RAIN` desde variables de entorno al iniciar. Los defaults SHALL ser `0.5` (m/s/pulso) y `0.2794` (mm/pulso) respectivamente.
-
-#### Scenario: Defaults aplicados sin variables de entorno
-
-- **WHEN** el backend inicia sin `SENSOR_K_WIND` ni `SENSOR_K_RAIN`
-- **THEN** se aplican los valores `0.5` y `0.2794` respectivamente
-
-### Requirement: Servicio backend en docker-compose
-
-El `infra/docker-compose.yml` SHALL incluir un servicio `backend` que construye la imagen desde `../backend`, expone el puerto `8000`, y depende de `postgres`. El servicio no requiere dependencia de `mosquitto`.
-
-#### Scenario: Stack completo levanta con un solo comando
-
-- **WHEN** se ejecuta `docker compose up -d` en `infra/`
-- **THEN** los servicios `chirpstack`, `postgres`, `redis`, `influxdb` y `backend` inician correctamente
+Los endpoints de lecturas recientes SHALL incluir el campo `seq` (u16, contador de secuencia del firmware) en cada punto retornado. Permite detectar gaps en el histórico sin consultar InfluxDB directamente.
