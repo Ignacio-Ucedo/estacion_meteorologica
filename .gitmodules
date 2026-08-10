@@ -1,3 +1,7 @@
 [submodule "firmware/lr1121-modem-e/vendor/lr1121_modemE_driver"]
 	path = firmware/lr1121-modem-e/vendor/lr1121_modemE_driver
 	url = https://github.com/Lora-net/lr1121_modemE_driver.git
+
+[submodule "firmware/lr1121-transceiver/vendor/lr11xx_driver"]
+	path = firmware/lr1121-transceiver/vendor/lr11xx_driver
+	url = https://github.com/Lora-net/SWDR001.git
