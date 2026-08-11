@@ -81,7 +81,7 @@ pub async fn get_latest_release(repo: &str) -> Result<ReleaseInfo, String> {
 
     releases
         .into_iter()
-        .filter(|r| !r.draft && !r.prerelease)
+        .filter(|r| !r.draft)
         .filter(|r| parse_semver(&r.tag_name).is_some())
         .max_by_key(|r| parse_semver(&r.tag_name).unwrap())
         .map(|r| ReleaseInfo {
@@ -91,6 +91,7 @@ pub async fn get_latest_release(repo: &str) -> Result<ReleaseInfo, String> {
             assets: r.assets,
         })
         .ok_or_else(|| format!("No se encontraron releases con versión semántica válida en {repo}"))
+}
 
 /// Descarga el contenido completo de una URL y lo retorna como bytes.
 /// Emite progress_fn(downloaded, total) en cada chunk recibido.
