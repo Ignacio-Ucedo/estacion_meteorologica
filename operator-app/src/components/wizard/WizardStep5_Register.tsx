@@ -233,9 +233,10 @@ export default function WizardStep5_Register({ state, onReset, backendUrl = "", 
           padding: "12px 14px", display: "flex", flexDirection: "column", gap: 4,
         }}>
           <InfoRow label="Gateway EUI" value={formatEui(state.gatewayEui)} />
-          <InfoRow label="Device EUI" value={state.devEui} />
+          <InfoRow label="Device EUI" value={state.devEui.toLowerCase()} />
           <InfoRow label="WiFi SSID" value={state.wifiSsid} />
           <InfoRow label="ChirpStack" value={config.host} />
+          <InfoRow label="App ID" value={config.appId} />
         </div>
         <StepLog steps={steps} />
         {assocStatus === "ok" && (

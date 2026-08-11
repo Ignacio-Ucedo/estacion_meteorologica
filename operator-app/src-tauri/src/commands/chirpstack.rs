@@ -71,16 +71,28 @@ pub async fn register_device_chirpstack(
     app_key: String,
 ) -> Result<String, String> {
     let creds = ChirpstackCreds { host, api_token };
+    let dev_eui_lower = dev_eui.to_lowercase();
 
-    let updated = chirpstack_api::create_or_update_device(&creds, &dev_eui, &app_id, &profile_id)
+    let updated = chirpstack_api::create_or_update_device(&creds, &dev_eui_lower, &app_id, &profile_id)
         .await?;
 
-    chirpstack_api::set_device_keys(&creds, &dev_eui, &app_key).await?;
+    chirpstack_api::set_device_keys(&creds, &dev_eui_lower, &app_key).await?;
+
+    // Confirm the device is visible in ChirpStack immediately after registration.
+    let exists = chirpstack_api::device_exists(&creds, &dev_eui_lower)
+        .await
+        .unwrap_or(false);
+    if !exists {
+        return Err(format!(
+            "Device {dev_eui_lower} fue enviado a ChirpStack pero no se encontró en la app {app_id}. \
+             Verificá el API token y que la app exista."
+        ));
+    }
 
     Ok(if updated {
-        format!("Device {dev_eui} actualizado en ChirpStack")
+        format!("Device {dev_eui_lower} actualizado en ChirpStack (app: {app_id})")
     } else {
-        format!("Device {dev_eui} creado en ChirpStack")
+        format!("Device {dev_eui_lower} creado en ChirpStack (app: {app_id})")
     })
 }
 
