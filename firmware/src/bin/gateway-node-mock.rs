@@ -79,10 +79,13 @@ fn main() -> anyhow::Result<()> {
 
     let peripherals = esp_idf_hal::peripherals::Peripherals::take()?;
     let sysloop = EspSystemEventLoop::take()?;
-    let nvs_partition = EspDefaultNvsPartition::take()?;
 
+    // Pasar None para que el WiFi driver no retenga el Arc<NvsDefault>.
+    // Con Some(...) el driver mantiene DEFAULT_TAKEN=true toda la vida del WiFi,
+    // bloqueando silenciosamente todos los write_diag / store_lorawan_session posteriores.
+    // Nuestras credenciales WiFi vienen de NVS propio, no del caché interno del driver.
     let mut wifi = BlockingWifi::wrap(
-        EspWifi::new(peripherals.modem, sysloop.clone(), Some(nvs_partition))?,
+        EspWifi::new(peripherals.modem, sysloop.clone(), None)?,
         sysloop,
     )?;
     nvs::write_diag("phase", 2); // WiFi objeto creado, a punto de conectar
