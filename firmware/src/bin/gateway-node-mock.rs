@@ -238,16 +238,11 @@ fn join_via_udp(
     use anyhow::Context as _;
     use base64::Engine as _;
 
-    let dev_nonce = (unsafe { esp_idf_svc::sys::esp_timer_get_time() } as u64 / 1000 & 0xFFFF) as u16;
-
     // Wire order for MIC computation is LSB-first; NVS stores MSB-first
     let mut app_eui_le = keys.app_eui;
     app_eui_le.reverse();
     let mut dev_eui_le = keys.dev_eui;
     dev_eui_le.reverse();
-
-    let mic = crypto::join_request_mic(&keys.app_key, &app_eui_le, &dev_eui_le, dev_nonce);
-    let join_req = frame::build_join_request(&keys.app_eui, &keys.dev_eui, dev_nonce, &mic);
 
     let mut retry_delay_ms: u32 = 10_000;
 
@@ -255,6 +250,11 @@ fn join_via_udp(
         // Re-register our UDP endpoint before each attempt
         let _ = send_pull_data(sock, gateway_eui, target_addr);
         FreeRtos::delay_ms(200);
+
+        // Fresh DevNonce per attempt — ChirpStack rejects replays (same DevNonce reused)
+        let dev_nonce = (unsafe { esp_idf_svc::sys::esp_timer_get_time() } as u64 / 1000 & 0xFFFF) as u16;
+        let mic = crypto::join_request_mic(&keys.app_key, &app_eui_le, &dev_eui_le, dev_nonce);
+        let join_req = frame::build_join_request(&keys.app_eui, &keys.dev_eui, dev_nonce, &mic);
 
         let tmst_us = unsafe { esp_idf_svc::sys::esp_timer_get_time() } as u32;
         let rxpk_json = build_rxpk_json(&join_req, CHANNEL_FREQ_MHZ, -75, 9.5, tmst_us);
