@@ -74,6 +74,9 @@ fn main() -> anyhow::Result<()> {
     let mut seq: u16 = nvs::load_seq().unwrap_or(0);
     info!("seq_restored={}", seq);
 
+    // NVS loaded OK — escribir antes de iniciar WiFi para capturar crashes en esa etapa
+    nvs::write_diag("phase", 1);
+
     let peripherals = esp_idf_hal::peripherals::Peripherals::take()?;
     let sysloop = EspSystemEventLoop::take()?;
     let nvs_partition = EspDefaultNvsPartition::take()?;
@@ -82,6 +85,7 @@ fn main() -> anyhow::Result<()> {
         EspWifi::new(peripherals.modem, sysloop.clone(), Some(nvs_partition))?,
         sysloop,
     )?;
+    nvs::write_diag("phase", 2); // WiFi objeto creado, a punto de conectar
     connect_wifi(&mut wifi, &wifi_ssid, &wifi_pass)?;
     nvs::write_diag("wifi_ok", 1);
 
@@ -362,15 +366,25 @@ fn connect_wifi(wifi: &mut BlockingWifi<EspWifi<'static>>, ssid: &str, pass: &st
     }))?;
     wifi.start()?;
 
-    // Scan para diagnóstico: confirmar que el SSID es visible
+    // Scan para diagnóstico: confirmar que el SSID es visible y guardar en NVS
     let (scan_results, _) = wifi.wifi_mut().scan_n::<10>()?;
-    info!("wifi_scan found {} APs", scan_results.len());
-    for ap in &scan_results {
-        if ap.ssid.as_str() == ssid {
+    let scan_count = scan_results.len();
+    info!("wifi_scan found {} APs", scan_count);
+    let mut target_found = false;
+    for (i, ap) in scan_results.iter().enumerate() {
+        let ap_ssid = ap.ssid.as_str();
+        info!("wifi_scan[{}] ssid={} rssi={}", i, ap_ssid, ap.signal_strength);
+        if i < 5 {
+            nvs::write_diag_str(&format!("sc{}", i), ap_ssid);
+        }
+        if ap_ssid == ssid {
+            target_found = true;
             info!("wifi_target_found ssid={} channel={} rssi={} auth={:?}",
                 ap.ssid, ap.channel, ap.signal_strength, ap.auth_method);
         }
     }
+    nvs::write_diag("scan_n", scan_count.min(255) as u8);
+    nvs::write_diag("tgt_ok", u8::from(target_found));
 
     wifi.connect()?;
     wifi.wait_netif_up()?;

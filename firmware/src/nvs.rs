@@ -159,18 +159,27 @@ pub fn load_lorawan_session() -> Result<Option<([u8; 4], [u8; 16], [u8; 16], u32
     Ok(Some((dev_addr, nwk_skey, app_skey, fcnt_up)))
 }
 
-/// Escribe un flag de diagnóstico en el namespace "diag" (best-effort, no falla el firmware).
-/// Solo llamar en puntos de ÉXITO — nunca al inicio del boot ni en errores.
-/// Así, el boot lejos del WiFi (que falla antes de llegar a estos puntos) no los pisa.
+/// Escribe un flag u8 de diagnóstico en el namespace "diag" (best-effort, no falla el firmware).
 ///
 /// Claves usadas por gateway-node-mock:
-///   wifi_ok  = 1  → WiFi conectó exitosamente
-///   otaa_ok  = 1  → sesión OTAA establecida (join o restore)
-///   tx_ok    = 1  → al menos un uplink enviado
+///   phase   = 1  → NVS cargado OK; 2 → WiFi objeto creado; 3+ reservado
+///   scan_n  = N  → cantidad de APs encontrados en el escaneo WiFi
+///   tgt_ok  = 1  → el SSID objetivo fue encontrado en el escaneo
+///   wifi_ok = 1  → WiFi conectó exitosamente
+///   otaa_ok = 1  → sesión OTAA establecida (join o restore)
+///   tx_ok   = 1  → al menos un uplink enviado
 pub fn write_diag(key: &str, val: u8) {
     let Ok(partition) = EspDefaultNvsPartition::take() else { return };
     let Ok(nvs) = EspNvs::new(partition, "diag", true) else { return };
     let _ = nvs.set_u8(key, val);
+}
+
+/// Escribe un string de diagnóstico en el namespace "diag" (best-effort).
+/// Usado para guardar nombres de SSIDs encontrados en el escaneo WiFi.
+pub fn write_diag_str(key: &str, val: &str) {
+    let Ok(partition) = EspDefaultNvsPartition::take() else { return };
+    let Ok(nvs) = EspNvs::new(partition, "diag", true) else { return };
+    let _ = nvs.set_str(key, val);
 }
 
 /// Lee un flag de diagnóstico del namespace "diag". Devuelve 0 si no existe.
