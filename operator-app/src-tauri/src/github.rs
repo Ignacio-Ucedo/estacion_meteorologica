@@ -26,9 +26,27 @@ fn client() -> Client {
         .expect("reqwest client")
 }
 
-/// Consulta el último release de un repo GitHub y retorna su información.
+/// Parsea un tag semver del estilo "v1.2.3" o "v1.2.3-suffix" en (major, minor, patch).
+/// Retorna None si el tag no sigue el patrón, lo que lo excluye de la selección.
+fn parse_semver(tag: &str) -> Option<(u32, u32, u32)> {
+    let tag = tag.strip_prefix('v')?;
+    // Ignorar sufijos como "-ci-test", "-alpha", etc.
+    let version_part = tag.split('-').next()?;
+    let parts: Vec<&str> = version_part.split('.').collect();
+    if parts.len() < 3 {
+        return None;
+    }
+    let major = parts[0].parse().ok()?;
+    let minor = parts[1].parse().ok()?;
+    let patch = parts[2].parse().ok()?;
+    Some((major, minor, patch))
+}
+
+/// Consulta todos los releases del repo y retorna el de mayor versión semántica.
+/// Usa /releases en vez de /releases/latest para evitar que releases más recientes
+/// pero de menor versión (re-builds de tags viejos) sean seleccionados.
 pub async fn get_latest_release(repo: &str) -> Result<ReleaseInfo, String> {
-    let url = format!("{GITHUB_API}/repos/{repo}/releases/latest");
+    let url = format!("{GITHUB_API}/repos/{repo}/releases?per_page=50");
     let resp = client()
         .get(&url)
         .header("Accept", "application/vnd.github.v3+json")
@@ -46,10 +64,33 @@ pub async fn get_latest_release(repo: &str) -> Result<ReleaseInfo, String> {
         }
     }
 
-    resp.json::<ReleaseInfo>()
+    #[derive(serde::Deserialize)]
+    struct ReleaseListItem {
+        tag_name: String,
+        name: String,
+        html_url: String,
+        assets: Vec<ReleaseAsset>,
+        draft: bool,
+        prerelease: bool,
+    }
+
+    let releases: Vec<ReleaseListItem> = resp
+        .json()
         .await
-        .map_err(|e| format!("Error al parsear respuesta de GitHub: {e}"))
-}
+        .map_err(|e| format!("Error al parsear respuesta de GitHub: {e}"))?;
+
+    releases
+        .into_iter()
+        .filter(|r| !r.draft && !r.prerelease)
+        .filter(|r| parse_semver(&r.tag_name).is_some())
+        .max_by_key(|r| parse_semver(&r.tag_name).unwrap())
+        .map(|r| ReleaseInfo {
+            tag_name: r.tag_name,
+            name: r.name,
+            html_url: r.html_url,
+            assets: r.assets,
+        })
+        .ok_or_else(|| format!("No se encontraron releases con versión semántica válida en {repo}"))
 
 /// Descarga el contenido completo de una URL y lo retorna como bytes.
 /// Emite progress_fn(downloaded, total) en cada chunk recibido.
