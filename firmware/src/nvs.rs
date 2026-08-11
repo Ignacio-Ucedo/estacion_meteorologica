@@ -159,6 +159,29 @@ pub fn load_lorawan_session() -> Result<Option<([u8; 4], [u8; 16], [u8; 16], u32
     Ok(Some((dev_addr, nwk_skey, app_skey, fcnt_up)))
 }
 
+/// Escribe un flag de diagnóstico en el namespace "diag" (best-effort, no falla el firmware).
+/// Solo llamar en puntos de ÉXITO — nunca al inicio del boot ni en errores.
+/// Así, el boot lejos del WiFi (que falla antes de llegar a estos puntos) no los pisa.
+///
+/// Claves usadas por gateway-node-mock:
+///   wifi_ok  = 1  → WiFi conectó exitosamente
+///   otaa_ok  = 1  → sesión OTAA establecida (join o restore)
+///   tx_ok    = 1  → al menos un uplink enviado
+pub fn write_diag(key: &str, val: u8) {
+    let Ok(partition) = EspDefaultNvsPartition::take() else { return };
+    let Ok(nvs) = EspNvs::new(partition, "diag", true) else { return };
+    let _ = nvs.set_u8(key, val);
+}
+
+/// Lee un flag de diagnóstico del namespace "diag". Devuelve 0 si no existe.
+pub fn read_diag(key: &str) -> u8 {
+    EspDefaultNvsPartition::take()
+        .ok()
+        .and_then(|p| EspNvs::new(p, "diag", false).ok())
+        .and_then(|nvs| nvs.get_u8(key).ok().flatten())
+        .unwrap_or(0)
+}
+
 /// Persiste el contador de secuencia del payload (no confundir con FCnt LoRaWAN).
 pub fn store_seq(seq: u16) -> Result<()> {
     let partition = EspDefaultNvsPartition::take()

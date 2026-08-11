@@ -83,6 +83,7 @@ fn main() -> anyhow::Result<()> {
         sysloop,
     )?;
     connect_wifi(&mut wifi, &wifi_ssid, &wifi_pass)?;
+    nvs::write_diag("wifi_ok", 1);
 
     let mac = wifi.wifi().sta_netif().get_mac()?;
     let gateway_eui = compute_gateway_eui(&mac);
@@ -109,6 +110,7 @@ fn main() -> anyhow::Result<()> {
             join_via_udp(&sock, &gateway_eui, &keys, &target_addr)?
         }
     };
+    nvs::write_diag("otaa_ok", 1);
 
     let mut sensors = MockEnvironmentSensor::new();
     let mut rxfw = 0u32;
@@ -187,6 +189,7 @@ fn main() -> anyhow::Result<()> {
         let rxpk_json = build_rxpk_json(&frame, CHANNEL_FREQ_MHZ, -75, 9.5, tmst_us);
         let _ = send_push_data(&sock, &gateway_eui, &rxpk_json, &target_addr);
         rxfw += 1;
+        nvs::write_diag("tx_ok", 1);
         info!("uplink_sent seq={} fcnt={} frame_len={}", seq, session.fcnt_up, frame.len());
 
         // Persist state so reboots don't replay frame counters
